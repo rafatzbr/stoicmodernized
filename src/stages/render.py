@@ -4,8 +4,6 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-import ffmpeg
-
 from src.config import settings
 from src.models import VideoRenderConfig, VideoRenderResult
 
@@ -14,178 +12,100 @@ class VideoRenderer:
     """Handles video rendering using ffmpeg."""
 
     def __init__(self, job_id: str, mock: bool = False):
-        """Initialize video renderer.
-
-        Args:
-            job_id: Unique job identifier
-            mock: If True, use mock data
-        """
         self.job_id = job_id
         self.mock = mock or settings.mock_mode
         self.job_dir = settings.jobs_dir / job_id
         self.output_dir = self.job_dir / "output"
-
-        # Video settings
         self.width = settings.video_width
         self.height = settings.video_height
         self.fps = settings.video_fps
         self.background_music_volume = settings.background_music_volume
 
     async def run(self, config: VideoRenderConfig) -> VideoRenderResult:
-        """Render final video from scenes.
-
-        Args:
-            config: VideoRenderConfig with all assets and settings
-
-        Returns:
-            VideoRenderResult with output paths
-        """
         self.output_dir.mkdir(parents=True, exist_ok=True)
-
         if self.mock:
             return await self._mock_render(config)
-        else:
-            return await self._real_render(config)
+        return await self._real_render(config)
 
     async def _mock_render(self, config: VideoRenderConfig) -> VideoRenderResult:
-        """Mock video rendering."""
-        output_path = Path(config.output_path)
-        output_path.touch()  # Create empty file
-
-        # Create mock thumbnail
-        thumbnail_path = self.output_dir / "thumbnail.jpg"
-        thumbnail_path.touch()
-
-        return VideoRenderResult(
-            video_path=str(output_path),
-            duration=300.0,  # Mock 5-minute video
-            thumbnail_path=str(thumbnail_path),
-        )
+        return await self._real_render(config)
 
     async def _real_render(self, config: VideoRenderConfig) -> VideoRenderResult:
-        """Real video rendering using ffmpeg.
-
-        TODO: Implement full ffmpeg pipeline with:
-        - Scene transitions
-        - Background images/videos
-        - Audio mixing (voiceover + background music)
-        - Subtitle burning
-        - Text overlays
-        - Intro/outro branding
-        """
         output_path = Path(config.output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         thumbnail_path = self.output_dir / "thumbnail.jpg"
 
-        # Get audio duration
-        audio_duration = await self._get_audio_duration(config.audio_path)
+        durations = self._scene_durations(config.scenes)
+        image_paths = self._resolve_image_paths(config.scenes)
 
-        # Build ffmpeg filter complex for scenes
-        # This is a simplified version - full implementation would handle
-        # dynamic scene transitions and overlays
-
-        # Example ffmpeg command structure:
-        # ffmpeg -i background.mp4 -i audio.wav -i subtitles.srt -filter_complex ... -c:v libx264 -c:a aac output.mp4
-
-        # For now, create a simple placeholder
-        output_path.touch()
-        thumbnail_path.touch()
-
-        return VideoRenderResult(
-            video_path=str(output_path),
-            duration=audio_duration or 300.0,
-            thumbnail_path=str(thumbnail_path),
+        self.render_scene_sequence(
+            images=image_paths,
+            audio_path=Path(config.audio_path),
+            output_path=output_path,
+            durations=durations,
+            subtitle_path=Path(config.subtitle_path) if config.subtitle_path else None,
         )
 
-    async def _get_audio_duration(self, audio_path: Path) -> Optional[float]:
-        """Get audio duration using ffprobe.
-
-        Args:
-            audio_path: Path to audio file
-
-        Returns:
-            Duration in seconds, or None if error
-        """
-        try:
-            probe = subprocess.run(
+        if image_paths:
+            subprocess.run(
                 [
-                    "ffprobe",
-                    "-v", "error",
-                    "-show_entries", "format=duration",
-                    "-of", "default=noprint_wrappers=1:nokey=1",
-                    str(audio_path),
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(image_paths[0]),
+                    "-frames:v",
+                    "1",
+                    str(thumbnail_path),
                 ],
+                check=True,
                 capture_output=True,
                 text=True,
             )
 
-            if probe.returncode == 0:
-                return float(probe.stdout.strip())
+        duration = await self._get_audio_duration(Path(config.audio_path)) or sum(durations)
+        return VideoRenderResult(
+            video_path=str(output_path),
+            duration=duration,
+            thumbnail_path=str(thumbnail_path),
+        )
 
+    async def _get_audio_duration(self, audio_path: Path) -> Optional[float]:
+        try:
+            probe = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    str(audio_path),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return float(probe.stdout.strip())
         except Exception:
-            pass
+            return None
 
-        return None
+    def _scene_durations(self, scenes: list) -> list[float]:
+        durations = []
+        for scene in scenes:
+            raw = float(scene.end_time - scene.start_time)
+            durations.append(max(1.0, raw))
+        return durations or [3.0]
 
-    def render_with_ffmpeg(
-        self,
-        scenes: list[dict],
-        audio_path: Path,
-        output_path: Path,
-        background_music_path: Optional[Path] = None,
-        subtitle_path: Optional[Path] = None,
-        intro_image: Optional[Path] = None,
-        outro_image: Optional[Path] = None,
-    ) -> subprocess.CompletedProcess:
-        """Build and execute ffmpeg command.
-
-        This is the core rendering logic. In production, this would:
-        1. Create filters for each scene transition
-        2. Add text overlays at appropriate times
-        3. Burn in subtitles
-        4. Mix audio with background music
-        5. Add intro/outro branding
-
-        Args:
-            scenes: List of scene data with timing and visuals
-            audio_path: Path to narration audio
-            output_path: Output video path
-            background_music_path: Optional background music
-            subtitle_path: Optional subtitle file
-            intro_image: Optional intro image
-            outro_image: Optional outro image
-
-        Returns:
-            CompletedProcess result
-        """
-        # This is a simplified placeholder
-        # Full implementation would build complex filter chains
-
-        cmd = [
-            "ffmpeg",
-            "-y",  # Overwrite output
-            "-i", str(audio_path),  # Audio
-        ]
-
-        # Add background music if provided
-        if background_music_path:
-            cmd.extend(["-i", str(background_music_path)])
-
-        # Add subtitles if provided
-        if subtitle_path:
-            cmd.extend(["-vf", f"subtitles={subtitle_path}"])
-
-        # Add output encoding
-        cmd.extend([
-            "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "23",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-vf", f"scale={self.width}:{self.height},fps={self.fps}",
-            str(output_path),
-        ])
-
-        return subprocess.run(cmd, capture_output=True, text=True)
+    def _resolve_image_paths(self, scenes: list) -> list[Path]:
+        image_dir = self.job_dir / "images"
+        paths = []
+        for scene in scenes:
+            scene_number = scene.scene_number if hasattr(scene, "scene_number") else scene["scene_number"]
+            path = image_dir / f"scene_{scene_number:03d}.jpg"
+            if path.exists():
+                paths.append(path)
+        return paths
 
     def render_scene_sequence(
         self,
@@ -193,38 +113,48 @@ class VideoRenderer:
         audio_path: Path,
         output_path: Path,
         durations: list[float],
+        subtitle_path: Optional[Path] = None,
     ) -> subprocess.CompletedProcess:
-        """Render a sequence of images with audio.
+        if not images:
+            raise RuntimeError("No scene images found for rendering")
 
-        Args:
-            images: List of image paths for each scene
-            audio_path: Narration audio
-            output_path: Output video path
-            durations: Duration for each image in seconds
+        concat_file = self.output_dir / "images.txt"
+        lines = []
+        for image, duration in zip(images, durations, strict=False):
+            lines.append(f"file '{image.as_posix()}'")
+            lines.append(f"duration {duration:.3f}")
+        lines.append(f"file '{images[-1].as_posix()}'")
+        concat_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-        Returns:
-            CompletedProcess result
-        """
-        # Build input arguments for all images
-        inputs = []
-        filter_complex = []
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(concat_file),
+            "-i",
+            str(audio_path),
+            "-vsync",
+            "vfr",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            f"scale={self.width}:{self.height},fps={self.fps}" + (
+                f",subtitles={subtitle_path.as_posix()}" if subtitle_path else ""
+            ),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "23",
+            "-c:a",
+            "aac",
+            "-shortest",
+            str(output_path),
+        ]
 
-        # Add each image as input
-        for i, image in enumerate(images):
-            inputs.extend(["-loop", "1", "-i", str(image)])
-            filter_complex.append(f"[{i}:v]trim=start={sum(durations[:i])}:duration={durations[i]},setpts=PTS-STARTPTS[v{i}]")
-
-        # Concatenate video streams
-        concat_inputs = " ".join(f"[v{i}]" for i in range(len(images)))
-        filter_complex.append(f"{concat_inputs}concat=n={len(images)}:v=1:a=0[vout]")
-
-        # Add audio
-        inputs.extend(["-i", str(audio_path)])
-        filter_complex.append("[1:a]atrim=0:duration={}[aout]".format(sum(durations)))
-
-        filter_complex.append(f"[vout][aout]")
-
-        cmd = ["ffmpeg", "-y"] + inputs + ["-filter_complex", ",".join(filter_complex)]
-        cmd.extend(["-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac", str(output_path)])
-
-        return subprocess.run(cmd, capture_output=True, text=True)
+        return subprocess.run(cmd, capture_output=True, text=True, check=True)

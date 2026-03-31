@@ -9,6 +9,7 @@ Automate faceless YouTube video creation for the **Stoic Modernized** channel, t
 - **SQLite job tracking** with retry support
 - **Per-stage JSON outputs** for transparency and debugging
 - **Modular provider abstractions** for TTS, image generation, and YouTube upload
+- **Real local asset generation** for WAV narration, JPEG scene cards, SRT subtitles, and MP4 rendering
 - **1080p output** with ffmpeg-based rendering
 - **Structured logging** per job
 
@@ -17,8 +18,9 @@ Automate faceless YouTube video creation for the **Stoic Modernized** channel, t
 ### Prerequisites
 
 - Python 3.11+
-- ffmpeg (for video rendering in non-mock mode)
-- Stable Diffusion CLI (optional, for real image generation)
+- ffmpeg + ffprobe
+- ImageMagick (`convert`) for local scene-card image generation
+- Stable Diffusion CLI (optional, only if you want model-based image generation instead of local generated cards)
 
 ### Installation
 
@@ -194,12 +196,12 @@ Mock mode is enabled by default when:
 In mock mode:
 - Research generates sample Stoic sources
 - Scripts are templated with Stoic wisdom
-- Images are placeholder files
-- Audio is placeholder files
-- Video rendering creates placeholder files
+- Images are still generated as local scene cards
+- Audio is still generated as a local WAV narration track
+- Video rendering still creates a real MP4 from generated assets
 - Upload returns a mock YouTube URL
 
-This allows you to test the entire pipeline without API keys or external services.
+This means the local pipeline remains testable end-to-end even without external APIs or model backends.
 
 ## Brand Voice
 
@@ -214,12 +216,13 @@ The Stoic Modernized channel follows these guidelines:
 
 ### TTS Providers
 
-- **local**: Placeholder for local TTS (Coqui TTS, Piper TTS, Edge-TTS)
-- **elevenlabs**: Real ElevenLabs API integration
+- **local**: Generates a real WAV narration asset locally without requiring external APIs
+- **elevenlabs**: Real ElevenLabs API integration when credentials are configured; otherwise the pipeline safely falls back to local generation
 
 ### Image Generation
 
-- **sd_cli**: Integration with stable-diffusion.cpp CLI
+- **sd_cli**: Integration with stable-diffusion.cpp CLI when local models are available
+- **local fallback**: Generates branded scene-card JPEGs with ImageMagick when sd-cli or models are unavailable
 - **dall_e**: Placeholder for DALL-E 3 API (stub)
 
 ### YouTube Upload

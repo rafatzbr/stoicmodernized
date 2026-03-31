@@ -1,121 +1,112 @@
 """Text-to-speech stage module with pluggable providers."""
 
-import subprocess
+import math
+import struct
+import wave
 from pathlib import Path
 from typing import Optional
 
 from src.config import settings
-from src.models import JobStatus
 
 
 class TTSAudioInterface:
     """Base interface for TTS providers."""
 
-    async def generate_audio(
-        self, text: str, output_path: Path, **kwargs
-    ) -> Path:
-        """Generate audio from text.
-
-        Args:
-            text: Text to convert to speech
-            output_path: Path for output audio file
-            **kwargs: Provider-specific options
-
-        Returns:
-            Path to generated audio file
-        """
+    async def generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
+        """Generate audio from text."""
         raise NotImplementedError
 
 
 class LocalTTSAudio(TTSAudioInterface):
-    """Local TTS provider (placeholder).
+    """Local fallback TTS provider.
 
-    This is a mock implementation. In production, you would integrate
-    with a local TTS engine like:
-    - Coqui TTS
-    - Piper TTS
-    - Edge-TTS (Microsoft)
-    - pyttsx3 (offline, but limited voices)
+    This implementation intentionally avoids requiring heavyweight local TTS
+    engines. Instead, it creates a real WAV narration track made of paced tones
+    and short silences so downstream stages have actual media assets to work
+    with in local/non-mock mode.
     """
 
     name = "local"
 
     def __init__(self, voice: str = "adam", speed: float = 1.0):
-        """Initialize local TTS.
-
-        Args:
-            voice: Voice name to use
-            speed: Speech speed multiplier (1.0 = normal)
-        """
         self.voice = voice
         self.speed = speed
+        self.sample_rate = 22050
+        self.amplitude = 12000
 
-    async def generate_audio(
-        self, text: str, output_path: Path, **kwargs
-    ) -> Path:
-        """Generate mock audio file."""
+    async def generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
+        """Generate a real WAV file usable by the render pipeline."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # In production, this would call actual TTS engine
-        # Example with Coqui TTS:
-        # import torch
-        # from TTS.api import TTS
-        # tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
-        # tts.tts_to_file(text=text, file_path=str(output_path))
+        segments = self._split_text(text)
+        with wave.open(str(output_path), "w") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(self.sample_rate)
 
-        # Mock: create empty file
-        output_path.touch()
+            for index, segment in enumerate(segments):
+                frequency = 220 + (index % 7) * 40
+                duration = self._segment_duration(segment)
+                wav_file.writeframes(self._tone_bytes(frequency, duration))
+                wav_file.writeframes(self._silence_bytes(0.08))
 
         return output_path
 
+    def _split_text(self, text: str) -> list[str]:
+        chunks = [chunk.strip() for chunk in text.replace("\n", " ").split(".") if chunk.strip()]
+        return chunks or [text.strip() or "Stoic Modernized"]
+
+    def _segment_duration(self, text: str) -> float:
+        words = max(1, len(text.split()))
+        base_seconds = words / max(0.5, 2.6 * self.speed)
+        return max(0.35, min(base_seconds, 8.0))
+
+    def _tone_bytes(self, frequency: float, duration: float) -> bytes:
+        frame_count = int(self.sample_rate * duration)
+        frames = bytearray()
+        fade_frames = max(1, min(frame_count // 10, int(self.sample_rate * 0.03)))
+
+        for i in range(frame_count):
+            envelope = 1.0
+            if i < fade_frames:
+                envelope = i / fade_frames
+            elif i > frame_count - fade_frames:
+                envelope = max(0.0, (frame_count - i) / fade_frames)
+
+            sample = int(
+                self.amplitude
+                * envelope
+                * math.sin(2 * math.pi * frequency * (i / self.sample_rate))
+            )
+            frames.extend(struct.pack("<h", sample))
+
+        return bytes(frames)
+
+    def _silence_bytes(self, duration: float) -> bytes:
+        frame_count = int(self.sample_rate * duration)
+        return b"\x00\x00" * frame_count
+
 
 class ElevenLabsTTSAudio(TTSAudioInterface):
-    """ElevenLabs TTS provider.
-
-    Requires ELEVENLABS_API_KEY environment variable.
-    """
+    """ElevenLabs TTS provider."""
 
     name = "elevenlabs"
 
     def __init__(self, api_key: Optional[str] = None, voice: str = "Adam"):
-        """Initialize ElevenLabs TTS.
-
-        Args:
-            api_key: ElevenLabs API key (from env or settings)
-            voice: Voice ID or name (default: Adam)
-        """
         self.api_key = api_key or settings.tts_api_key
         self.voice = voice
         self.base_url = "https://api.elevenlabs.io/v1"
 
-    async def generate_audio(
-        self, text: str, output_path: Path, **kwargs
-    ) -> Path:
-        """Generate audio using ElevenLabs API.
-
-        Args:
-            text: Text to convert
-            output_path: Output file path
-            **kwargs: Additional options (model_id, stability, etc.)
-
-        Returns:
-            Path to generated audio file
-
-        Raises:
-            RuntimeError: If API key not configured
-        """
+    async def generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
         if not self.api_key:
             raise RuntimeError(
-                "ElevenLabs API key not configured. "
-                "Set ELEVENLABS_API_KEY environment variable."
+                "ElevenLabs API key not configured. Set TTS_API_KEY environment variable."
             )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Get voice ID from name
         voice_id = await self._get_voice_id(self.voice)
 
-        # Call ElevenLabs API
         import httpx
 
         async with httpx.AsyncClient() as client:
@@ -140,18 +131,12 @@ class ElevenLabsTTSAudio(TTSAudioInterface):
                     f"ElevenLabs API error: {response.status_code} - {response.text}"
                 )
 
-            # Save audio
-            with open(output_path, "wb") as f:
-                f.write(response.content)
+            with open(output_path, "wb") as output_file:
+                output_file.write(response.content)
 
         return output_path
 
     async def _get_voice_id(self, voice_name: str) -> str:
-        """Get voice ID from voice name.
-
-        In production, this would query the ElevenLabs API.
-        For now, return a hardcoded mapping.
-        """
         voice_mapping = {
             "Adam": "pNInz6obpgDQGcFmaigg",
             "Rachel": "EXAVITQu4vr4xnSDxMaL",
@@ -165,20 +150,12 @@ class TTSStage:
     """Handles TTS generation stage."""
 
     def __init__(self, job_id: str, provider: str = "local", mock: bool = False):
-        """Initialize TTS stage.
-
-        Args:
-            job_id: Unique job identifier
-            provider: TTS provider ("local" or "elevenlabs")
-            mock: If True, use mock data
-        """
         self.job_id = job_id
         self.mock = mock or settings.mock_mode
         self.provider = provider
         self.job_dir = settings.jobs_dir / job_id
         self.audio_dir = self.job_dir / "audio"
 
-        # Initialize audio interface
         if provider == "elevenlabs":
             self.audio_interface: TTSAudioInterface = ElevenLabsTTSAudio()
         else:
@@ -187,66 +164,35 @@ class TTSStage:
             )
 
     async def run(self, scene_plan: dict) -> Path:
-        """Generate TTS audio for all scenes.
-
-        Args:
-            scene_plan: Scene plan with narration segments
-
-        Returns:
-            Path to generated audio file
-        """
         self.audio_dir.mkdir(parents=True, exist_ok=True)
         audio_path = self.audio_dir / "narration.wav"
 
-        if self.mock:
-            return await self._mock_generate(scene_plan, audio_path)
-
-        if self.provider == "elevenlabs" and not settings.tts_api_key:
-            # Fall back to local if no API key
-            self.audio_interface = LocalTTSAudio()
-            return await self._generate(scene_plan, audio_path)
-
-        return await self._generate(scene_plan, audio_path)
-
-    async def _mock_generate(self, scene_plan: dict, output_path: Path) -> Path:
-        """Mock audio generation."""
-        output_path.touch()
-        return output_path
-
-    async def _generate(self, scene_plan: dict, output_path: Path) -> Path:
-        """Generate actual audio.
-
-        TODO: Implement actual audio generation with real TTS provider
-        """
-        # Combine all narration segments
-        all_text = " ".join(
+        narration_segments = [
             scene.get("narration_segment", "")
             for scene in scene_plan.get("scenes", [])
-            if "narration_segment" in scene
-        )
+            if scene.get("narration_segment")
+            and scene.get("narration_segment") not in {"Intro branding", "Outro branding"}
+        ]
+        all_text = " ".join(narration_segments).strip() or "Stoic Modernized"
 
-        # In production, generate audio here
-        # For now, create mock file
-        output_path.touch()
+        if self.mock:
+            return await LocalTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed).generate_audio(
+                all_text, audio_path
+            )
 
-        return output_path
+        if self.provider == "elevenlabs" and not settings.tts_api_key:
+            self.audio_interface = LocalTTSAudio(
+                voice=settings.tts_voice, speed=settings.tts_speed
+            )
+
+        return await self.audio_interface.generate_audio(all_text, audio_path)
 
     def save_audio_path(self, audio_path: Path) -> None:
-        """Save audio path to job record.
-
-        Args:
-            audio_path: Path to generated audio
-        """
         from src.database import db
 
         db.update_job(self.job_id, status="tts_complete", audio_path=str(audio_path))
 
     def load_audio_path(self) -> Optional[str]:
-        """Load audio path from job record.
-
-        Returns:
-            Audio path if exists, None otherwise
-        """
         from src.database import db
 
         job = db.get_job(self.job_id)
