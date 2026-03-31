@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from src.config import settings
-from src.models import UploadResult, YouTubePrivacy
+from src.models import UploadResult
 
 
 class YouTubeUploader:

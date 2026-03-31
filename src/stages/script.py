@@ -120,7 +120,7 @@ If this helped you, subscribe to Stoic Modernized for more weekly videos on appl
         Returns:
             Path to the saved JSON file
         """
-        data = script.model_dump()
+        data = script.model_dump(mode="json")
         return save_json(data, self.script_dir / "script.json")
 
     def load_script(self) -> Optional[Script]:
