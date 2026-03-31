@@ -142,9 +142,9 @@ See `.env.example` for all available options.
 
 ### TTS Settings
 
-- **Default Provider**: local (mock)
-- **Supported Providers**: local, elevenlabs
-- **Default Voice**: adam
+- **Default Provider**: local
+- **Supported Providers**: local, edge, elevenlabs
+- **Recommended Edge voice**: `en-US-GuyNeural`
 
 ### Image Generation Settings
 
@@ -217,6 +217,7 @@ The Stoic Modernized channel follows these guidelines:
 ### TTS Providers
 
 - **local**: Generates a real WAV narration asset locally without requiring external APIs
+- **edge**: Uses the installed `edge-tts` CLI for much more natural narration output
 - **elevenlabs**: Real ElevenLabs API integration when credentials are configured; otherwise the pipeline safely falls back to local generation
 
 ### Image Generation

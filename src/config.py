@@ -12,6 +12,7 @@ class TTSProvider(str, Enum):
     """Supported TTS providers."""
 
     LOCAL = "local"
+    EDGE = "edge"
     ELEVENLABS = "elevenlabs"
 
 
@@ -57,7 +58,7 @@ class Settings(BaseSettings):
 
     # TTS settings
     tts_provider: TTSProvider = TTSProvider.LOCAL
-    tts_voice: str = "adam"
+    tts_voice: str = "en-US-GuyNeural"
     tts_speed: float = 1.0
     tts_api_key: Optional[str] = None  # For ElevenLabs
 

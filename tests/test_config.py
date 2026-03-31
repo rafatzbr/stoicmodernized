@@ -22,6 +22,10 @@ class TestTTSProvider:
         """Should have correct local value."""
         assert TTSProvider.LOCAL.value == "local"
 
+    def test_edge_value(self) -> None:
+        """Should have correct edge value."""
+        assert TTSProvider.EDGE.value == "edge"
+
     def test_elevenlabs_value(self) -> None:
         """Should have correct elevenlabs value."""
         assert TTSProvider.ELEVENLABS.value == "elevenlabs"
@@ -65,7 +69,7 @@ class TestSettings:
         assert settings.video_height == 1080
         assert settings.video_fps == 30
         assert settings.tts_provider == TTSProvider.LOCAL
-        assert settings.tts_voice == "adam"
+        assert settings.tts_voice == "en-US-GuyNeural"
         assert settings.tts_speed == 1.0
         assert settings.sd_image_width == 1080
         assert settings.sd_image_height == 1920

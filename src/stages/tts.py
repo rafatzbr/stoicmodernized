@@ -1,7 +1,9 @@
 """Text-to-speech stage module with pluggable providers."""
 
 import math
+import shutil
 import struct
+import subprocess
 import wave
 from pathlib import Path
 from typing import Optional
@@ -18,13 +20,7 @@ class TTSAudioInterface:
 
 
 class LocalTTSAudio(TTSAudioInterface):
-    """Local fallback TTS provider.
-
-    This implementation intentionally avoids requiring heavyweight local TTS
-    engines. Instead, it creates a real WAV narration track made of paced tones
-    and short silences so downstream stages have actual media assets to work
-    with in local/non-mock mode.
-    """
+    """Local fallback TTS provider."""
 
     name = "local"
 
@@ -35,7 +31,6 @@ class LocalTTSAudio(TTSAudioInterface):
         self.amplitude = 12000
 
     async def generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
-        """Generate a real WAV file usable by the render pipeline."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         segments = self._split_text(text)
@@ -87,6 +82,46 @@ class LocalTTSAudio(TTSAudioInterface):
         return b"\x00\x00" * frame_count
 
 
+class EdgeTTSAudio(TTSAudioInterface):
+    """Edge TTS provider using the installed edge-tts CLI."""
+
+    name = "edge"
+
+    def __init__(self, voice: str = "en-US-GuyNeural", speed: float = 1.0):
+        self.voice = voice
+        self.speed = speed
+
+    async def generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
+        binary = shutil.which("edge-tts")
+        if not binary:
+            raise RuntimeError("edge-tts is not installed or not on PATH")
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        rate_percent = int(round((self.speed - 1.0) * 100))
+        rate = f"{rate_percent:+d}%"
+
+        result = subprocess.run(
+            [
+                binary,
+                "--voice",
+                kwargs.get("voice", self.voice),
+                "--rate",
+                rate,
+                "--text",
+                text,
+                "--write-media",
+                str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"edge-tts failed: {result.stderr.strip()}")
+
+        return output_path
+
+
 class ElevenLabsTTSAudio(TTSAudioInterface):
     """ElevenLabs TTS provider."""
 
@@ -104,7 +139,6 @@ class ElevenLabsTTSAudio(TTSAudioInterface):
             )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-
         voice_id = await self._get_voice_id(self.voice)
 
         import httpx
@@ -155,17 +189,20 @@ class TTSStage:
         self.provider = provider
         self.job_dir = settings.jobs_dir / job_id
         self.audio_dir = self.job_dir / "audio"
+        self.audio_interface = self._build_interface(provider)
 
+    def _build_interface(self, provider: str) -> TTSAudioInterface:
         if provider == "elevenlabs":
-            self.audio_interface: TTSAudioInterface = ElevenLabsTTSAudio()
-        else:
-            self.audio_interface = LocalTTSAudio(
-                voice=settings.tts_voice, speed=settings.tts_speed
-            )
+            return ElevenLabsTTSAudio()
+        if provider in {"edge", "edge-tts"}:
+            edge_voice = settings.tts_voice if settings.tts_voice != "adam" else "en-US-GuyNeural"
+            return EdgeTTSAudio(voice=edge_voice, speed=settings.tts_speed)
+        return LocalTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed)
 
     async def run(self, scene_plan: dict) -> Path:
         self.audio_dir.mkdir(parents=True, exist_ok=True)
-        audio_path = self.audio_dir / "narration.wav"
+        extension = ".mp3" if self.provider in {"edge", "edge-tts", "elevenlabs"} and not self.mock else ".wav"
+        audio_path = self.audio_dir / f"narration{extension}"
 
         narration_segments = [
             scene.get("narration_segment", "")
@@ -177,15 +214,20 @@ class TTSStage:
 
         if self.mock:
             return await LocalTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed).generate_audio(
-                all_text, audio_path
+                all_text, self.audio_dir / "narration.wav"
             )
 
         if self.provider == "elevenlabs" and not settings.tts_api_key:
             self.audio_interface = LocalTTSAudio(
                 voice=settings.tts_voice, speed=settings.tts_speed
             )
+            return await self.audio_interface.generate_audio(all_text, self.audio_dir / "narration.wav")
 
-        return await self.audio_interface.generate_audio(all_text, audio_path)
+        try:
+            return await self.audio_interface.generate_audio(all_text, audio_path)
+        except Exception:
+            fallback = LocalTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed)
+            return await fallback.generate_audio(all_text, self.audio_dir / "narration.wav")
 
     def save_audio_path(self, audio_path: Path) -> None:
         from src.database import db
