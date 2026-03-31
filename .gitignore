@@ -18,6 +18,7 @@ htmlcov/
 
 # Local databases and runtime artifacts
 *.db
+output/
 
 # Build artifacts
 build/
