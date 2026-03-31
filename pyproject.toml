@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stoic-modernized"
+version = "0.1.0"
+description = "Automate faceless YouTube video creation for Stoicism channel targeting modern workers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Rafael Tz", email = "rafatz@example.com"}
+]
+keywords = ["youtube", "automation", "stoicism", "video-generation", "ffmpeg"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.0",
+    "ffmpeg-python>=0.2.0",
+    "requests>=2.31.0",
+    "httpx>=0.25.0",
+    "rich>=13.0.0",
+    "click>=8.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "mypy>=1.5.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+]
+
+[project.scripts]
+stoic-modernized = "src.main:app"
+
+[project.urls]
+Homepage = "https://github.com/rafatz/stoic-modernized"
+Documentation = "https://github.com/rafatz/stoic-modernized#readme"
+Repository = "https://github.com/rafatz/stoic-modernized.git"
+
+[tool.setuptools.packages.find]
+where = ["."]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311", "py312"]
