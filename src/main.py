@@ -9,7 +9,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.config import settings
+from src.config import VideoMode, settings
 from src.database import db
 from src.logging_config import JobLogger
 from src.models import Scene, VideoRenderConfig
@@ -157,6 +157,7 @@ def research(
 def script(
     job_id: str = typer.Argument(..., help="Job ID from research stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    video_mode: VideoMode = typer.Option(VideoMode.LONG, "--video-mode", help="Video mode: short or long"),
 ) -> None:
     """Generate a video script based on research."""
     print_header()
@@ -169,7 +170,7 @@ def script(
     research_data = load_json(Path(job_record.research_path))
     console.print(f"[bold]Generating script for:[/bold] {research_data['title']}")
 
-    stage = ScriptStage(job_id=job_id, mock=mock)
+    stage = ScriptStage(job_id=job_id, mock=mock, video_mode=video_mode)
     script_result = asyncio.run(stage.run(research_data))
     script_path = stage.save_script(script_result)
 
@@ -299,6 +300,7 @@ def subtitles(
 def render(
     job_id: str = typer.Argument(..., help="Job ID from subtitles stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    video_mode: VideoMode = typer.Option(VideoMode.LONG, "--video-mode", help="Video mode: short or long"),
 ) -> None:
     """Render the final video with ffmpeg."""
     print_header()
@@ -319,11 +321,15 @@ def render(
 
     renderer = VideoRenderer(job_id=job_id, mock=mock)
     output_path = renderer.output_dir / "final.mp4"
+    width = settings.short_video_width if video_mode == VideoMode.SHORT else settings.video_width
+    height = settings.short_video_height if video_mode == VideoMode.SHORT else settings.video_height
     config = VideoRenderConfig(
         scenes=scenes,
         audio_path=job_record.audio_path,
         subtitle_path=job_record.subtitle_path,
         output_path=str(output_path),
+        width=width,
+        height=height,
     )
     result = asyncio.run(renderer.run(config))
 
@@ -417,6 +423,7 @@ def run(
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data for all stages"),
     provider: str = typer.Option("local", "--provider", "-p", help="TTS provider (local, edge, or elevenlabs)"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
+    video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
 ) -> None:
     """Run the complete pipeline for a topic."""
     print_header()
@@ -429,7 +436,7 @@ def run(
     media_stage_mock = mock or settings.mock_mode
 
     if not mock and not settings.mock_mode:
-        console.print("[yellow]Using hybrid local mode: real research + mock script/scene + real local media generation[/yellow]")
+        console.print(f"[yellow]Using hybrid local mode: real research + mock script/scene + real local media generation ({video_mode.value})[/yellow]")
         research_stage_mock = False
         script_stage_mock = True
         media_stage_mock = False
@@ -442,12 +449,12 @@ def run(
     console.print()
 
     research(topic=topic, job_id=job_id, mock=research_stage_mock)
-    script(job_id=job_id, mock=script_stage_mock)
+    script(job_id=job_id, mock=script_stage_mock, video_mode=video_mode)
     scene(job_id=job_id, mock=script_stage_mock)
     tts(job_id=job_id, provider=provider, mock=media_stage_mock)
     images(job_id=job_id, mock=media_stage_mock)
     subtitles(job_id=job_id, mock=media_stage_mock)
-    render(job_id=job_id, mock=media_stage_mock)
+    render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode)
     metadata(job_id=job_id, mock=script_stage_mock)
 
     if not skip_upload:

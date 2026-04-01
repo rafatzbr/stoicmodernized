@@ -10,6 +10,7 @@ from src.config import (
     ImageProvider,
     Settings,
     TTSProvider,
+    VideoMode,
     YouTubePrivacy,
     settings,
 )
@@ -67,12 +68,15 @@ class TestSettings:
         assert settings.channel_name == "Stoic Modernized"
         assert settings.video_width == 1920
         assert settings.video_height == 1080
+        assert settings.short_video_width == 1080
+        assert settings.short_video_height == 1920
+        assert settings.default_video_mode == VideoMode.SHORT
         assert settings.video_fps == 30
         assert settings.tts_provider == TTSProvider.LOCAL
         assert settings.tts_voice == "en-US-GuyNeural"
         assert settings.tts_speed == 1.0
-        assert settings.sd_image_width == 1080
-        assert settings.sd_image_height == 1920
+        assert settings.sd_image_width == 544
+        assert settings.sd_image_height == 960
         assert settings.youtube_privacy_status == YouTubePrivacy.UNLISTED
         assert settings.mock_mode is False
 
@@ -131,8 +135,8 @@ class TestSettings:
 
     def test_image_settings_vertical(self) -> None:
         """Should have vertical image dimensions for YouTube."""
-        assert settings.sd_image_width == 1080
-        assert settings.sd_image_height == 1920
+        assert settings.sd_image_width == 544
+        assert settings.sd_image_height == 960
         assert settings.sd_image_height > settings.sd_image_width
 
     def test_background_music_volume_range(self) -> None:

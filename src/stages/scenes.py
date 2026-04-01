@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Optional
 
-from src.config import settings
+from src.config import VideoMode, settings
 from src.models import Scene, ScenePlan
 from src.utils import save_json
 
@@ -12,43 +12,26 @@ class SceneStage:
     """Handles scene planning stage."""
 
     def __init__(self, job_id: str, mock: bool = False):
-        """Initialize scene stage.
-
-        Args:
-            job_id: Unique job identifier
-            mock: If True, use mock data
-        """
         self.job_id = job_id
         self.mock = mock or settings.mock_mode
         self.job_dir = settings.jobs_dir / job_id
         self.scenes_dir = self.job_dir / "scenes"
 
     async def run(self, script_data: dict) -> ScenePlan:
-        """Create a scene plan from script data.
-
-        Args:
-            script_data: Dictionary containing script content
-
-        Returns:
-            ScenePlan with scene breakdown
-        """
         self.scenes_dir.mkdir(parents=True, exist_ok=True)
 
         if self.mock:
             return await self._mock_scene_plan(script_data)
-        else:
-            return await self._real_scene_plan(script_data)
+        return await self._real_scene_plan(script_data)
 
     async def _mock_scene_plan(self, script_data: dict) -> ScenePlan:
-        """Generate mock scene plan."""
         narration = script_data.get("narration", "")
         lines = narration.split("\n")
+        is_short = len(script_data.get("chapters", [])) <= 4 or len(narration.split()) <= 120
 
         scenes = []
         scene_num = 1
         current_time = 0.0
-
-        # Visual prompts for different scene types
         prompts = [
             "vertical composition, minimalist stoic background, ancient roman column silhouette, black marble texture, gold accents, dramatic cinematic lighting, dark philosophical aesthetic, empty center space",
             "vertical composition, ancient roman library, scrolls and columns, warm candlelight, scholarly atmosphere, dark background, gold accents, empty center space",
@@ -57,19 +40,36 @@ class SceneStage:
             "vertical composition, ancient roman forum ruins, golden hour, contemplative atmosphere, dark tones, subtle gold lighting, empty center space",
         ]
 
+        narration_lines = [line.strip() for line in lines if line.strip() and not line.startswith("[")]
+        if is_short and len(narration_lines) > 4:
+            narration_lines = [
+                narration_lines[0],
+                narration_lines[len(narration_lines)//3],
+                narration_lines[(2*len(narration_lines))//3],
+                narration_lines[-1],
+            ]
+            lines = narration_lines
+        total_words = sum(max(1, len(line.split())) for line in narration_lines) or 1
+        target_duration = 54.0 if is_short else None
+
         for line in lines:
             if line.startswith("[") and "]" in line:
-                # Parse timestamp marker
-                time_str = line[1:line.index("]")]
-                if "-" in time_str:
-                    start_str, _ = time_str.split("-")
-                    parts = start_str.split(":")
-                    if len(parts) == 2:
-                        minutes, seconds = map(float, parts)
-                        current_time = minutes * 60 + seconds
+                if not is_short:
+                    time_str = line[1:line.index("]")]
+                    if "-" in time_str:
+                        start_str, _ = time_str.split("-")
+                        parts = start_str.split(":")
+                        if len(parts) == 2:
+                            minutes, seconds = map(float, parts)
+                            current_time = minutes * 60 + seconds
+                continue
 
             if line and not line.startswith("[") and line.strip():
-                duration = len(line.split()) / 2.5
+                words = max(1, len(line.split()))
+                if is_short and target_duration:
+                    duration = max(2.0, (target_duration * words / total_words))
+                else:
+                    duration = len(line.split()) / 2.5
                 end_time = current_time + duration
 
                 visual_prompt = prompts[(scene_num - 1) % len(prompts)]
@@ -90,11 +90,13 @@ class SceneStage:
                 current_time = end_time
                 scene_num += 1
 
-        # Create intro and outro scenes
+        intro_duration = 1.0 if is_short else 3.0
+        outro_duration = 1.0 if is_short else 5.0
+
         intro_scene = Scene(
             scene_number=0,
             start_time=0.0,
-            end_time=3.0,
+            end_time=intro_duration,
             narration_segment="Intro branding",
             visual_prompt="Stoic Modernized channel intro with logo, dark background, gold accents",
             text_overlay="Stoic Modernized",
@@ -104,7 +106,7 @@ class SceneStage:
         outro_scene = Scene(
             scene_number=len(scenes) + 1,
             start_time=current_time,
-            end_time=current_time + 5.0,
+            end_time=current_time + outro_duration,
             narration_segment="Outro branding",
             visual_prompt="Stoic Modernized channel outro with subscribe button, dark background, gold accents",
             text_overlay="Subscribe for more",
@@ -114,22 +116,21 @@ class SceneStage:
         scenes.insert(0, intro_scene)
         scenes.append(outro_scene)
 
+        total_duration = round(current_time + intro_duration + outro_duration, 2)
+        if is_short:
+            total_duration = min(total_duration, float(settings.short_max_duration_seconds))
+
         return ScenePlan(
             scenes=scenes,
-            intro_duration=3.0,
-            outro_duration=5.0,
-            total_duration=round(current_time + 8, 2),
+            intro_duration=intro_duration,
+            outro_duration=outro_duration,
+            total_duration=total_duration,
         )
 
     async def _real_scene_plan(self, script_data: dict) -> ScenePlan:
-        """Generate real scene plan using AI.
-
-        TODO: Implement scene planning with AI analysis of script content
-        """
         raise NotImplementedError("Real scene planning requires AI integration")
 
     def _generate_text_overlay(self, line: str) -> Optional[str]:
-        """Generate text overlay from narration line."""
         keywords = ["control", "reaction", "strength", "time", "obstacles", "training", "freedom"]
         line_lower = line.lower()
 
@@ -140,14 +141,6 @@ class SceneStage:
         return None
 
     def save_scene_plan(self, scene_plan: ScenePlan) -> Path:
-        """Save scene plan to JSON file.
-
-        Args:
-            scene_plan: ScenePlan object to save
-
-        Returns:
-            Path to the saved JSON file
-        """
         data = {
             "job_id": self.job_id,
             "title": settings.channel_name,
@@ -159,11 +152,6 @@ class SceneStage:
         return save_json(data, self.scenes_dir / "scenes.json")
 
     def load_scene_plan(self) -> Optional[ScenePlan]:
-        """Load scene plan from JSON file.
-
-        Returns:
-            ScenePlan if found, None otherwise
-        """
         scenes_path = self.scenes_dir / "scenes.json"
         if not scenes_path.exists():
             return None

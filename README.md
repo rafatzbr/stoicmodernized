@@ -9,8 +9,9 @@ Automate faceless YouTube video creation for the **Stoic Modernized** channel, t
 - **SQLite job tracking** with retry support
 - **Per-stage JSON outputs** for transparency and debugging
 - **Modular provider abstractions** for TTS, image generation, and YouTube upload
-- **Real local asset generation** for WAV narration, JPEG scene cards, SRT subtitles, and MP4 rendering
-- **1080p output** with ffmpeg-based rendering
+- **Real local asset generation** for narration, JPEG scene cards, SRT subtitles, and MP4 rendering
+- **Shorts + long-video modes** with vertical and landscape outputs
+- **Firefox-friendlier MP4 output** with browser-safe H.264/AAC settings
 - **Structured logging** per job
 
 ## Quick Start
@@ -103,7 +104,8 @@ python -m src.main upload --job-id <job-id> --mock
 #### Run Complete Pipeline
 
 ```bash
-python -m src.main run --topic "handling workplace stress" --mock
+python -m src.main run "handling workplace stress" --video-mode short --provider edge --skip-upload
+python -m src.main run "handling workplace stress" --video-mode long --provider edge --skip-upload
 ```
 
 #### View Jobs
@@ -136,7 +138,8 @@ See `.env.example` for all available options.
 
 ### Video Settings
 
-- **Output Resolution**: 1920x1080 (1080p)
+- **Short mode**: vertical 1080x1920, target <= 60s
+- **Long mode**: landscape 1920x1080
 - **FPS**: 30
 - **Background Music Volume**: 15%
 

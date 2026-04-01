@@ -1,5 +1,7 @@
 """Subtitle generation stage module."""
 
+import re
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -25,7 +27,8 @@ class SubtitleStage:
         self, script_data: dict, audio_path: Optional[str] = None
     ) -> SubtitleResult:
         narration = script_data.get("narration", "")
-        segments = self._parse_narration_to_segments(narration)
+        audio_duration = self._get_audio_duration(audio_path) if audio_path else None
+        segments = self._parse_narration_to_segments(narration, audio_duration)
         srt_content = self._format_srt(segments)
 
         srt_path = self.subtitles_dir / "subtitles.srt"
@@ -41,40 +44,80 @@ class SubtitleStage:
             json_path=str(json_path),
         )
 
-    def _parse_narration_to_segments(self, narration: str) -> list[SubtitleSegment]:
-        segments = []
-        lines = narration.split("\n")
+    def _parse_narration_to_segments(
+        self, narration: str, audio_duration: Optional[float] = None
+    ) -> list[SubtitleSegment]:
+        text_lines = [line.strip() for line in narration.split("\n") if line.strip() and not line.startswith("[")]
+        phrases: list[str] = []
+        for line in text_lines:
+            phrases.extend(self._split_into_phrases(line))
+
+        phrases = [p for p in phrases if p]
+        if not phrases:
+            return []
+
+        total_words = sum(max(1, len(phrase.split())) for phrase in phrases)
+        effective_duration = max(audio_duration or 0.0, len(phrases) * 0.8)
         current_time = 0.0
+        segments: list[SubtitleSegment] = []
 
-        for line in lines:
-            if line.startswith("[") and "]" in line:
-                time_str = line[1:line.index("]")]
-                if "-" in time_str:
-                    start_str, _ = time_str.split("-")
-                    parts = start_str.split(":")
-                    if len(parts) == 2:
-                        minutes, seconds = map(float, parts)
-                        current_time = minutes * 60 + seconds
-                continue
-
-            clean_line = line.strip()
-            if not clean_line:
-                continue
-
-            words = clean_line.split()
-            duration = max(1.4, len(words) / 2.6)
-            end_time = current_time + duration
-
+        for index, phrase in enumerate(phrases):
+            words = max(1, len(phrase.split()))
+            duration = effective_duration * (words / total_words)
+            duration = min(max(duration, 0.8), 2.2)
+            if index == len(phrases) - 1:
+                end_time = effective_duration
+            else:
+                end_time = min(effective_duration, current_time + duration)
             segments.append(
                 SubtitleSegment(
                     start_time=round(current_time, 2),
                     end_time=round(end_time, 2),
-                    text=clean_line,
+                    text=phrase,
                 )
             )
             current_time = end_time
 
         return segments
+
+    def _split_into_phrases(self, line: str) -> list[str]:
+        chunks = re.split(r"(?<=[,;:.!?—])\s+", line)
+        phrases: list[str] = []
+        for chunk in chunks:
+            words = chunk.split()
+            if len(words) <= 6:
+                phrases.append(chunk.strip())
+                continue
+            current: list[str] = []
+            for word in words:
+                current.append(word)
+                if len(current) >= 4:
+                    phrases.append(" ".join(current).strip())
+                    current = []
+            if current:
+                phrases.append(" ".join(current).strip())
+        return [phrase for phrase in phrases if phrase]
+
+    def _get_audio_duration(self, audio_path: str) -> Optional[float]:
+        try:
+            probe = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    audio_path,
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return float(probe.stdout.strip())
+        except Exception:
+            return None
 
     def _format_srt(self, segments: list[SubtitleSegment]) -> str:
         srt_lines = []
@@ -92,6 +135,9 @@ class SubtitleStage:
         minutes = int((seconds % 3600) // 60)
         whole_seconds = int(seconds % 60)
         ms = int(round((seconds - int(seconds)) * 1000))
+        if ms >= 1000:
+            whole_seconds += 1
+            ms = 0
         return f"{hours:02d}:{minutes:02d}:{whole_seconds:02d},{ms:03d}"
 
     def save_subtitles(self, result: SubtitleResult) -> None:

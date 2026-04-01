@@ -31,6 +31,13 @@ class YouTubePrivacy(str, Enum):
     PRIVATE = "private"
 
 
+class VideoMode(str, Enum):
+    """Supported output video modes."""
+
+    SHORT = "short"
+    LONG = "long"
+
+
 class Settings(BaseSettings):
     """Global application settings."""
 
@@ -38,47 +45,48 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
 
-    # Project paths
     project_root: Path = Path(__file__).parent.parent
     output_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "output")
     jobs_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "output" / "jobs")
 
-    # Database
     db_path: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "stoic.db")
 
-    # Brand settings
     channel_name: str = "Stoic Modernized"
     channel_voice: str = "calm, practical, concise, modern, not preachy, not academic"
 
-    # Video settings
+    default_video_mode: VideoMode = VideoMode.SHORT
     video_width: int = 1920
-    video_height: int = 1080  # 1080p output
+    video_height: int = 1080
+    short_video_width: int = 1080
+    short_video_height: int = 1920
+    short_max_duration_seconds: int = 60
+    long_max_duration_seconds: int = 900
     video_fps: int = 30
-    background_music_volume: float = 0.15  # 15% volume for background music
+    background_music_volume: float = 0.15
 
-    # TTS settings
     tts_provider: TTSProvider = TTSProvider.LOCAL
     tts_voice: str = "en-US-GuyNeural"
     tts_speed: float = 1.0
-    tts_api_key: Optional[str] = None  # For ElevenLabs
+    tts_api_key: Optional[str] = None
 
-    # Image generation settings (sd-cli)
     sd_cli_path: str = "/home/rafatz/dev/stable-diffusion.cpp/build/bin/sd-cli"
     sd_model_path: str = "/data/sd-models/sd3.5_large.safetensors"
     sd_clip_l_path: str = "/data/sd-models/clip_l.safetensors"
     sd_clip_g_path: str = "/data/sd-models/clip_g.safetensors"
     sd_t5xxl_path: str = "/data/sd-models/t5xxl_fp16.safetensors"
-    sd_image_width: int = 1080
-    sd_image_height: int = 1920  # Vertical for YouTube
+    sd_image_width: int = 544
+    sd_image_height: int = 960
     sd_cfg_scale: float = 7.0
     sd_sampling_method: str = "euler"
 
-    # YouTube settings
     youtube_api_key: Optional[str] = None
     youtube_privacy_status: YouTubePrivacy = YouTubePrivacy.UNLISTED
     youtube_schedule_datetime: Optional[str] = None
 
-    # Mock mode - useful when API keys are missing
+    watermark_logo_path: Path = Path('/home/rafatz/media/thumbnail_nobg.png')
+    watermark_scale_width: int = 120
+    watermark_padding: int = 36
+
     mock_mode: bool = False
 
     @property
@@ -87,5 +95,4 @@ class Settings(BaseSettings):
         return f"sqlite:///{self.db_path}"
 
 
-# Global settings instance
 settings = Settings()

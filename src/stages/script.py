@@ -1,10 +1,10 @@
 """Script generation stage module."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
-from src.config import settings
+from src.config import VideoMode, settings
 from src.models import Chapter, Script
 from src.utils import save_json
 
@@ -12,67 +12,74 @@ from src.utils import save_json
 class ScriptStage:
     """Handles script generation stage."""
 
-    def __init__(self, job_id: str, mock: bool = False):
-        """Initialize script stage.
-
-        Args:
-            job_id: Unique job identifier
-            mock: If True, use mock data
-        """
+    def __init__(self, job_id: str, mock: bool = False, video_mode: VideoMode = VideoMode.LONG):
         self.job_id = job_id
         self.mock = mock or settings.mock_mode
+        self.video_mode = video_mode
         self.job_dir = settings.jobs_dir / job_id
         self.script_dir = self.job_dir / "script"
 
     async def run(self, research_data: dict) -> Script:
-        """Generate a script based on research data.
-
-        Args:
-            research_data: Dictionary containing research results
-
-        Returns:
-            Script object with full script content
-        """
         self.script_dir.mkdir(parents=True, exist_ok=True)
 
         if self.mock:
             return await self._mock_script(research_data)
-        else:
-            return await self._real_script(research_data)
+        return await self._real_script(research_data)
 
     async def _mock_script(self, research_data: dict) -> Script:
-        """Generate mock script data."""
         topic = research_data.get("topic", "workplace stress")
         title = research_data.get("title", f"{topic.title()}: A Stoic Perspective")
+        short_version = self._generate_short_narration(topic)
+        narration = short_version if self.video_mode == VideoMode.SHORT else self._generate_mock_narration(topic)
+        chapters = self._short_chapters() if self.video_mode == VideoMode.SHORT else self._long_chapters()
 
         return Script(
             title=title,
             hook=f"What if I told you that 2000 years of wisdom could help you handle {topic} better? Welcome to Stoic Modernized.",
-            narration=self._generate_mock_narration(topic),
-            chapters=[
-                Chapter(title="Introduction", timestamp=0.0),
-                Chapter(title="The Problem", timestamp=30.0),
-                Chapter(title="Marcus Aurelius on Control", timestamp=90.0),
-                Chapter(title="Seneca on Time Management", timestamp=180.0),
-                Chapter(title="Epictetus on Expectations", timestamp=270.0),
-                Chapter(title="Practical Techniques", timestamp=360.0),
-                Chapter(title="Conclusion", timestamp=450.0),
-                Chapter(title="Call to Action", timestamp=510.0),
-            ],
+            narration=narration,
+            chapters=chapters,
             cta="If this helped you, subscribe to Stoic Modernized for more weekly videos on applying ancient wisdom to modern life. What workplace challenge should we tackle next? Let me know in the comments.",
-            short_version=f"Ancient Stoics had a secret for handling {topic}. Marcus Aurelius taught that you control your reaction, not events. Seneca said we make life short by wasting time. Epictetus said obstacles are training opportunities. Next time you're stressed, pause for three breaths before responding. That's where your freedom lives. Subscribe to Stoic Modernized for more weekly wisdom.",
-            generated_at=datetime.utcnow(),
+            short_version=short_version,
+            generated_at=datetime.now(UTC),
         )
 
     async def _real_script(self, research_data: dict) -> Script:
-        """Generate real script using LLM.
-
-        TODO: Implement integration with LLM APIs (OpenAI, Anthropic, etc.)
-        """
         raise NotImplementedError("Real script generation requires LLM API integration")
 
+    def _short_chapters(self) -> list[Chapter]:
+        return [
+            Chapter(title="Hook", timestamp=0.0),
+            Chapter(title="Stoic Principle", timestamp=12.0),
+            Chapter(title="Workplace Application", timestamp=30.0),
+            Chapter(title="CTA", timestamp=50.0),
+        ]
+
+    def _long_chapters(self) -> list[Chapter]:
+        return [
+            Chapter(title="Introduction", timestamp=0.0),
+            Chapter(title="The Problem", timestamp=30.0),
+            Chapter(title="Marcus Aurelius on Control", timestamp=90.0),
+            Chapter(title="Seneca on Time Management", timestamp=180.0),
+            Chapter(title="Epictetus on Expectations", timestamp=270.0),
+            Chapter(title="Practical Techniques", timestamp=360.0),
+            Chapter(title="Conclusion", timestamp=450.0),
+            Chapter(title="Call to Action", timestamp=510.0),
+        ]
+
+    def _generate_short_narration(self, topic: str) -> str:
+        return f"""[0:00-0:12] Hook
+Work stress feels overwhelming when you confuse what happened with how you respond to it.
+
+[0:12-0:30] Stoic Principle
+Marcus Aurelius reminds us that you control your mind, not outside events. That means the meeting, the email, and the deadline are real — but your reaction is still yours.
+
+[0:30-0:50] Workplace Application
+Before you answer the next stressful message, pause. Breathe. Ask what is actually under your control right now. That single beat is where Stoicism becomes useful at work.
+
+[0:50-0:58] CTA
+Follow Stoic Modernized for practical Stoic strategies for {topic}."""
+
     def _generate_mock_narration(self, topic: str) -> str:
-        """Generate mock narration text for testing."""
         return f"""[0:00-0:30] Introduction
 Welcome to Stoic Modernized. Today we're exploring how ancient Stoic philosophy can transform the way you handle {topic} in your modern work life.
 
@@ -112,23 +119,10 @@ The next time you face {topic}, remember: you have more power than you think.
 If this helped you, subscribe to Stoic Modernized for more weekly videos on applying ancient wisdom to modern life. What workplace challenge should we tackle next? Let me know in the comments."""
 
     def save_script(self, script: Script) -> Path:
-        """Save script to JSON file.
-
-        Args:
-            script: Script object to save
-
-        Returns:
-            Path to the saved JSON file
-        """
         data = script.model_dump(mode="json")
         return save_json(data, self.script_dir / "script.json")
 
     def load_script(self) -> Optional[Script]:
-        """Load script from JSON file.
-
-        Returns:
-            Script object if found, None otherwise
-        """
         script_path = self.script_dir / "script.json"
         if not script_path.exists():
             return None

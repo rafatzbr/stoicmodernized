@@ -25,7 +25,7 @@ class ResearchSource(BaseModel):
     url: str
     note: str
     relevance: float = Field(ge=0.0, le=1.0)
-    source: str  # e.g., article, video, book
+    source: str
 
 
 class ResearchResult(BaseModel):
@@ -41,18 +41,18 @@ class Chapter(BaseModel):
     """A chapter with timestamp."""
 
     title: str
-    timestamp: float  # in seconds
+    timestamp: float
 
 
 class Script(BaseModel):
     """Complete video script."""
 
     title: str
-    hook: str  # Opening hook (first 15-30 seconds)
-    narration: str  # Full voiceover text
+    hook: str
+    narration: str
     chapters: list[Chapter] = Field(default_factory=list)
-    cta: str  # Call to action
-    short_version: str = ""  # Shorts/Reels version
+    cta: str
+    short_version: str = ""
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -60,12 +60,12 @@ class Scene(BaseModel):
     """A scene in the video."""
 
     scene_number: int
-    start_time: float  # in seconds
-    end_time: float  # in seconds
+    start_time: float
+    end_time: float
     narration_segment: str
     visual_prompt: str
     text_overlay: Optional[str] = None
-    animation_style: str = "zoom"  # zoom, pan, static, fade
+    animation_style: str = "zoom"
 
 
 class ScenePlan(BaseModel):
@@ -74,11 +74,10 @@ class ScenePlan(BaseModel):
     scenes: list[Scene] = Field(default_factory=list)
     intro_duration: float = 3.0
     outro_duration: float = 5.0
-    total_duration: float = 0.0  # Will be calculated
+    total_duration: float = 0.0
 
     @model_validator(mode="after")
     def compute_total_duration(self) -> "ScenePlan":
-        """Compute total duration from scenes plus intro/outro."""
         scene_duration = max((scene.end_time for scene in self.scenes), default=0.0)
         self.total_duration = scene_duration + self.intro_duration + self.outro_duration
         return self
@@ -96,10 +95,10 @@ class ImageAsset(BaseModel):
 class SubtitleSegment(BaseModel):
     """A subtitle segment with timing."""
 
-    start_time: float  # in seconds
-    end_time: float  # in seconds
+    start_time: float
+    end_time: float
     text: str
-    words: Optional[list[dict]] = None  # Optional per-word timing
+    words: Optional[list[dict]] = None
 
 
 class SubtitleResult(BaseModel):
@@ -122,6 +121,8 @@ class VideoRenderConfig(BaseModel):
     outro_image_path: Optional[str] = None
     subtitle_path: str
     output_path: str
+    width: int = 1920
+    height: int = 1080
 
 
 class VideoRenderResult(BaseModel):
@@ -138,7 +139,7 @@ class YouTubeMetadata(BaseModel):
     title: str
     description: str
     tags: list[str] = Field(default_factory=list)
-    chapters: list[dict] = Field(default_factory=list)  # {"title": str, "timestamp": str}
+    chapters: list[dict] = Field(default_factory=list)
     privacy_status: str = "unlisted"
     scheduled_publish_datetime: Optional[str] = None
 
@@ -163,8 +164,6 @@ class Job(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
-
-    # Stage outputs
     research_path: Optional[str] = None
     script_path: Optional[str] = None
     scene_plan_path: Optional[str] = None
