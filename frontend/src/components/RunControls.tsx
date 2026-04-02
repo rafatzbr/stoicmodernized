@@ -1,3 +1,4 @@
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded';
 import {
@@ -21,9 +22,11 @@ type Props = {
   videoMode: string;
   provider: string;
   isStarting: boolean;
+  isSuggestingTopic?: boolean;
   onTopicChange: (value: string) => void;
   onVideoModeChange: (value: string) => void;
   onProviderChange: (value: string) => void;
+  onSuggestTopic: () => void;
   onStart: () => void;
 };
 
@@ -32,9 +35,11 @@ export function RunControls({
   videoMode,
   provider,
   isStarting,
+  isSuggestingTopic = false,
   onTopicChange,
   onVideoModeChange,
   onProviderChange,
+  onSuggestTopic,
   onStart,
 }: Props) {
   const canStart = topic.trim().length > 0 && !isStarting;
@@ -53,13 +58,28 @@ export function RunControls({
             </Typography>
           </div>
 
-          <TextField
-            label="Topic"
-            value={topic}
-            onChange={(event) => onTopicChange(event.target.value)}
-            placeholder="e.g. workplace stress, boundaries, calm ambition"
-            fullWidth
-          />
+          <Stack spacing={1.25}>
+            <TextField
+              label="Topic"
+              value={topic}
+              onChange={(event) => onTopicChange(event.target.value)}
+              placeholder="e.g. workplace stress, boundaries, calm ambition"
+              fullWidth
+            />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <Button
+                variant="outlined"
+                startIcon={<AutoAwesomeRoundedIcon />}
+                onClick={onSuggestTopic}
+                disabled={isSuggestingTopic || isStarting}
+              >
+                {isSuggestingTopic ? 'Asking local AI…' : 'Suggest topic'}
+              </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                Uses your local model to suggest a Stoic/workplace topic.
+              </Typography>
+            </Stack>
+          </Stack>
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
             <FormControl fullWidth>

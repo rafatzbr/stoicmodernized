@@ -5,6 +5,8 @@ import shutil
 import subprocess
 import threading
 import uuid
+
+import httpx
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +51,10 @@ class StepsRequest(BaseModel):
 
 class FileUpdateRequest(BaseModel):
     content: str
+
+
+class TopicSuggestionRequest(BaseModel):
+    current_topic: str | None = None
 
 
 def _spawn_command(cmd: list[str]) -> str:
@@ -235,6 +241,43 @@ def stop_run(run_id: str) -> dict[str, bool]:
     if process.poll() is None:
         process.terminate()
     return {"stopped": True}
+
+
+
+
+@app.post("/api/topics/suggest")
+async def suggest_topic(request: TopicSuggestionRequest) -> dict[str, str]:
+    current_topic = (request.current_topic or '').strip()
+    prompt = f"""
+You suggest one topic for a faceless YouTube channel called Stoic Modernized.
+The audience is modern workers dealing with stress, work pressure, boundaries, focus, ambition, burnout, and emotional resilience.
+Return exactly one concise topic title, no numbering, no quotes, no markdown.
+Keep it practical, modern, and specific.
+
+Current topic hint: {current_topic or 'none'}
+""".strip()
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                'http://localhost:8080/v1/chat/completions',
+                json={
+                    'model': 'local',
+                    'messages': [{'role': 'user', 'content': prompt}],
+                    'temperature': 0.7,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            suggestion = data['choices'][0]['message']['content'].strip().splitlines()[0].strip(' -\"')
+            if not suggestion:
+                raise ValueError('Empty suggestion from local AI')
+            return {'topic': suggestion, 'source': 'local-ai'}
+    except Exception:
+        fallback = current_topic if current_topic else 'How to Stay Calm When Everything at Work Feels Urgent'
+        if fallback == current_topic and current_topic:
+            fallback = f'Stoic Strategies for {current_topic.title()}'
+        return {'topic': fallback, 'source': 'fallback'}
 
 
 @app.get("/api/config/env")

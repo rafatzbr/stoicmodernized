@@ -1,5 +1,5 @@
-import { api } from './client';
 import type { Job, JobDetail, RunState } from '../types';
+import { api } from './client';
 
 export async function fetchJobs() {
   const res = await api.get<Job[]>('/api/jobs');
@@ -41,6 +41,11 @@ export async function stopRun(runId: string) {
   return api.post(`/api/runs/${runId}/stop`);
 }
 
+export async function deleteJob(jobId: string) {
+  const res = await api.delete<{ deleted: boolean; job_id: string; removed_dir: boolean; removed_db: boolean }>(`/api/jobs/${jobId}`);
+  return res.data;
+}
+
 export async function fetchEnv() {
   const res = await api.get<{ content: string }>('/api/config/env');
   return res.data;
@@ -59,8 +64,7 @@ export async function saveConfigFile(content: string) {
   return api.post('/api/config/file', { content });
 }
 
-
-export async function deleteJob(jobId: string) {
-  const res = await api.delete<{ deleted: boolean; job_id: string; removed_dir: boolean; removed_db: boolean }>(`/api/jobs/${jobId}`);
+export async function suggestTopic(current_topic?: string) {
+  const res = await api.post<{ topic: string; source: string }>('/api/topics/suggest', { current_topic });
   return res.data;
 }

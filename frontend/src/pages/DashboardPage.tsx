@@ -34,6 +34,7 @@ import {
   startRun,
   startSteps,
   stopRun,
+  suggestTopic,
 } from '../api';
 import { FileEditors } from '../components/FileEditors';
 import { JobAssets } from '../components/JobAssets';
@@ -87,6 +88,7 @@ export function DashboardPage() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pendingDeleteJob, setPendingDeleteJob] = useState<Job | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const [suggestingTopic, setSuggestingTopic] = useState(false);
 
   const showNotice = useCallback((message: string, severity: Notice['severity'] = 'info') => {
     setNotice({ message, severity });
@@ -205,6 +207,22 @@ export function DashboardPage() {
     },
     [loadJobDetail],
   );
+
+  const onSuggestTopic = useCallback(async () => {
+    setSuggestingTopic(true);
+    try {
+      const result = await suggestTopic(topic);
+      setTopic(result.topic);
+      showNotice(
+        result.source === 'local-ai' ? 'Suggested a topic using the local AI model.' : 'Local AI was unavailable, so I used a fallback topic.',
+        result.source === 'local-ai' ? 'success' : 'warning',
+      );
+    } catch (error) {
+      showNotice(getErrorMessage(error, 'Failed to suggest a topic.'), 'error');
+    } finally {
+      setSuggestingTopic(false);
+    }
+  }, [showNotice, topic]);
 
   const onToggleStep = useCallback((step: string) => {
     setSelectedSteps((previous) =>
@@ -360,9 +378,11 @@ export function DashboardPage() {
                   videoMode={videoMode}
                   provider={provider}
                   isStarting={runLoading}
+                  isSuggestingTopic={suggestingTopic}
                   onTopicChange={setTopic}
                   onVideoModeChange={setVideoMode}
                   onProviderChange={setProvider}
+                  onSuggestTopic={onSuggestTopic}
                   onStart={onStart}
                 />
                 <StepRunner
