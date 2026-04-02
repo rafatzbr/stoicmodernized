@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import mimetypes
 import shutil
 import subprocess
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 RUNS: dict[str, dict[str, Any]] = {}
+logger = logging.getLogger(__name__)
 
 
 class RunRequest(BaseModel):
@@ -273,7 +275,8 @@ Current topic hint: {current_topic or 'none'}
             if not suggestion:
                 raise ValueError('Empty suggestion from local AI')
             return {'topic': suggestion, 'source': 'local-ai'}
-    except Exception:
+    except Exception as exc:
+        logger.exception('Local topic suggestion failed: %s', exc)
         fallback = current_topic if current_topic else 'How to Stay Calm When Everything at Work Feels Urgent'
         if fallback == current_topic and current_topic:
             fallback = f'Stoic Strategies for {current_topic.title()}'
