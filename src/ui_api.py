@@ -258,7 +258,7 @@ Current topic hint: {current_topic or 'none'}
 """.strip()
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
                 'http://localhost:8080/v1/chat/completions',
                 json={
