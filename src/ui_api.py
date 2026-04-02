@@ -249,7 +249,7 @@ def stop_run(run_id: str) -> dict[str, bool]:
 
 
 @app.post("/api/topics/suggest")
-async def suggest_topic(request: TopicSuggestionRequest) -> dict[str, str]:
+async def suggest_topic(request: TopicSuggestionRequest) -> dict[str, Any]:
     current_topic = (request.current_topic or '').strip()
     prompt = f"""
 You suggest one topic for a faceless YouTube channel called Stoic Modernized.
@@ -261,13 +261,14 @@ Current topic hint: {current_topic or 'none'}
 """.strip()
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=settings.local_llm_timeout_seconds) as client:
             response = await client.post(
-                'http://localhost:8080/v1/chat/completions',
+                settings.local_llm_base_url,
                 json={
-                    'model': 'local',
+                    'model': settings.local_llm_model,
                     'messages': [{'role': 'user', 'content': prompt}],
-                    'temperature': 0.7,
+                    'temperature': 0.4,
+                    'max_tokens': settings.local_llm_max_tokens,
                 },
             )
             response.raise_for_status()

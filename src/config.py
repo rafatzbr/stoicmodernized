@@ -83,6 +83,11 @@ class Settings(BaseSettings):
     youtube_privacy_status: YouTubePrivacy = YouTubePrivacy.UNLISTED
     youtube_schedule_datetime: Optional[str] = None
 
+    local_llm_base_url: str = 'http://localhost:8080/v1/chat/completions'
+    local_llm_model: str = 'local'
+    local_llm_timeout_seconds: float = 120.0
+    local_llm_max_tokens: int = 32
+
     watermark_logo_path: Path = Path('/home/rafatz/media/thumbnail_nobg.png')
     watermark_scale_width: int = 120
     watermark_padding: int = 36
