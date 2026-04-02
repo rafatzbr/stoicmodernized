@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+import re
 import shutil
 import subprocess
 import sys
@@ -58,6 +59,41 @@ class FileUpdateRequest(BaseModel):
 
 class TopicSuggestionRequest(BaseModel):
     current_topic: str | None = None
+
+
+def _normalize_topic_line(value: str) -> str:
+    cleaned = value.strip().strip(' -\"')
+    cleaned = re.sub(r'^[0-9]+[.)]\s*', '', cleaned)
+    return cleaned[:160].strip()
+
+
+def _extract_topic_from_reasoning(reasoning: str) -> str | None:
+    lines = [line.strip() for line in reasoning.splitlines() if line.strip()]
+
+    preferred_patterns = (
+        re.compile(r'^(?:idea|topic)\s*:\s*(.+)$', re.IGNORECASE),
+        re.compile(r'^\*\s*(How to|The Stoic|Stoic|Why |Managing |Setting |Emotional ).+$', re.IGNORECASE),
+    )
+
+    candidates: list[str] = []
+    for line in lines:
+        for pattern in preferred_patterns:
+            match = pattern.match(line)
+            if match:
+                candidate = _normalize_topic_line(match.group(1) if match.lastindex else line.lstrip('* ').strip())
+                if candidate and len(candidate.split()) >= 3:
+                    candidates.append(candidate)
+                    break
+
+    if candidates:
+        return candidates[-1]
+
+    for line in reversed(lines):
+        candidate = _normalize_topic_line(line)
+        if candidate and len(candidate.split()) >= 3 and 'thinking process' not in candidate.lower():
+            return candidate
+
+    return None
 
 
 def _spawn_command(cmd: list[str]) -> str:
@@ -276,6 +312,7 @@ Current topic hint: {current_topic or 'none'}
             choices = data.get('choices') or []
             first_choice = choices[0] if choices else {}
             message = first_choice.get('message') or {}
+            reasoning_content = message.get('reasoning_content') if isinstance(message.get('reasoning_content'), str) else ''
 
             raw_content = None
             for candidate in (
@@ -287,25 +324,35 @@ Current topic hint: {current_topic or 'none'}
                     raw_content = candidate.strip()
                     break
 
-            if not raw_content:
+            suggestion = None
+            extraction_source = 'content'
+            if raw_content:
+                lines = [line.strip() for line in raw_content.splitlines() if line.strip()]
+                suggestion = _normalize_topic_line(lines[0] if lines else raw_content)
+            elif reasoning_content:
+                suggestion = _extract_topic_from_reasoning(reasoning_content)
+                extraction_source = 'reasoning'
+
+            if not suggestion:
                 logger.error('Local topic suggestion returned an unexpected payload: %s', data)
                 print(f'[topic-suggest] Unexpected payload: {data!r}', file=sys.stderr, flush=True)
                 raise ValueError('Local AI returned an empty or unsupported response payload')
 
-            lines = [line.strip() for line in raw_content.splitlines() if line.strip()]
-            suggestion = (lines[0] if lines else raw_content).strip(' -\"')
-            if not suggestion:
-                logger.error('Local topic suggestion produced empty normalized content: %s', data)
-                print(f'[topic-suggest] Empty normalized content from payload: {data!r}', file=sys.stderr, flush=True)
-                raise ValueError('Empty suggestion from local AI')
-            return {'topic': suggestion, 'source': 'local-ai'}
+            return {
+                'topic': suggestion,
+                'source': 'local-ai',
+                'thinking': reasoning_content,
+                'used_reasoning_fallback': extraction_source == 'reasoning',
+                'finish_reason': first_choice.get('finish_reason'),
+                'raw_content': raw_content or '',
+            }
     except Exception as exc:
         logger.exception('Local topic suggestion failed: %s', exc)
         print(f'[topic-suggest] Local topic suggestion failed: {exc!r}', file=sys.stderr, flush=True)
         fallback = current_topic if current_topic else 'How to Stay Calm When Everything at Work Feels Urgent'
         if fallback == current_topic and current_topic:
             fallback = f'Stoic Strategies for {current_topic.title()}'
-        return {'topic': fallback, 'source': 'fallback', 'error': repr(exc)}
+        return {'topic': fallback, 'source': 'fallback', 'error': repr(exc), 'thinking': '', 'used_reasoning_fallback': False, 'finish_reason': None, 'raw_content': ''}
 
 
 @app.get("/api/config/env")

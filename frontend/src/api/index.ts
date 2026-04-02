@@ -1,6 +1,16 @@
 import type { Job, JobDetail, RunState } from '../types';
 import { api } from './client';
 
+export type TopicSuggestionResult = {
+  topic: string;
+  source: string;
+  error?: string;
+  thinking?: string;
+  used_reasoning_fallback?: boolean;
+  finish_reason?: string | null;
+  raw_content?: string;
+};
+
 export async function fetchJobs() {
   const res = await api.get<Job[]>('/api/jobs');
   return res.data;
@@ -65,6 +75,6 @@ export async function saveConfigFile(content: string) {
 }
 
 export async function suggestTopic(current_topic?: string) {
-  const res = await api.post<{ topic: string; source: string }>('/api/topics/suggest', { current_topic });
+  const res = await api.post<TopicSuggestionResult>('/api/topics/suggest', { current_topic });
   return res.data;
 }
