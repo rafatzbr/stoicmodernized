@@ -109,6 +109,10 @@ class Database:
                 return True
         return False
 
+    def _should_preserve_job_without_files(self, job: JobRecord) -> bool:
+        """Keep failed jobs with DB-recorded errors even if no files remain on disk."""
+        return bool(job.error_message) or job.status.endswith("_failed") or job.status == "failed"
+
     def prune_stale_jobs(self) -> int:
         """Delete jobs whose recorded outputs and job directory are gone."""
         session = self.get_session()
@@ -119,6 +123,8 @@ class Database:
                 if self._job_has_files(job):
                     continue
                 if job.status in {"running", "pending"}:
+                    continue
+                if self._should_preserve_job_without_files(job):
                     continue
                 session.delete(job)
                 removed += 1
@@ -133,7 +139,12 @@ class Database:
         session = self.get_session()
         try:
             job = session.query(JobRecord).filter(JobRecord.job_id == job_id).first()
-            if job and not self._job_has_files(job) and job.status not in {"running", "pending"}:
+            if (
+                job
+                and not self._job_has_files(job)
+                and job.status not in {"running", "pending"}
+                and not self._should_preserve_job_without_files(job)
+            ):
                 session.delete(job)
                 session.commit()
                 return None
