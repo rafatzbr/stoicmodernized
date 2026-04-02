@@ -175,6 +175,7 @@ Rules:
             "temperature": settings.local_script_temperature,
             "max_tokens": settings.local_script_max_tokens,
             "response_format": {"type": "json_object"},
+            "chat_template_kwargs": {"enable_thinking": False},
         }
 
         try:
