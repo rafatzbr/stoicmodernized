@@ -4,6 +4,7 @@ import logging
 import mimetypes
 import shutil
 import subprocess
+import sys
 import threading
 import uuid
 
@@ -277,10 +278,11 @@ Current topic hint: {current_topic or 'none'}
             return {'topic': suggestion, 'source': 'local-ai'}
     except Exception as exc:
         logger.exception('Local topic suggestion failed: %s', exc)
+        print(f'[topic-suggest] Local topic suggestion failed: {exc!r}', file=sys.stderr, flush=True)
         fallback = current_topic if current_topic else 'How to Stay Calm When Everything at Work Feels Urgent'
         if fallback == current_topic and current_topic:
             fallback = f'Stoic Strategies for {current_topic.title()}'
-        return {'topic': fallback, 'source': 'fallback'}
+        return {'topic': fallback, 'source': 'fallback', 'error': repr(exc)}
 
 
 @app.get("/api/config/env")
