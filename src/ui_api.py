@@ -305,6 +305,7 @@ Current topic hint: {current_topic or 'none'}
                     'messages': [{'role': 'user', 'content': prompt}],
                     'temperature': 0.4,
                     'max_tokens': settings.local_llm_max_tokens,
+                    'chat_template_kwargs': {'enable_thinking': False},
                 },
             )
             response.raise_for_status()

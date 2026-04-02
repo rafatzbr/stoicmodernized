@@ -36,7 +36,6 @@ import {
   stopRun,
   suggestTopic,
 } from '../api';
-import type { TopicSuggestionResult } from '../api';
 import { FileEditors } from '../components/FileEditors';
 import { JobAssets } from '../components/JobAssets';
 import { JobsList } from '../components/JobsList';
@@ -90,7 +89,6 @@ export function DashboardPage() {
   const [pendingDeleteJob, setPendingDeleteJob] = useState<Job | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [suggestingTopic, setSuggestingTopic] = useState(false);
-  const [topicSuggestion, setTopicSuggestion] = useState<TopicSuggestionResult | null>(null);
 
   const showNotice = useCallback((message: string, severity: Notice['severity'] = 'info') => {
     setNotice({ message, severity });
@@ -215,13 +213,10 @@ export function DashboardPage() {
     try {
       const result = await suggestTopic(topic);
       setTopic(result.topic);
-      setTopicSuggestion(result);
-      if (result.source === 'local-ai' && result.used_reasoning_fallback) {
-        showNotice('Suggested a topic from the reasoning model. Open the dialog to review the full thinking trace.', 'info');
-      } else if (result.source === 'local-ai') {
+      if (result.source === 'local-ai') {
         showNotice('Suggested a topic using the local AI model.', 'success');
       } else {
-        showNotice('Local AI was unavailable, so I used a fallback topic.', 'warning');
+        showNotice(result.error ? `Local AI fallback: ${result.error}` : 'Local AI was unavailable, so I used a fallback topic.', 'warning');
       }
     } catch (error) {
       showNotice(getErrorMessage(error, 'Failed to suggest a topic.'), 'error');
@@ -480,58 +475,6 @@ export function DashboardPage() {
           <Button color="error" variant="contained" onClick={() => void onDeleteJob()} disabled={Boolean(deletingJobId)}>
             {deletingJobId ? 'Deleting…' : 'Delete job'}
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={Boolean(topicSuggestion)} onClose={() => setTopicSuggestion(null)} maxWidth="md" fullWidth>
-        <DialogTitle>Local AI topic suggestion</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2}>
-            <Box>
-              <Typography variant="overline" color="secondary.main">Suggested topic</Typography>
-              <Typography variant="h6">{topicSuggestion?.topic}</Typography>
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-                <Chip label={topicSuggestion?.source === 'local-ai' ? 'Local AI' : 'Fallback'} size="small" color={topicSuggestion?.source === 'local-ai' ? 'success' : 'warning'} />
-                {topicSuggestion?.used_reasoning_fallback ? <Chip label="Extracted from reasoning" size="small" color="secondary" variant="outlined" /> : null}
-                {topicSuggestion?.finish_reason ? <Chip label={`Finish: ${topicSuggestion.finish_reason}`} size="small" variant="outlined" /> : null}
-              </Stack>
-            </Box>
-
-            {topicSuggestion?.error ? (
-              <Alert severity="warning">{topicSuggestion.error}</Alert>
-            ) : null}
-
-            {topicSuggestion?.thinking ? (
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>Thinking process</Typography>
-                <Box
-                  component="pre"
-                  sx={{
-                    mb: 0,
-                    p: 2,
-                    maxHeight: '52vh',
-                    overflow: 'auto',
-                    borderRadius: 2,
-                    bgcolor: 'rgba(7, 10, 19, 0.92)',
-                    color: '#d8e1ff',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {topicSuggestion.thinking}
-                </Box>
-              </Box>
-            ) : null}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setTopicSuggestion(null)}>Close</Button>
-          <Button variant="contained" onClick={() => { if (topicSuggestion?.topic) setTopic(topicSuggestion.topic); setTopicSuggestion(null); }}>Use this topic</Button>
         </DialogActions>
       </Dialog>
 
