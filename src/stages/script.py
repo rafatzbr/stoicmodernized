@@ -13,6 +13,10 @@ from src.models import Chapter, Script
 from src.utils import load_json, save_json
 
 
+class ScriptGenerationError(RuntimeError):
+    """Raised when real local-LLM script generation fails validation or transport."""
+
+
 class ScriptStage:
     """Handles script generation stage."""
 
@@ -64,16 +68,8 @@ class ScriptStage:
 
         parsed_payload = generation.get("parsed_payload") or {}
         validation_error = self._validate_generated_payload(parsed_payload, topic=topic)
-        fallback_reason = generation.get("error") or validation_error
-        used_fallback = not generation.get("success") or bool(validation_error)
-
-        if used_fallback:
-            parsed_payload = self._fallback_script_payload(
-                topic=topic,
-                research_title=research_title,
-                key_insights=key_insights,
-                workplace_applications=workplace_applications,
-            )
+        failure_reason = generation.get("error") or validation_error
+        succeeded = bool(generation.get("success")) and not bool(validation_error)
 
         self._write_generation_artifacts(
             raw_response=generation.get("raw_response", ""),
@@ -85,8 +81,10 @@ class ScriptStage:
                 "topic": topic,
                 "local_llm_requested": True,
                 "local_llm_success": bool(generation.get("success")),
-                "used_fallback": used_fallback,
-                "fallback_reason": fallback_reason,
+                "used_fallback": False,
+                "fallback_reason": None,
+                "script_generation_succeeded": succeeded,
+                "failure_reason": failure_reason,
                 "llm_error": generation.get("error"),
                 "raw_response_path": "local_llm_raw.txt",
                 "parsed_payload_path": "local_llm_parsed.json",
@@ -94,6 +92,9 @@ class ScriptStage:
                 "generated_at": datetime.now(UTC).isoformat(),
             },
         )
+
+        if not succeeded:
+            raise ScriptGenerationError(failure_reason or "local_llm_script_generation_failed")
 
         return self._payload_to_script(
             payload=parsed_payload,
@@ -290,21 +291,15 @@ Rules:
         key_insights: list[str],
         workplace_applications: list[str],
     ) -> Script:
+        _ = (topic, key_insights, workplace_applications)
         chapters = self._short_chapters() if self.video_mode == VideoMode.SHORT else self._long_chapters()
         section_titles = [chapter.title for chapter in chapters]
         sections = self._normalize_sections(payload.get("sections"), section_titles)
-        if not sections:
-            sections = self._fallback_sections(topic, key_insights, workplace_applications)
-            sections = self._normalize_sections(sections, section_titles)
 
         title = self._clean_sentence(payload.get("title")) or research_title
-        hook = self._clean_sentence(payload.get("hook")) or self._default_hook(topic, key_insights)
-        cta = self._clean_sentence(payload.get("cta")) or self._default_cta(topic)
-        short_version = self._clean_multiline_text(payload.get("short_version")) or self._fallback_short_version(
-            topic,
-            key_insights,
-            workplace_applications,
-        )
+        hook = self._clean_sentence(payload.get("hook"))
+        cta = self._clean_sentence(payload.get("cta"))
+        short_version = self._clean_multiline_text(payload.get("short_version"))
         narration = self._render_timed_narration(sections, chapters)
 
         return Script(
@@ -495,113 +490,6 @@ If this helped you, subscribe to Stoic Modernized for more weekly videos on appl
             return parsed if isinstance(parsed, dict) else {}
         except json.JSONDecodeError:
             return {}
-
-    def _fallback_script_payload(
-        self,
-        *,
-        topic: str,
-        research_title: str,
-        key_insights: list[str],
-        workplace_applications: list[str],
-    ) -> dict[str, Any]:
-        return {
-            "title": research_title,
-            "hook": self._default_hook(topic, key_insights),
-            "cta": self._default_cta(topic),
-            "short_version": self._fallback_short_version(topic, key_insights, workplace_applications),
-            "sections": self._fallback_sections(topic, key_insights, workplace_applications),
-        }
-
-    def _fallback_sections(
-        self,
-        topic: str,
-        key_insights: list[str],
-        workplace_applications: list[str],
-    ) -> list[dict[str, str]]:
-        insight_a = key_insights[0] if key_insights else f"Stoicism helps you handle {topic} without letting it run your nervous system."
-        insight_b = key_insights[1] if len(key_insights) > 1 else f"The useful question is not whether {topic} is annoying, but what part of it is actually yours to manage."
-        app_a = workplace_applications[0] if workplace_applications else f"Before reacting to {topic}, separate what needs action from what only needs emotional endurance."
-        app_b = workplace_applications[1] if len(workplace_applications) > 1 else f"Create a small pause before your next decision so {topic} stops dictating your behavior."
-        app_c = workplace_applications[2] if len(workplace_applications) > 2 else f"Turn recurring friction around {topic} into a rehearsal for patience, clarity, and steadiness."
-
-        if self.video_mode == VideoMode.SHORT:
-            return [
-                {
-                    "title": "Hook",
-                    "narration": f"{topic.title()} feels heavier when every setback gets interpreted as a personal emergency. Stoicism gives you a calmer frame without making you passive.",
-                },
-                {
-                    "title": "Stoic Principle",
-                    "narration": f"{insight_a} The Stoic move is to reclaim your attention from the noise and place it on judgment, effort, and self-command.",
-                },
-                {
-                    "title": "Workplace Application",
-                    "narration": f"{app_a} {app_b} That tiny pause is where better work and a better mood begin.",
-                },
-                {
-                    "title": "CTA",
-                    "narration": f"Follow Stoic Modernized for practical Stoic strategies for {topic}. If this topic hits home, share the situation you want to handle more calmly next time.",
-                },
-            ]
-
-        return [
-            {
-                "title": "Introduction",
-                "narration": f"{topic.title()} can quietly dominate a workday because it hijacks attention before you choose a response. Today we are translating Stoic philosophy into something practical enough to use in the next difficult moment.",
-            },
-            {
-                "title": "The Problem",
-                "narration": f"{insight_a} {insight_b} Most people stay stuck because they try to control outcomes, other people, and timing all at once.",
-            },
-            {
-                "title": "Marcus Aurelius on Control",
-                "narration": "Marcus Aurelius keeps bringing the mind back to what is within your command. When pressure rises, the first Stoic skill is refusing to let the outer event automatically become an inner crisis.",
-            },
-            {
-                "title": "Seneca on Time Management",
-                "narration": f"Seneca would ask where your attention is leaking. {app_a} This matters because scattered reactions make the original problem feel larger than it is.",
-            },
-            {
-                "title": "Epictetus on Expectations",
-                "narration": f"Epictetus is useful when reality refuses to cooperate. {app_b} The obstacle is still real, but your peace no longer depends on pretending it is not there.",
-            },
-            {
-                "title": "Practical Techniques",
-                "narration": f"Use a three-step reset: name the issue clearly, separate control from uncertainty, then pick one deliberate action. {app_c} Repetition turns Stoicism from a quote into a professional reflex.",
-            },
-            {
-                "title": "Conclusion",
-                "narration": f"Stoicism does not erase {topic}; it shrinks the amount of your life that {topic} gets to own. Calm is not the absence of pressure, but the ability to meet pressure without surrendering judgment.",
-            },
-            {
-                "title": "Call to Action",
-                "narration": f"If this helped, subscribe to Stoic Modernized for more practical Stoic strategies for modern work. And if you want the next video to cover a specific angle of {topic}, leave it in the comments.",
-            },
-        ]
-
-    def _default_hook(self, topic: str, key_insights: list[str]) -> str:
-        lead = key_insights[0] if key_insights else f"Stoicism gives you a calmer way to handle {topic}."
-        return f"{lead} The real shift starts when you stop treating every pressure point around {topic} as something you must emotionally obey."
-
-    def _default_cta(self, topic: str) -> str:
-        return (
-            f"If this helped you handle {topic} with a steadier mind, subscribe to Stoic Modernized for more practical Stoic strategies for modern work."
-        )
-
-    def _fallback_short_version(
-        self,
-        topic: str,
-        key_insights: list[str],
-        workplace_applications: list[str],
-    ) -> str:
-        insight = key_insights[0] if key_insights else f"You cannot control every part of {topic}, but you can control your next response."
-        application = workplace_applications[0] if workplace_applications else f"Pause before reacting to {topic} and choose one deliberate action instead of spiraling."
-        return (
-            f"[0:00-0:12] Hook\n{topic.title()} gets worse when your mind joins the chaos instead of leading it.\n\n"
-            f"[0:12-0:30] Stoic Principle\n{insight}\n\n"
-            f"[0:30-0:50] Workplace Application\n{application}\n\n"
-            f"[0:50-0:58] CTA\nFollow Stoic Modernized for practical Stoic strategies for {topic}."
-        )
 
     def _clean_sentence(self, value: Any) -> str:
         text = self._clean_multiline_text(value)

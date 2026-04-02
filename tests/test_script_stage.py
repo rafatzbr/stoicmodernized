@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.config import VideoMode
-from src.stages.script import ScriptStage
+from src.stages.script import ScriptGenerationError, ScriptStage
 
 
 class TestScriptStage:
@@ -55,7 +55,7 @@ class TestScriptStage:
         assert "Micromanagement feels personal fast" in script.narration
 
     @pytest.mark.asyncio
-    async def test_real_script_falls_back_to_topic_specific_copy_when_llm_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_real_script_raises_when_llm_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
         stage = ScriptStage(job_id="job-3", mock=False, video_mode=VideoMode.LONG)
 
@@ -64,36 +64,33 @@ class TestScriptStage:
 
         stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
 
-        script = await stage._real_script(
-            {
-                "topic": "micromanagement",
-                "title": "How Stoics Handle Micromanagement",
-                "key_insights": [
-                    "Micromanagement hurts most when you treat every correction as a verdict on your worth.",
-                    "Stoicism separates your effort from another person's need for control.",
-                ],
-                "workplace_applications": [
-                    "Clarify expectations in writing after meetings.",
-                    "Use a short pause before answering nitpicky messages.",
-                    "Treat recurring friction as practice for steadiness.",
-                ],
-            }
-        )
+        with pytest.raises(ScriptGenerationError, match="local_llm_returned_empty_content"):
+            await stage._real_script(
+                {
+                    "topic": "micromanagement",
+                    "title": "How Stoics Handle Micromanagement",
+                    "key_insights": [
+                        "Micromanagement hurts most when you treat every correction as a verdict on your worth.",
+                        "Stoicism separates your effort from another person's need for control.",
+                    ],
+                    "workplace_applications": [
+                        "Clarify expectations in writing after meetings.",
+                        "Use a short pause before answering nitpicky messages.",
+                        "Treat recurring friction as practice for steadiness.",
+                    ],
+                }
+            )
 
         report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
         parsed = json.loads((stage.script_dir / "local_llm_parsed.json").read_text(encoding="utf-8"))
         final_payload = json.loads((stage.script_dir / "script_generation_final.json").read_text(encoding="utf-8"))
 
-        assert script.title == "How Stoics Handle Micromanagement"
-        assert "micromanagement" in script.narration.lower()
-        assert "Clarify expectations in writing after meetings." in script.narration
-        assert script.hook
-        assert script.cta
-        assert len(script.chapters) == 8
-        assert report["used_fallback"] is True
-        assert report["fallback_reason"] == "local_llm_returned_empty_content"
+        assert report["script_generation_succeeded"] is False
+        assert report["failure_reason"] == "local_llm_returned_empty_content"
+        assert report["used_fallback"] is False
         assert parsed == {}
-        assert final_payload["title"] == "How Stoics Handle Micromanagement"
+        assert final_payload == {}
+        assert not (stage.script_dir / "script.json").exists()
 
     def test_validate_generated_payload_rejects_generic_known_template(self) -> None:
         stage = ScriptStage(job_id="job-4", mock=False, video_mode=VideoMode.LONG)
@@ -111,7 +108,7 @@ class TestScriptStage:
         assert stage._validate_generated_payload(payload, topic="workplace stress") == "local_llm_payload_too_generic"
 
     @pytest.mark.asyncio
-    async def test_real_script_records_rejected_payload_reason(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_real_script_records_rejected_payload_reason_and_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
         stage = ScriptStage(job_id="job-5", mock=False, video_mode=VideoMode.SHORT)
 
@@ -135,12 +132,13 @@ class TestScriptStage:
 
         stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
 
-        script = await stage._real_script(
-            {"topic": "micromanagement", "title": "How Stoics Handle Micromanagement"}
-        )
+        with pytest.raises(ScriptGenerationError, match="local_llm_section_1_too_short"):
+            await stage._real_script(
+                {"topic": "micromanagement", "title": "How Stoics Handle Micromanagement"}
+            )
         report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
 
         assert report["local_llm_success"] is True
-        assert report["used_fallback"] is True
-        assert report["fallback_reason"] == "local_llm_section_1_too_short"
-        assert "micromanagement" in script.narration.lower()
+        assert report["script_generation_succeeded"] is False
+        assert report["failure_reason"] == "local_llm_section_1_too_short"
+        assert report["used_fallback"] is False

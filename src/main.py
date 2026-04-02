@@ -17,7 +17,7 @@ from src.stages.images import ImageGenerationStage
 from src.stages.render import VideoRenderer
 from src.stages.research import ResearchStage
 from src.stages.scenes import SceneStage
-from src.stages.script import ScriptStage
+from src.stages.script import ScriptGenerationError, ScriptStage
 from src.stages.subtitles import SubtitleStage
 from src.stages.tts import TTSStage
 from src.stages.upload import YouTubeUploader
@@ -171,12 +171,28 @@ def script(
     console.print(f"[bold]Generating script for:[/bold] {research_data['title']}")
 
     stage = ScriptStage(job_id=job_id, mock=mock, video_mode=video_mode)
-    script_result = asyncio.run(stage.run(research_data))
-    script_path = stage.save_script(script_result)
     report_path = stage.script_dir / "script_generation_report.json"
+
+    try:
+        script_result = asyncio.run(stage.run(research_data))
+    except ScriptGenerationError as exc:
+        report = load_json(report_path) if report_path.exists() else None
+        error_text = str(exc)
+        db.update_job(job_id, status="script_failed", error_message=error_text)
+        console.print()
+        console.print("[bold red]Script Generation Failed![/bold red]")
+        console.print(f"[dim]Reason:[/dim] {error_text}")
+        if report:
+            console.print(f"[dim]Local LLM success:[/dim] {report.get('local_llm_success')}")
+            if report.get("failure_reason"):
+                console.print(f"[dim]Failure reason:[/dim] {report['failure_reason']}")
+            console.print(f"[dim]Inspection report:[/dim] {report_path}")
+        raise typer.Exit(code=1)
+
+    script_path = stage.save_script(script_result)
     report = load_json(report_path) if report_path.exists() else None
 
-    db.update_job(job_id, status="script_complete", script_path=str(script_path))
+    db.update_job(job_id, status="script_complete", script_path=str(script_path), error_message=None)
 
     console.print()
     console.print("[bold green]Script Complete![/bold green]")
@@ -185,9 +201,7 @@ def script(
     console.print(f"[dim]Chapters:[/dim] {len(script_result.chapters)}")
     if report:
         console.print(f"[dim]Local LLM success:[/dim] {report.get('local_llm_success')}")
-        console.print(f"[dim]Fallback used:[/dim] {report.get('used_fallback')}")
-        if report.get("fallback_reason"):
-            console.print(f"[dim]Fallback reason:[/dim] {report['fallback_reason']}")
+        console.print(f"[dim]Script generation succeeded:[/dim] {report.get('script_generation_succeeded')}")
         console.print(f"[dim]Inspection report:[/dim] {report_path}")
     console.print(f"[dim]Next step:[/dim] python -m src.main scene {job_id}")
 
