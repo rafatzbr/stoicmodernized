@@ -4,6 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from sqlalchemy.orm.exc import DetachedInstanceError
+
 from sqlalchemy import (
     Column,
     DateTime,
@@ -52,6 +54,19 @@ class JobRecord(Base):
 class Database:
     """Database manager for job tracking."""
 
+    TRACKED_OUTPUT_FIELDS = (
+        "research_path",
+        "script_path",
+        "scene_plan_path",
+        "images_dir",
+        "audio_path",
+        "subtitle_path",
+        "video_path",
+        "thumbnail_path",
+        "metadata_path",
+        "log_path",
+    )
+
     def __init__(self, db_path: Optional[Path] = None):
         """Initialize database connection."""
         self.db_path = db_path or settings.db_path
@@ -82,11 +97,47 @@ class Database:
         finally:
             session.close()
 
+    def _job_has_files(self, job: JobRecord) -> bool:
+        """Return True if a job still has any on-disk outputs."""
+        job_dir = settings.jobs_dir / job.job_id
+        if job_dir.exists():
+            return True
+
+        for field_name in self.TRACKED_OUTPUT_FIELDS:
+            value = getattr(job, field_name, None)
+            if value and Path(value).exists():
+                return True
+        return False
+
+    def prune_stale_jobs(self) -> int:
+        """Delete jobs whose recorded outputs and job directory are gone."""
+        session = self.get_session()
+        removed = 0
+        try:
+            jobs = session.query(JobRecord).all()
+            for job in jobs:
+                if self._job_has_files(job):
+                    continue
+                if job.status in {"running", "pending"}:
+                    continue
+                session.delete(job)
+                removed += 1
+            if removed:
+                session.commit()
+            return removed
+        finally:
+            session.close()
+
     def get_job(self, job_id: str) -> Optional[JobRecord]:
         """Get a job by ID."""
         session = self.get_session()
         try:
-            return session.query(JobRecord).filter(JobRecord.job_id == job_id).first()
+            job = session.query(JobRecord).filter(JobRecord.job_id == job_id).first()
+            if job and not self._job_has_files(job) and job.status not in {"running", "pending"}:
+                session.delete(job)
+                session.commit()
+                return None
+            return job
         finally:
             session.close()
 
@@ -108,6 +159,7 @@ class Database:
 
     def get_all_jobs(self, status: Optional[str] = None) -> list[JobRecord]:
         """Get all jobs, optionally filtered by status."""
+        self.prune_stale_jobs()
         session = self.get_session()
         try:
             query = session.query(JobRecord)
