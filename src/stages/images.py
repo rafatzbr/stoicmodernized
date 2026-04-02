@@ -11,9 +11,10 @@ from src.models import ImageAsset
 class ImageGenerationStage:
     """Handles image generation for scenes."""
 
-    def __init__(self, job_id: str, mock: bool = False):
+    def __init__(self, job_id: str, mock: bool = False, placeholder_only: bool = False):
         self.job_id = job_id
         self.mock = mock or settings.mock_mode
+        self.placeholder_only = placeholder_only or settings.force_placeholder_images
         self.job_dir = settings.jobs_dir / job_id
         self.images_dir = self.job_dir / "images"
 
@@ -32,6 +33,9 @@ class ImageGenerationStage:
 
         if self.mock:
             return await self._generate_placeholder_images(scene_plan, style="mock")
+
+        if self.placeholder_only:
+            return await self._generate_placeholder_images(scene_plan, style="local")
 
         if self._sd_cli_available():
             return await self._real_generate(scene_plan)
@@ -72,7 +76,7 @@ class ImageGenerationStage:
             "silhouette, black marble texture, gold accents, dramatic cinematic lighting, "
             "dark philosophical aesthetic, empty center space"
         )
-        negative_prompt = "people, face, crowd, beach, ocean, water, snow, text, logo"
+        negative_prompt = "people, face, crowd, beach, ocean, water, snow, text, logo, border, frame, margin, white border, blank edge, empty white space, poster, flyer"
 
         for scene in scene_plan.get("scenes", []):
             scene_num = scene["scene_number"]
@@ -85,6 +89,7 @@ class ImageGenerationStage:
                     output_path=image_path,
                     negative_prompt=negative_prompt,
                 )
+                self._postprocess_generated_image(image_path)
             except Exception:
                 self._create_scene_card(
                     image_path=image_path,
@@ -133,6 +138,25 @@ class ImageGenerationStage:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"sd-cli failed: {result.stderr}")
+
+    def _postprocess_generated_image(self, image_path: Path) -> None:
+        """Force generated images to cover the target frame cleanly."""
+        subprocess.run(
+            [
+                "convert",
+                str(image_path),
+                "-resize",
+                f"{self.sd_width}x{self.sd_height}^",
+                "-gravity",
+                "center",
+                "-extent",
+                f"{self.sd_width}x{self.sd_height}",
+                str(image_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
 
     def _create_scene_card(
         self,

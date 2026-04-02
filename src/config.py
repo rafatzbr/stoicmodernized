@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     sd_image_height: int = 960
     sd_cfg_scale: float = 7.0
     sd_sampling_method: str = "euler"
+    force_placeholder_images: bool = False
 
     youtube_api_key: Optional[str] = None
     youtube_privacy_status: YouTubePrivacy = YouTubePrivacy.UNLISTED
@@ -91,6 +92,7 @@ class Settings(BaseSettings):
     local_script_model: Optional[str] = None
     local_script_max_tokens: int = 1800
     local_script_temperature: float = 0.7
+    local_script_min_section_words: int = 8
 
     watermark_logo_path: Path = Path('/home/rafatz/media/thumbnail_nobg.png')
     watermark_scale_width: int = 120

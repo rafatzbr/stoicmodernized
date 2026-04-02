@@ -10,7 +10,7 @@ import httpx
 
 from src.config import VideoMode, settings
 from src.models import Chapter, Script
-from src.utils import save_json
+from src.utils import load_json, save_json
 
 
 class ScriptStage:
@@ -54,23 +54,49 @@ class ScriptStage:
         workplace_applications = self._coerce_string_list(research_data.get("workplace_applications"))
         sources = self._coerce_sources(research_data.get("sources"))
 
-        structured = await self._generate_with_local_llm(
+        generation = await self._generate_with_local_llm(
             topic=topic,
             research_title=research_title,
             key_insights=key_insights,
             workplace_applications=workplace_applications,
             sources=sources,
         )
-        if not structured:
-            structured = self._fallback_script_payload(
+
+        parsed_payload = generation.get("parsed_payload") or {}
+        validation_error = self._validate_generated_payload(parsed_payload, topic=topic)
+        fallback_reason = generation.get("error") or validation_error
+        used_fallback = not generation.get("success") or bool(validation_error)
+
+        if used_fallback:
+            parsed_payload = self._fallback_script_payload(
                 topic=topic,
                 research_title=research_title,
                 key_insights=key_insights,
                 workplace_applications=workplace_applications,
             )
 
+        self._write_generation_artifacts(
+            raw_response=generation.get("raw_response", ""),
+            parsed_payload=generation.get("parsed_payload") or {},
+            final_payload=parsed_payload,
+            report={
+                "job_id": self.job_id,
+                "video_mode": self.video_mode.value,
+                "topic": topic,
+                "local_llm_requested": True,
+                "local_llm_success": bool(generation.get("success")),
+                "used_fallback": used_fallback,
+                "fallback_reason": fallback_reason,
+                "llm_error": generation.get("error"),
+                "raw_response_path": "local_llm_raw.txt",
+                "parsed_payload_path": "local_llm_parsed.json",
+                "final_payload_path": "script_generation_final.json",
+                "generated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
         return self._payload_to_script(
-            payload=structured,
+            payload=parsed_payload,
             topic=topic,
             research_title=research_title,
             key_insights=key_insights,
@@ -157,9 +183,102 @@ Rules:
                 response.raise_for_status()
             data = response.json()
             content = self._extract_message_content(data)
-            return self._parse_llm_json(content)
-        except Exception:
-            return {}
+            return {
+                "success": bool(content.strip()),
+                "raw_response": content,
+                "parsed_payload": self._parse_llm_json(content),
+                "error": None if content.strip() else "local_llm_returned_empty_content",
+            }
+        except Exception as exc:
+            return {
+                "success": False,
+                "raw_response": "",
+                "parsed_payload": {},
+                "error": f"local_llm_request_failed: {type(exc).__name__}",
+            }
+
+    def _write_generation_artifacts(
+        self,
+        *,
+        raw_response: str,
+        parsed_payload: dict[str, Any],
+        final_payload: dict[str, Any],
+        report: dict[str, Any],
+    ) -> None:
+        self.script_dir.mkdir(parents=True, exist_ok=True)
+        (self.script_dir / "local_llm_raw.txt").write_text(raw_response or "", encoding="utf-8")
+        save_json(parsed_payload, self.script_dir / "local_llm_parsed.json")
+        save_json(final_payload, self.script_dir / "script_generation_final.json")
+        save_json(report, self.script_dir / "script_generation_report.json")
+
+    def _validate_generated_payload(self, payload: dict[str, Any], *, topic: str) -> Optional[str]:
+        if not isinstance(payload, dict) or not payload:
+            return "local_llm_payload_missing"
+
+        required_fields = ["title", "hook", "cta", "short_version", "sections"]
+        missing = [field for field in required_fields if not payload.get(field)]
+        if missing:
+            return f"local_llm_payload_missing_fields:{','.join(missing)}"
+
+        sections = payload.get("sections")
+        if not isinstance(sections, list) or len(sections) != len(self._section_blueprint()):
+            return "local_llm_payload_wrong_section_count"
+
+        cleaned_sections: list[str] = []
+        for index, section in enumerate(sections, start=1):
+            if not isinstance(section, dict):
+                return f"local_llm_section_{index}_not_an_object"
+            narration = self._clean_multiline_text(section.get("narration"))
+            if len(narration.split()) < settings.local_script_min_section_words:
+                return f"local_llm_section_{index}_too_short"
+            if self._contains_placeholder_language(narration):
+                return f"local_llm_section_{index}_contains_placeholder_language"
+            cleaned_sections.append(narration.lower())
+
+        combined = "\n".join(
+            [
+                self._clean_sentence(payload.get("title")),
+                self._clean_sentence(payload.get("hook")),
+                self._clean_sentence(payload.get("cta")),
+                self._clean_multiline_text(payload.get("short_version")),
+                *cleaned_sections,
+            ]
+        ).lower()
+        if self._contains_placeholder_language(combined):
+            return "local_llm_payload_contains_placeholder_language"
+        if self._looks_like_known_generic_script(combined, topic=topic):
+            return "local_llm_payload_too_generic"
+        if len(set(cleaned_sections)) < max(2, len(cleaned_sections) - 2):
+            return "local_llm_sections_too_repetitive"
+        return None
+
+    def _contains_placeholder_language(self, text: str) -> bool:
+        normalized = text.lower()
+        markers = [
+            "[insert",
+            "your topic",
+            "placeholder",
+            "lorem ipsum",
+            "tbd",
+            "to be added",
+            "add your",
+            "write here",
+        ]
+        return any(marker in normalized for marker in markers)
+
+    def _looks_like_known_generic_script(self, text: str, *, topic: str) -> bool:
+        generic_markers = [
+            "welcome to stoic modernized. today we're exploring how ancient stoic philosophy can transform",
+            "what if i told you that 2000 years of wisdom could help you handle",
+            "in our fast-paced workplace, we're constantly bombarded with stress",
+        ]
+        if any(marker in text for marker in generic_markers):
+            return True
+
+        topic_tokens = {token for token in re.findall(r"[a-z0-9]+", topic.lower()) if len(token) > 3}
+        if not topic_tokens:
+            return False
+        return not any(token in text for token in topic_tokens)
 
     def _payload_to_script(
         self,
@@ -503,5 +622,5 @@ If this helped you, subscribe to Stoic Modernized for more weekly videos on appl
         if not script_path.exists():
             return None
 
-        data = save_json.__globals__["load_json"](script_path)
+        data = load_json(script_path)
         return Script(**data)

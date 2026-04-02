@@ -48,7 +48,7 @@ async def test_local_pipeline_stages_create_real_assets(monkeypatch: pytest.Monk
     assert audio_path.exists()
     assert audio_path.stat().st_size > 1000
 
-    image_stage = ImageGenerationStage(job_id=job_id, mock=False)
+    image_stage = ImageGenerationStage(job_id=job_id, mock=False, placeholder_only=True)
     image_stage.job_dir = test_settings.jobs_dir / job_id
     image_stage.images_dir = image_stage.job_dir / "images"
     assets = await image_stage.run(scene_plan)

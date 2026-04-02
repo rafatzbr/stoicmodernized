@@ -59,6 +59,12 @@ python -m src.main research --topic "handling workplace stress" --job-id <job-id
 python -m src.main script --job-id <job-id> --mock
 ```
 
+Real script runs now save inspection artifacts under `output/jobs/<job-id>/script/`:
+- `script_generation_report.json` — whether local LLM succeeded and whether fallback was used
+- `local_llm_raw.txt` — raw local-LLM response content
+- `local_llm_parsed.json` — parsed JSON payload from the local model
+- `script_generation_final.json` — final payload actually used to build `script.json`
+
 #### Create Scene Plan
 
 ```bash
@@ -75,6 +81,7 @@ python -m src.main tts --job-id <job-id> --mock
 
 ```bash
 python -m src.main images --job-id <job-id> --mock
+python -m src.main images --job-id <job-id> --placeholder-images
 ```
 
 #### Generate Subtitles
@@ -105,6 +112,7 @@ python -m src.main upload --job-id <job-id> --mock
 
 ```bash
 python -m src.main run "handling workplace stress" --video-mode short --provider edge --skip-upload
+python -m src.main run "handling workplace stress" --video-mode short --provider edge --skip-upload --placeholder-images
 python -m src.main run "handling workplace stress" --video-mode long --provider edge --skip-upload
 ```
 
@@ -115,6 +123,24 @@ python -m src.main jobs
 python -m src.main jobs --status completed
 python -m src.main status <job-id>
 ```
+
+## Local Management UI
+
+A lightweight local web UI is available to manage the pipeline.
+
+Run it with:
+
+```bash
+uvicorn src.ui:app --host 0.0.0.0 --port 8000
+```
+
+The UI lets you:
+- start a full video generation
+- view related assets for a job
+- select which steps to run
+- edit `.env` variables such as API keys
+- edit `src/config.py` and rerun with new settings
+- choose short or long video mode and TTS provider
 
 #### Retry Failed Stage
 

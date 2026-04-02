@@ -173,6 +173,8 @@ def script(
     stage = ScriptStage(job_id=job_id, mock=mock, video_mode=video_mode)
     script_result = asyncio.run(stage.run(research_data))
     script_path = stage.save_script(script_result)
+    report_path = stage.script_dir / "script_generation_report.json"
+    report = load_json(report_path) if report_path.exists() else None
 
     db.update_job(job_id, status="script_complete", script_path=str(script_path))
 
@@ -181,6 +183,12 @@ def script(
     console.print(f"[dim]Title:[/dim] {script_result.title}")
     console.print(f"[dim]Duration:[/dim] ~9 minutes")
     console.print(f"[dim]Chapters:[/dim] {len(script_result.chapters)}")
+    if report:
+        console.print(f"[dim]Local LLM success:[/dim] {report.get('local_llm_success')}")
+        console.print(f"[dim]Fallback used:[/dim] {report.get('used_fallback')}")
+        if report.get("fallback_reason"):
+            console.print(f"[dim]Fallback reason:[/dim] {report['fallback_reason']}")
+        console.print(f"[dim]Inspection report:[/dim] {report_path}")
     console.print(f"[dim]Next step:[/dim] python -m src.main scene {job_id}")
 
 
@@ -245,6 +253,7 @@ def tts(
 def images(
     job_id: str = typer.Argument(..., help="Job ID from tts stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    placeholder_only: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
 ) -> None:
     """Generate images for each scene."""
     print_header()
@@ -257,7 +266,7 @@ def images(
     scene_plan = load_json(Path(job_record.scene_plan_path))
     console.print(f"[bold]Generating {len(scene_plan['scenes'])} images for scenes...[/bold]")
 
-    stage = ImageGenerationStage(job_id=job_id, mock=mock)
+    stage = ImageGenerationStage(job_id=job_id, mock=mock, placeholder_only=placeholder_only)
     assets = asyncio.run(stage.run(scene_plan))
     assets_path = stage.save_assets(assets)
 
@@ -424,12 +433,15 @@ def run(
     provider: str = typer.Option("local", "--provider", "-p", help="TTS provider (local, edge, or elevenlabs)"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
     video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
+    placeholder_images: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
 ) -> None:
     """Run the complete pipeline for a topic."""
     print_header()
     console.print(f"[bold]Running complete pipeline for:[/bold] {topic}")
     if skip_upload:
         console.print("[yellow]Upload stage will be skipped[/yellow]")
+    if placeholder_images:
+        console.print("[yellow]Using placeholder scene cards instead of sd-cli[/yellow]")
 
     research_stage_mock = mock or settings.mock_mode
     script_stage_mock = mock or settings.mock_mode
@@ -456,7 +468,7 @@ def run(
     script(job_id=job_id, mock=script_stage_mock, video_mode=video_mode)
     scene(job_id=job_id, mock=scene_stage_mock)
     tts(job_id=job_id, provider=provider, mock=media_stage_mock)
-    images(job_id=job_id, mock=media_stage_mock)
+    images(job_id=job_id, mock=media_stage_mock, placeholder_only=placeholder_images)
     subtitles(job_id=job_id, mock=media_stage_mock)
     render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode)
     metadata(job_id=job_id, mock=script_stage_mock)

@@ -1,5 +1,10 @@
 """Tests for script generation stage."""
 
+import json
+from pathlib import Path
+
+import pytest
+
 from src.config import VideoMode
 from src.stages.script import ScriptStage
 
@@ -28,10 +33,10 @@ class TestScriptStage:
             "cta": "Subscribe for more.",
             "short_version": "A short version.",
             "sections": [
-                {"title": "Hook", "narration": "Micromanagement feels personal fast."},
-                {"title": "Stoic Principle", "narration": "Control your judgment, not your manager's mood."},
-                {"title": "Workplace Application", "narration": "Answer with clarity, document decisions, and keep your composure."},
-                {"title": "CTA", "narration": "Follow for more practical Stoicism."},
+                {"title": "Hook", "narration": "Micromanagement feels personal fast and it spreads through the whole day."},
+                {"title": "Stoic Principle", "narration": "Control your judgment, not your manager's mood, and protect your focus under pressure."},
+                {"title": "Workplace Application", "narration": "Answer with clarity, document decisions, and keep your composure when the notes keep coming."},
+                {"title": "CTA", "narration": "Follow for more practical Stoicism that actually helps you at work."},
             ],
         }
 
@@ -47,13 +52,15 @@ class TestScriptStage:
         assert len(script.chapters) == 4
         assert "[0:00-0:12] Hook" in script.narration
         assert "[0:50-0:58] CTA" in script.narration
-        assert "Micromanagement feels personal fast." in script.narration
+        assert "Micromanagement feels personal fast" in script.narration
 
-    async def test_real_script_falls_back_to_topic_specific_copy_when_llm_empty(self) -> None:
+    @pytest.mark.asyncio
+    async def test_real_script_falls_back_to_topic_specific_copy_when_llm_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
         stage = ScriptStage(job_id="job-3", mock=False, video_mode=VideoMode.LONG)
 
         async def fake_generate_with_local_llm(**_: object) -> dict:
-            return {}
+            return {"success": False, "raw_response": "", "parsed_payload": {}, "error": "local_llm_returned_empty_content"}
 
         stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
 
@@ -73,9 +80,67 @@ class TestScriptStage:
             }
         )
 
+        report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
+        parsed = json.loads((stage.script_dir / "local_llm_parsed.json").read_text(encoding="utf-8"))
+        final_payload = json.loads((stage.script_dir / "script_generation_final.json").read_text(encoding="utf-8"))
+
         assert script.title == "How Stoics Handle Micromanagement"
         assert "micromanagement" in script.narration.lower()
         assert "Clarify expectations in writing after meetings." in script.narration
         assert script.hook
         assert script.cta
         assert len(script.chapters) == 8
+        assert report["used_fallback"] is True
+        assert report["fallback_reason"] == "local_llm_returned_empty_content"
+        assert parsed == {}
+        assert final_payload["title"] == "How Stoics Handle Micromanagement"
+
+    def test_validate_generated_payload_rejects_generic_known_template(self) -> None:
+        stage = ScriptStage(job_id="job-4", mock=False, video_mode=VideoMode.LONG)
+        payload = {
+            "title": "Stress at Work",
+            "hook": "What if I told you that 2000 years of wisdom could help you handle stress at work better?",
+            "cta": "Subscribe for more.",
+            "short_version": "Stress at work feels bad, but Stoicism helps you stay calm and do better every day.",
+            "sections": [
+                {"title": title, "narration": "Welcome to Stoic Modernized. Today we're exploring how ancient Stoic philosophy can transform the way you handle workplace stress in your modern work life."}
+                for title in stage._section_blueprint()
+            ],
+        }
+
+        assert stage._validate_generated_payload(payload, topic="workplace stress") == "local_llm_payload_too_generic"
+
+    @pytest.mark.asyncio
+    async def test_real_script_records_rejected_payload_reason(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+        stage = ScriptStage(job_id="job-5", mock=False, video_mode=VideoMode.SHORT)
+
+        async def fake_generate_with_local_llm(**_: object) -> dict:
+            parsed_payload = {
+                "title": "Micromanagement",
+                "hook": "Micromanagement is hard.",
+                "cta": "Subscribe.",
+                "short_version": "Micromanagement is hard but Stoicism helps.",
+                "sections": [
+                    {"title": title, "narration": "Too short."}
+                    for title in stage._section_blueprint()
+                ],
+            }
+            return {
+                "success": True,
+                "raw_response": json.dumps(parsed_payload),
+                "parsed_payload": parsed_payload,
+                "error": None,
+            }
+
+        stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
+
+        script = await stage._real_script(
+            {"topic": "micromanagement", "title": "How Stoics Handle Micromanagement"}
+        )
+        report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
+
+        assert report["local_llm_success"] is True
+        assert report["used_fallback"] is True
+        assert report["fallback_reason"] == "local_llm_section_1_too_short"
+        assert "micromanagement" in script.narration.lower()
