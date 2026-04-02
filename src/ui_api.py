@@ -273,8 +273,30 @@ Current topic hint: {current_topic or 'none'}
             )
             response.raise_for_status()
             data = response.json()
-            suggestion = data['choices'][0]['message']['content'].strip().splitlines()[0].strip(' -\"')
+            choices = data.get('choices') or []
+            first_choice = choices[0] if choices else {}
+            message = first_choice.get('message') or {}
+
+            raw_content = None
+            for candidate in (
+                message.get('content'),
+                first_choice.get('text'),
+                data.get('content'),
+            ):
+                if isinstance(candidate, str) and candidate.strip():
+                    raw_content = candidate.strip()
+                    break
+
+            if not raw_content:
+                logger.error('Local topic suggestion returned an unexpected payload: %s', data)
+                print(f'[topic-suggest] Unexpected payload: {data!r}', file=sys.stderr, flush=True)
+                raise ValueError('Local AI returned an empty or unsupported response payload')
+
+            lines = [line.strip() for line in raw_content.splitlines() if line.strip()]
+            suggestion = (lines[0] if lines else raw_content).strip(' -\"')
             if not suggestion:
+                logger.error('Local topic suggestion produced empty normalized content: %s', data)
+                print(f'[topic-suggest] Empty normalized content from payload: {data!r}', file=sys.stderr, flush=True)
                 raise ValueError('Empty suggestion from local AI')
             return {'topic': suggestion, 'source': 'local-ai'}
     except Exception as exc:
