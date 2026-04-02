@@ -78,6 +78,9 @@ class TestSettings:
         assert settings.sd_image_width == 544
         assert settings.sd_image_height == 960
         assert settings.youtube_privacy_status == YouTubePrivacy.UNLISTED
+        assert settings.local_script_model is None
+        assert settings.local_script_max_tokens == 1800
+        assert settings.local_script_temperature == 0.7
         assert settings.mock_mode is False
 
     def test_db_path_is_path_object(self) -> None:

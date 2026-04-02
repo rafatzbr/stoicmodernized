@@ -433,12 +433,16 @@ def run(
 
     research_stage_mock = mock or settings.mock_mode
     script_stage_mock = mock or settings.mock_mode
+    scene_stage_mock = mock or settings.mock_mode
     media_stage_mock = mock or settings.mock_mode
 
     if not mock and not settings.mock_mode:
-        console.print(f"[yellow]Using hybrid local mode: real research + mock script/scene + real local media generation ({video_mode.value})[/yellow]")
+        console.print(
+            f"[yellow]Using hybrid local mode: real research + real script + mock scene planner + real local media generation ({video_mode.value})[/yellow]"
+        )
         research_stage_mock = False
-        script_stage_mock = True
+        script_stage_mock = False
+        scene_stage_mock = True
         media_stage_mock = False
     else:
         console.print("[yellow]Using mock mode for local-friendly generation[/yellow]")
@@ -450,7 +454,7 @@ def run(
 
     research(topic=topic, job_id=job_id, mock=research_stage_mock)
     script(job_id=job_id, mock=script_stage_mock, video_mode=video_mode)
-    scene(job_id=job_id, mock=script_stage_mock)
+    scene(job_id=job_id, mock=scene_stage_mock)
     tts(job_id=job_id, provider=provider, mock=media_stage_mock)
     images(job_id=job_id, mock=media_stage_mock)
     subtitles(job_id=job_id, mock=media_stage_mock)

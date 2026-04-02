@@ -1,8 +1,12 @@
 """Script generation stage module."""
 
+import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+import httpx
 
 from src.config import VideoMode, settings
 from src.models import Chapter, Script
@@ -44,7 +48,199 @@ class ScriptStage:
         )
 
     async def _real_script(self, research_data: dict) -> Script:
-        raise NotImplementedError("Real script generation requires LLM API integration")
+        topic = str(research_data.get("topic") or "workplace stress").strip()
+        research_title = str(research_data.get("title") or f"{topic.title()}: A Stoic Perspective").strip()
+        key_insights = self._coerce_string_list(research_data.get("key_insights"))
+        workplace_applications = self._coerce_string_list(research_data.get("workplace_applications"))
+        sources = self._coerce_sources(research_data.get("sources"))
+
+        structured = await self._generate_with_local_llm(
+            topic=topic,
+            research_title=research_title,
+            key_insights=key_insights,
+            workplace_applications=workplace_applications,
+            sources=sources,
+        )
+        if not structured:
+            structured = self._fallback_script_payload(
+                topic=topic,
+                research_title=research_title,
+                key_insights=key_insights,
+                workplace_applications=workplace_applications,
+            )
+
+        return self._payload_to_script(
+            payload=structured,
+            topic=topic,
+            research_title=research_title,
+            key_insights=key_insights,
+            workplace_applications=workplace_applications,
+        )
+
+    async def _generate_with_local_llm(
+        self,
+        *,
+        topic: str,
+        research_title: str,
+        key_insights: list[str],
+        workplace_applications: list[str],
+        sources: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        mode = self.video_mode.value
+        section_blueprint = self._section_blueprint()
+        source_lines = "\n".join(
+            f"- {source.get('title', 'Untitled')} | {source.get('url', '')} | {source.get('note', '')}"
+            for source in sources[:6]
+        ) or "- No external sources available; rely on supplied research notes."
+        insight_lines = "\n".join(f"- {item}" for item in key_insights) or "- No key insights provided"
+        application_lines = "\n".join(f"- {item}" for item in workplace_applications) or "- No workplace applications provided"
+        section_rules = "\n".join(f"- {title}" for title in section_blueprint)
+
+        prompt = f"""
+You are writing a faceless YouTube script for {settings.channel_name}.
+
+Channel voice: {settings.channel_voice}
+Video mode: {mode}
+Topic: {topic}
+Research title: {research_title}
+
+Key insights:
+{insight_lines}
+
+Workplace applications:
+{application_lines}
+
+Sources:
+{source_lines}
+
+Return JSON only with this exact shape:
+{{
+  "title": "string",
+  "hook": "string",
+  "cta": "string",
+  "short_version": "string",
+  "sections": [
+    {{"title": "string", "narration": "string"}}
+  ]
+}}
+
+Rules:
+- make the title and narration materially specific to this topic, not generic Stoicism filler
+- use practical, modern workplace language
+- mention 1-2 Stoic thinkers only when relevant
+- no markdown fences, no commentary, no chain-of-thought, no placeholders
+- each section narration should be 2-6 sentences and flow naturally when spoken by TTS
+- short_version must fit a sub-60-second Short and should still be topic-specific
+- sections must match this order and count exactly:
+{section_rules}
+- avoid repeating the same sentence structure across sections
+- do not include timestamps in the JSON
+""".strip()
+
+        payload = {
+            "model": settings.local_script_model or settings.local_llm_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You write clean JSON for a YouTube automation pipeline. Respond with JSON only.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": settings.local_script_temperature,
+            "max_tokens": settings.local_script_max_tokens,
+            "response_format": {"type": "json_object"},
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.local_llm_timeout_seconds) as client:
+                response = await client.post(settings.local_llm_base_url, json=payload)
+                response.raise_for_status()
+            data = response.json()
+            content = self._extract_message_content(data)
+            return self._parse_llm_json(content)
+        except Exception:
+            return {}
+
+    def _payload_to_script(
+        self,
+        *,
+        payload: dict[str, Any],
+        topic: str,
+        research_title: str,
+        key_insights: list[str],
+        workplace_applications: list[str],
+    ) -> Script:
+        chapters = self._short_chapters() if self.video_mode == VideoMode.SHORT else self._long_chapters()
+        section_titles = [chapter.title for chapter in chapters]
+        sections = self._normalize_sections(payload.get("sections"), section_titles)
+        if not sections:
+            sections = self._fallback_sections(topic, key_insights, workplace_applications)
+            sections = self._normalize_sections(sections, section_titles)
+
+        title = self._clean_sentence(payload.get("title")) or research_title
+        hook = self._clean_sentence(payload.get("hook")) or self._default_hook(topic, key_insights)
+        cta = self._clean_sentence(payload.get("cta")) or self._default_cta(topic)
+        short_version = self._clean_multiline_text(payload.get("short_version")) or self._fallback_short_version(
+            topic,
+            key_insights,
+            workplace_applications,
+        )
+        narration = self._render_timed_narration(sections, chapters)
+
+        return Script(
+            title=title,
+            hook=hook,
+            narration=narration,
+            chapters=chapters,
+            cta=cta,
+            short_version=short_version,
+            generated_at=datetime.now(UTC),
+        )
+
+    def _normalize_sections(self, raw_sections: Any, section_titles: list[str]) -> list[dict[str, str]]:
+        items = raw_sections if isinstance(raw_sections, list) else []
+        normalized: list[dict[str, str]] = []
+
+        for index, title in enumerate(section_titles):
+            source = items[index] if index < len(items) and isinstance(items[index], dict) else {}
+            narration = self._clean_multiline_text(source.get("narration"))
+            normalized.append(
+                {
+                    "title": self._clean_sentence(source.get("title")) or title,
+                    "narration": narration,
+                }
+            )
+        return normalized
+
+    def _render_timed_narration(self, sections: list[dict[str, str]], chapters: list[Chapter]) -> str:
+        blocks: list[str] = []
+        for index, section in enumerate(sections):
+            chapter = chapters[index]
+            next_timestamp = chapters[index + 1].timestamp if index + 1 < len(chapters) else self._chapter_end_time(index)
+            label = self._format_timerange(chapter.timestamp, next_timestamp)
+            narration = section.get("narration") or f"A practical Stoic reflection on {section['title'].lower()}."
+            blocks.append(f"[{label}] {section['title']}\n{narration}")
+        return "\n\n".join(blocks)
+
+    def _chapter_end_time(self, index: int) -> float:
+        if self.video_mode == VideoMode.SHORT:
+            ends = [12.0, 30.0, 50.0, 58.0]
+            return ends[min(index, len(ends) - 1)]
+        ends = [30.0, 90.0, 180.0, 270.0, 360.0, 450.0, 510.0, 540.0]
+        return ends[min(index, len(ends) - 1)]
+
+    def _format_timerange(self, start: float, end: float) -> str:
+        return f"{self._format_seconds(start)}-{self._format_seconds(end)}"
+
+    def _format_seconds(self, value: float) -> str:
+        total_seconds = max(0, int(round(value)))
+        minutes, seconds = divmod(total_seconds, 60)
+        return f"{minutes}:{seconds:02d}"
+
+    def _section_blueprint(self) -> list[str]:
+        if self.video_mode == VideoMode.SHORT:
+            return [chapter.title for chapter in self._short_chapters()]
+        return [chapter.title for chapter in self._long_chapters()]
 
     def _short_chapters(self) -> list[Chapter]:
         return [
@@ -117,6 +313,186 @@ The next time you face {topic}, remember: you have more power than you think.
 
 [8:30-9:00] Call to Action
 If this helped you, subscribe to Stoic Modernized for more weekly videos on applying ancient wisdom to modern life. What workplace challenge should we tackle next? Let me know in the comments."""
+
+    def _coerce_string_list(self, value: Any) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return [str(item).strip() for item in value if str(item).strip()]
+
+    def _coerce_sources(self, value: Any) -> list[dict[str, str]]:
+        if not isinstance(value, list):
+            return []
+        normalized: list[dict[str, str]] = []
+        for item in value:
+            if isinstance(item, dict):
+                normalized.append(
+                    {
+                        "title": str(item.get("title") or "").strip(),
+                        "url": str(item.get("url") or "").strip(),
+                        "note": str(item.get("note") or "").strip(),
+                    }
+                )
+        return normalized
+
+    def _extract_message_content(self, data: dict[str, Any]) -> str:
+        choices = data.get("choices") or []
+        if not choices:
+            return ""
+        message = choices[0].get("message") or {}
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text_parts.append(str(item.get("text") or ""))
+            return "\n".join(part for part in text_parts if part)
+        return ""
+
+    def _parse_llm_json(self, content: str) -> dict[str, Any]:
+        cleaned = (content or "").strip()
+        if not cleaned:
+            return {}
+
+        cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL | re.IGNORECASE).strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+            cleaned = re.sub(r"\s*```$", "", cleaned).strip()
+
+        try:
+            parsed = json.loads(cleaned)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            pass
+
+        match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+        if not match:
+            return {}
+
+        try:
+            parsed = json.loads(match.group(0))
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+
+    def _fallback_script_payload(
+        self,
+        *,
+        topic: str,
+        research_title: str,
+        key_insights: list[str],
+        workplace_applications: list[str],
+    ) -> dict[str, Any]:
+        return {
+            "title": research_title,
+            "hook": self._default_hook(topic, key_insights),
+            "cta": self._default_cta(topic),
+            "short_version": self._fallback_short_version(topic, key_insights, workplace_applications),
+            "sections": self._fallback_sections(topic, key_insights, workplace_applications),
+        }
+
+    def _fallback_sections(
+        self,
+        topic: str,
+        key_insights: list[str],
+        workplace_applications: list[str],
+    ) -> list[dict[str, str]]:
+        insight_a = key_insights[0] if key_insights else f"Stoicism helps you handle {topic} without letting it run your nervous system."
+        insight_b = key_insights[1] if len(key_insights) > 1 else f"The useful question is not whether {topic} is annoying, but what part of it is actually yours to manage."
+        app_a = workplace_applications[0] if workplace_applications else f"Before reacting to {topic}, separate what needs action from what only needs emotional endurance."
+        app_b = workplace_applications[1] if len(workplace_applications) > 1 else f"Create a small pause before your next decision so {topic} stops dictating your behavior."
+        app_c = workplace_applications[2] if len(workplace_applications) > 2 else f"Turn recurring friction around {topic} into a rehearsal for patience, clarity, and steadiness."
+
+        if self.video_mode == VideoMode.SHORT:
+            return [
+                {
+                    "title": "Hook",
+                    "narration": f"{topic.title()} feels heavier when every setback gets interpreted as a personal emergency. Stoicism gives you a calmer frame without making you passive.",
+                },
+                {
+                    "title": "Stoic Principle",
+                    "narration": f"{insight_a} The Stoic move is to reclaim your attention from the noise and place it on judgment, effort, and self-command.",
+                },
+                {
+                    "title": "Workplace Application",
+                    "narration": f"{app_a} {app_b} That tiny pause is where better work and a better mood begin.",
+                },
+                {
+                    "title": "CTA",
+                    "narration": f"Follow Stoic Modernized for practical Stoic strategies for {topic}. If this topic hits home, share the situation you want to handle more calmly next time.",
+                },
+            ]
+
+        return [
+            {
+                "title": "Introduction",
+                "narration": f"{topic.title()} can quietly dominate a workday because it hijacks attention before you choose a response. Today we are translating Stoic philosophy into something practical enough to use in the next difficult moment.",
+            },
+            {
+                "title": "The Problem",
+                "narration": f"{insight_a} {insight_b} Most people stay stuck because they try to control outcomes, other people, and timing all at once.",
+            },
+            {
+                "title": "Marcus Aurelius on Control",
+                "narration": "Marcus Aurelius keeps bringing the mind back to what is within your command. When pressure rises, the first Stoic skill is refusing to let the outer event automatically become an inner crisis.",
+            },
+            {
+                "title": "Seneca on Time Management",
+                "narration": f"Seneca would ask where your attention is leaking. {app_a} This matters because scattered reactions make the original problem feel larger than it is.",
+            },
+            {
+                "title": "Epictetus on Expectations",
+                "narration": f"Epictetus is useful when reality refuses to cooperate. {app_b} The obstacle is still real, but your peace no longer depends on pretending it is not there.",
+            },
+            {
+                "title": "Practical Techniques",
+                "narration": f"Use a three-step reset: name the issue clearly, separate control from uncertainty, then pick one deliberate action. {app_c} Repetition turns Stoicism from a quote into a professional reflex.",
+            },
+            {
+                "title": "Conclusion",
+                "narration": f"Stoicism does not erase {topic}; it shrinks the amount of your life that {topic} gets to own. Calm is not the absence of pressure, but the ability to meet pressure without surrendering judgment.",
+            },
+            {
+                "title": "Call to Action",
+                "narration": f"If this helped, subscribe to Stoic Modernized for more practical Stoic strategies for modern work. And if you want the next video to cover a specific angle of {topic}, leave it in the comments.",
+            },
+        ]
+
+    def _default_hook(self, topic: str, key_insights: list[str]) -> str:
+        lead = key_insights[0] if key_insights else f"Stoicism gives you a calmer way to handle {topic}."
+        return f"{lead} The real shift starts when you stop treating every pressure point around {topic} as something you must emotionally obey."
+
+    def _default_cta(self, topic: str) -> str:
+        return (
+            f"If this helped you handle {topic} with a steadier mind, subscribe to Stoic Modernized for more practical Stoic strategies for modern work."
+        )
+
+    def _fallback_short_version(
+        self,
+        topic: str,
+        key_insights: list[str],
+        workplace_applications: list[str],
+    ) -> str:
+        insight = key_insights[0] if key_insights else f"You cannot control every part of {topic}, but you can control your next response."
+        application = workplace_applications[0] if workplace_applications else f"Pause before reacting to {topic} and choose one deliberate action instead of spiraling."
+        return (
+            f"[0:00-0:12] Hook\n{topic.title()} gets worse when your mind joins the chaos instead of leading it.\n\n"
+            f"[0:12-0:30] Stoic Principle\n{insight}\n\n"
+            f"[0:30-0:50] Workplace Application\n{application}\n\n"
+            f"[0:50-0:58] CTA\nFollow Stoic Modernized for practical Stoic strategies for {topic}."
+        )
+
+    def _clean_sentence(self, value: Any) -> str:
+        text = self._clean_multiline_text(value)
+        return text.replace("\n", " ").strip()
+
+    def _clean_multiline_text(self, value: Any) -> str:
+        if not isinstance(value, str):
+            return ""
+        text = value.replace("\r", "\n")
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
 
     def save_script(self, script: Script) -> Path:
         data = script.model_dump(mode="json")
