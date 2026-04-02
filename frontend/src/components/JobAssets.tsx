@@ -1,4 +1,6 @@
 import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
+import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded';
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
@@ -15,6 +17,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
   Link,
   List,
   ListItem,
@@ -52,11 +55,80 @@ function isAudio(asset: JobAsset) {
   return asset.mime?.startsWith('audio/') || /\.(mp3|wav|m4a|ogg)$/i.test(asset.relative);
 }
 
+function isJson(asset: JobAsset) {
+  return asset.mime === 'application/json' || /\.json$/i.test(asset.relative);
+}
+
 function isTextLike(asset: JobAsset) {
   return (
     asset.mime?.startsWith('text/') ||
-    asset.mime === 'application/json' ||
+    isJson(asset) ||
     /\.(txt|json|md|py|yaml|yml|srt|log)$/i.test(asset.relative)
+  );
+}
+
+function formatPreviewText(asset: JobAsset, rawText: string) {
+  if (!rawText) {
+    return rawText;
+  }
+
+  if (isJson(asset)) {
+    try {
+      return JSON.stringify(JSON.parse(rawText), null, 2);
+    } catch {
+      return rawText;
+    }
+  }
+
+  return rawText;
+}
+
+function PreviewText({ content }: { content: string }) {
+  const lines = useMemo(() => content.split('\n'), [content]);
+
+  return (
+    <Box
+      sx={{
+        maxHeight: '70vh',
+        overflow: 'auto',
+        borderRadius: 2,
+        bgcolor: 'rgba(7, 10, 19, 0.92)',
+        color: '#d8e1ff',
+        border: '1px solid',
+        borderColor: 'divider',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontSize: 13,
+        lineHeight: 1.6,
+      }}
+    >
+      <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+        <Box component="tbody">
+          {lines.map((line, index) => (
+            <Box component="tr" key={`${index + 1}-${line.slice(0, 12)}`}>
+              <Box
+                component="td"
+                sx={{
+                  userSelect: 'none',
+                  width: 1,
+                  pr: 2,
+                  pl: 1.5,
+                  py: 0.1,
+                  textAlign: 'right',
+                  verticalAlign: 'top',
+                  color: 'rgba(216, 225, 255, 0.45)',
+                  borderRight: '1px solid rgba(216, 225, 255, 0.08)',
+                }}
+              >
+                {index + 1}
+              </Box>
+              <Box component="td" sx={{ px: 2, py: 0.1, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {line || ' '}
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    </Box>
   );
 }
 
@@ -85,7 +157,7 @@ function AssetPreview({ asset }: { asset: JobAsset }) {
         }
         const nextText = await response.text();
         if (!cancelled) {
-          setTextContent(nextText);
+          setTextContent(formatPreviewText(asset, nextText));
         }
       } catch (error) {
         if (!cancelled) {
@@ -143,29 +215,7 @@ function AssetPreview({ asset }: { asset: JobAsset }) {
       return <Typography color="error.main">{textError}</Typography>;
     }
 
-    return (
-      <Box
-        component="pre"
-        sx={{
-          mb: 0,
-          p: 2,
-          maxHeight: '70vh',
-          overflow: 'auto',
-          borderRadius: 2,
-          bgcolor: 'rgba(7, 10, 19, 0.92)',
-          color: '#d8e1ff',
-          border: '1px solid',
-          borderColor: 'divider',
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          fontSize: 13,
-          lineHeight: 1.6,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-        }}
-      >
-        {textContent || 'File is empty.'}
-      </Box>
-    );
+    return <PreviewText content={textContent || 'File is empty.'} />;
   }
 
   return (
@@ -181,7 +231,7 @@ function AssetPreview({ asset }: { asset: JobAsset }) {
 }
 
 export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
-  const [previewAsset, setPreviewAsset] = useState<JobAsset | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const assetSummary = useMemo(() => {
     if (!jobDetail) {
@@ -194,6 +244,18 @@ export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
 
     return { images, videos, audio };
   }, [jobDetail]);
+
+  const normalizedPreviewIndex = useMemo(() => {
+    if (previewIndex === null || !jobDetail || jobDetail.assets.length === 0) {
+      return null;
+    }
+
+    return Math.min(previewIndex, jobDetail.assets.length - 1);
+  }, [jobDetail, previewIndex]);
+
+  const previewAsset = normalizedPreviewIndex !== null && jobDetail ? jobDetail.assets[normalizedPreviewIndex] ?? null : null;
+  const canGoPrevious = normalizedPreviewIndex !== null && normalizedPreviewIndex > 0;
+  const canGoNext = normalizedPreviewIndex !== null && !!jobDetail && normalizedPreviewIndex < jobDetail.assets.length - 1;
 
   return (
     <>
@@ -234,7 +296,7 @@ export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
                       </Typography>
                     </Box>
                   ) : (
-                    jobDetail.assets.map((asset) => (
+                    jobDetail.assets.map((asset, index) => (
                       <ListItem
                         key={asset.path}
                         divider={false}
@@ -243,7 +305,7 @@ export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
                             <Button
                               size="small"
                               startIcon={<VisibilityRoundedIcon />}
-                              onClick={() => setPreviewAsset(asset)}
+                              onClick={() => setPreviewIndex(index)}
                               disabled={!asset.url}
                             >
                               Preview
@@ -287,13 +349,40 @@ export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
         </CardContent>
       </Card>
 
-      <Dialog open={Boolean(previewAsset)} onClose={() => setPreviewAsset(null)} maxWidth="lg" fullWidth>
-        <DialogTitle>{previewAsset?.relative ?? 'Asset preview'}</DialogTitle>
+      <Dialog open={Boolean(previewAsset)} onClose={() => setPreviewIndex(null)} maxWidth="lg" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
+            <Stack spacing={0.25} sx={{ minWidth: 0 }}>
+              <Typography variant="inherit" noWrap>
+                {previewAsset?.relative ?? 'Asset preview'}
+              </Typography>
+              {previewAsset && jobDetail ? (
+                <Typography variant="caption" color="text.secondary">
+                  Asset {normalizedPreviewIndex! + 1} of {jobDetail.assets.length}
+                </Typography>
+              ) : null}
+            </Stack>
+            <Stack direction="row" spacing={0.5}>
+              <IconButton onClick={() => canGoPrevious && setPreviewIndex((value) => (value === null ? value : value - 1))} disabled={!canGoPrevious}>
+                <ChevronLeftRoundedIcon />
+              </IconButton>
+              <IconButton onClick={() => canGoNext && setPreviewIndex((value) => (value === null ? value : value + 1))} disabled={!canGoNext}>
+                <ChevronRightRoundedIcon />
+              </IconButton>
+            </Stack>
+          </Stack>
+        </DialogTitle>
         <DialogContent dividers>
           {previewAsset ? <AssetPreview asset={previewAsset} /> : null}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPreviewAsset(null)}>Close</Button>
+          <Button onClick={() => canGoPrevious && setPreviewIndex((value) => (value === null ? value : value - 1))} disabled={!canGoPrevious}>
+            Previous
+          </Button>
+          <Button onClick={() => canGoNext && setPreviewIndex((value) => (value === null ? value : value + 1))} disabled={!canGoNext}>
+            Next
+          </Button>
+          <Button onClick={() => setPreviewIndex(null)}>Close</Button>
           {previewAsset?.url ? (
             <Button component={Link} href={previewAsset.url} target="_blank" rel="noreferrer" startIcon={<LaunchRoundedIcon />}>
               Open in new tab
