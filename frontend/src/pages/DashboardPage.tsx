@@ -8,6 +8,11 @@ import {
   Button,
   Chip,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Grid,
   Paper,
   Snackbar,
@@ -18,6 +23,7 @@ import {
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  deleteJob,
   fetchConfigFile,
   fetchEnv,
   fetchJob,
@@ -79,6 +85,8 @@ export function DashboardPage() {
   const [configLoading, setConfigLoading] = useState(true);
   const [selectedSteps, setSelectedSteps] = useState<string[]>(DEFAULT_STEPS);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [pendingDeleteJob, setPendingDeleteJob] = useState<Job | null>(null);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
   const showNotice = useCallback((message: string, severity: Notice['severity'] = 'info') => {
     setNotice({ message, severity });
@@ -238,6 +246,30 @@ export function DashboardPage() {
     }
   }, [runId, showNotice]);
 
+  const onDeleteJob = useCallback(async () => {
+    if (!pendingDeleteJob) {
+      return;
+    }
+
+    const job = pendingDeleteJob;
+    setDeletingJobId(job.job_id);
+
+    try {
+      await deleteJob(job.job_id);
+      if (selectedJobId === job.job_id) {
+        setSelectedJobId('');
+        setJobDetail(null);
+      }
+      setPendingDeleteJob(null);
+      await loadJobs();
+      showNotice(`Deleted job: ${job.topic}`, 'success');
+    } catch (error) {
+      showNotice(getErrorMessage(error, 'Failed to delete job.'), 'error');
+    } finally {
+      setDeletingJobId(null);
+    }
+  }, [loadJobs, pendingDeleteJob, selectedJobId, showNotice]);
+
   const summary = useMemo(
     () => [
       { label: 'Jobs', value: jobs.length.toString(), tone: 'default' as const },
@@ -345,10 +377,12 @@ export function DashboardPage() {
                   selectedJobId={selectedJobId}
                   isLoading={jobsLoading}
                   error={jobsError}
+                  deletingJobId={deletingJobId}
                   onSelect={onSelectJob}
                   onRefresh={() => {
                     void loadJobs();
                   }}
+                  onDeleteRequest={setPendingDeleteJob}
                 />
               </Stack>
             </Grid>
@@ -393,6 +427,35 @@ export function DashboardPage() {
           </Grid>
         </Stack>
       </Container>
+
+      <Dialog open={Boolean(pendingDeleteJob)} onClose={() => (deletingJobId ? undefined : setPendingDeleteJob(null))} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete job?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {pendingDeleteJob
+              ? `This will permanently delete the job directory for “${pendingDeleteJob.topic}” and remove its database entry.`
+              : 'This will permanently delete the selected job and its files.'}
+          </DialogContentText>
+          {pendingDeleteJob ? (
+            <Stack spacing={0.75} sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Job ID: {pendingDeleteJob.job_id}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                This cannot be undone.
+              </Typography>
+            </Stack>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingDeleteJob(null)} disabled={Boolean(deletingJobId)}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={() => void onDeleteJob()} disabled={Boolean(deletingJobId)}>
+            {deletingJobId ? 'Deleting…' : 'Delete job'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={Boolean(notice)} autoHideDuration={3500} onClose={() => setNotice(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
         <Alert onClose={() => setNotice(null)} severity={notice?.severity ?? 'info'} variant="filled" sx={{ width: '100%' }}>
