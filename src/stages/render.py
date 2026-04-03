@@ -153,11 +153,13 @@ class VideoRenderer:
         style = (animation_style or "zoom").lower()
 
         if style == "zoom":
+            target_zoom = 1.08
+            zoom_increment = max(0.00005, (target_zoom - 1.0) / frames)
             return (
                 f"scale={target_width}:{target_height}:force_original_aspect_ratio=increase,"
                 f"crop={target_width}:{target_height},"
                 "zoompan="
-                f"z='min(zoom+0.0015,1.12)':"
+                f"z='min(zoom+{zoom_increment:.6f},{target_zoom:.2f})':"
                 f"x='iw/2-(iw/zoom/2)':"
                 f"y='ih/2-(ih/zoom/2)':"
                 f"d={frames}:s={width}x{height}:fps={self.fps},"
