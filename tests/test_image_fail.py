@@ -112,3 +112,48 @@ def test_sd_cli_log_is_appended_per_image_run(tmp_path: Path, monkeypatch: pytes
     assert "sd -p prompt -n 'text, logo'" in log_text
     assert "stdout:" in log_text and "ok output" in log_text
     assert "stderr:" in log_text and "warn output" in log_text
+
+
+
+@pytest.mark.asyncio
+async def test_sd_cli_assert_failure_retries_with_safe_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+
+    stage = ImageGenerationStage(job_id="img-retry", mock=False, placeholder_only=False)
+    stage.job_dir = tmp_path / "jobs" / "img-retry"
+    stage.images_dir = stage.job_dir / "images"
+    stage.sd_log_path = stage.images_dir / "sd-cli.log"
+    stage.images_dir.mkdir(parents=True, exist_ok=True)
+
+    calls = []
+
+    def fake_run(cmd, capture_output, text):
+        calls.append(cmd)
+        class Result:
+            def __init__(self, returncode, stdout, stderr):
+                self.returncode = returncode
+                self.stdout = stdout
+                self.stderr = stderr
+        if len(calls) == 1:
+            return Result(-6, "", "GGML_ASSERT(i01 >= 0 && i01 < ne01) failed")
+        return Result(0, "ok", "")
+
+    monkeypatch.setattr('src.stages.images.subprocess.run', fake_run)
+
+    await stage._generate_single_image(
+        prompt="Long natural language prompt",
+        output_path=stage.images_dir / "scene_001.jpg",
+        negative_prompt="text, logo",
+        subject="Work boundaries",
+        scene_prompt="Focused worker closing laptop at a clean desk.",
+        overlay="Leave on time",
+    )
+
+    assert len(calls) == 2
+    assert '--steps' in calls[0] and '--steps' in calls[1]
+    assert '40' in calls[0]
+    assert '32' in calls[1]
+    log_text = stage.sd_log_path.read_text(encoding='utf-8')
+    assert log_text.count('command:') == 2

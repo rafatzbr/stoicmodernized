@@ -202,6 +202,18 @@ Requirements:
         )
         return " ".join(sentences)
 
+    def _build_safe_retry_prompt(self, *, subject: str, scene_prompt: str, overlay: str) -> str:
+        base_scene = self._sanitize_scene_prompt(scene_prompt) or f"A single focused worker in a modern office setting related to {subject}."
+        simple_overlay = overlay.strip() if overlay else "the main task"
+        return (
+            f"{base_scene.rstrip('. ')}. "
+            f"Show one clear focal subject and emphasize {simple_overlay.lower()}. "
+            f"Modern minimalist office, clean organized desk, calm natural lighting, realistic editorial photography, vertical 9:16 composition."
+        )
+
+    def _build_safe_retry_negative_prompt(self) -> str:
+        return "blurry, low quality, deformed, extra people, crowd, cluttered desk, chaos, text, logo, watermark, overexposed, burnt"
+
     def _sanitize_scene_prompt(self, scene_prompt: str) -> str:
         cleaned = scene_prompt or ""
         banned_phrases = [
@@ -257,7 +269,59 @@ Requirements:
         negative_prompt: str = "",
         seed: int = -1,
     ) -> None:
-        cmd = [
+        cmd = self._build_sd_command(
+            prompt=prompt,
+            output_path=output_path,
+            negative_prompt=negative_prompt,
+            seed=seed,
+            cfg_scale=self.sd_cfg_scale,
+            steps=self.sd_steps,
+            sampling_method=self.sd_sampling_method,
+        )
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        self._append_sd_cli_log(output_path=output_path, command=cmd, result=result)
+        if result.returncode == 0:
+            return
+
+        if self._is_sd_cli_assert_failure(result.stderr):
+            retry_prompt = self._build_safe_retry_prompt(
+                subject=self.job_dir.name,
+                scene_prompt=prompt,
+                overlay="focus",
+            )
+            retry_negative = self._build_safe_retry_negative_prompt()
+            retry_cmd = self._build_sd_command(
+                prompt=retry_prompt,
+                output_path=output_path,
+                negative_prompt=retry_negative,
+                seed=seed,
+                cfg_scale=4.0,
+                steps=32,
+                sampling_method="euler",
+            )
+            retry_result = subprocess.run(retry_cmd, capture_output=True, text=True)
+            self._append_sd_cli_log(output_path=output_path, command=retry_cmd, result=retry_result)
+            if retry_result.returncode == 0:
+                return
+            raise RuntimeError(
+                f"sd-cli failed after safe retry: {retry_result.stderr or result.stderr}"
+            )
+
+        raise RuntimeError(f"sd-cli failed: {result.stderr}")
+
+    def _build_sd_command(
+        self,
+        *,
+        prompt: str,
+        output_path: Path,
+        negative_prompt: str,
+        seed: int,
+        cfg_scale: float,
+        steps: int,
+        sampling_method: str,
+    ) -> list[str]:
+        return [
             self.sd_cli_path,
             "-m", self.sd_model_path,
             "--clip_l", self.sd_clip_l_path,
@@ -267,19 +331,18 @@ Requirements:
             "-W", str(self.sd_width),
             "-p", prompt,
             "-n", negative_prompt,
-            "--cfg-scale", str(self.sd_cfg_scale),
-            "--steps", str(self.sd_steps),
-            "--sampling-method", self.sd_sampling_method,
+            "--cfg-scale", str(cfg_scale),
+            "--steps", str(steps),
+            "--sampling-method", sampling_method,
             "--clip-on-cpu",
             "--vae-on-cpu",
             "--seed", str(seed),
             "-o", str(output_path),
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        self._append_sd_cli_log(output_path=output_path, command=cmd, result=result)
-        if result.returncode != 0:
-            raise RuntimeError(f"sd-cli failed: {result.stderr}")
+    def _is_sd_cli_assert_failure(self, stderr: str) -> bool:
+        lowered = (stderr or "").lower()
+        return "ggml_assert" in lowered or "assert(i01" in lowered
 
     def _append_sd_cli_log(
         self,
