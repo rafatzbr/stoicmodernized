@@ -331,7 +331,10 @@ Before finalizing, check that the number of section objects equals {len(section_
             if title != expected_titles[index - 1]:
                 return f"local_llm_section_{index}_wrong_title"
             narration = self._clean_multiline_text(section.get("narration"))
-            if len(narration.split()) < settings.local_script_min_section_words:
+            min_words = settings.local_script_min_section_words
+            if self.video_mode == VideoMode.SHORT and title == "CTA":
+                min_words = min(3, min_words)
+            if len(narration.split()) < min_words:
                 return f"local_llm_section_{index}_too_short"
             if self._contains_placeholder_language(narration):
                 return f"local_llm_section_{index}_contains_placeholder_language"

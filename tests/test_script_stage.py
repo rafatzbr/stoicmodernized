@@ -177,3 +177,21 @@ class TestScriptStage:
         assert report["script_generation_succeeded"] is False
         assert report["failure_reason"] == "local_llm_section_1_too_short"
         assert report["used_fallback"] is False
+
+
+    def test_short_cta_section_can_be_brief(self) -> None:
+        stage = ScriptStage(job_id="job-6", mock=False, video_mode=VideoMode.SHORT)
+        payload = {
+            "title": "Toxic Workplace Survival",
+            "hook": "A toxic office can drain you faster than the workload itself.",
+            "cta": "Protect your energy.",
+            "short_version": "Short version.",
+            "sections": [
+                {"title": "Hook", "narration": "A toxic office can drain you faster than the workload itself if you keep reacting to every jab as if it deserves your whole nervous system."},
+                {"title": "Stoic Principle", "narration": "Stoicism starts by separating what belongs to your judgment from what belongs to the chaos around you so your mind stops volunteering for extra damage."},
+                {"title": "Workplace Application", "narration": "Document what matters, reduce unnecessary exposure, and make your next calm move based on strategy instead of proving a point to people who feed on reaction."},
+                {"title": "CTA", "narration": "Protect your energy."},
+            ],
+        }
+
+        assert stage._validate_generated_payload(payload, topic="toxic workplaces") is None
