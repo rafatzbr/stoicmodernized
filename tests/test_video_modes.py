@@ -175,7 +175,11 @@ def test_render_uses_audio_duration_as_output_cap(tmp_path: Path) -> None:
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr("src.stages.render.subprocess.run", fake_run)
     try:
+        class SceneObj:
+            animation_style = "zoom"
+
         renderer.render_scene_sequence(
+            scenes=[SceneObj()],
             images=[image_path],
             audio_path=audio_path,
             output_path=output_path,
@@ -317,3 +321,18 @@ Use this the next time your mind starts spiraling."""
     assert scenes[2]["start_time"] == 4.5
     assert scenes[3]["start_time"] == 7.0
     assert scenes[3]["end_time"] == 9.0
+
+
+
+def test_zoom_animation_style_uses_zoompan_filter() -> None:
+    renderer = VideoRenderer(job_id="render-job", mock=False)
+    filter_text = renderer._build_scene_clip_filter(width=1080, height=1920, duration=6.0, animation_style="zoom")
+    assert "zoompan=" in filter_text
+    assert "s=1080x1920" in filter_text
+
+
+def test_non_zoom_animation_style_uses_static_filter() -> None:
+    renderer = VideoRenderer(job_id="render-job", mock=False)
+    filter_text = renderer._build_scene_clip_filter(width=1080, height=1920, duration=6.0, animation_style="fade")
+    assert "zoompan=" not in filter_text
+    assert "fps=" in filter_text

@@ -40,6 +40,7 @@ class VideoRenderer:
         image_paths = self._resolve_image_paths(config.scenes)
 
         self.render_scene_sequence(
+            scenes=config.scenes,
             images=image_paths,
             audio_path=Path(config.audio_path),
             output_path=output_path,
@@ -145,21 +146,80 @@ class VideoRenderer:
             f"enable='gte(t,{start_time:.2f})'"
         )
 
+    def _build_scene_clip_filter(self, *, width: int, height: int, duration: float, animation_style: str) -> str:
+        target_width = int(round(width * 1.15))
+        target_height = int(round(height * 1.15))
+        frames = max(1, int(round(duration * self.fps)))
+        style = (animation_style or "zoom").lower()
+
+        if style == "zoom":
+            return (
+                f"scale={target_width}:{target_height}:force_original_aspect_ratio=increase,"
+                f"crop={target_width}:{target_height},"
+                "zoompan="
+                f"z='min(zoom+0.0015,1.12)':"
+                f"x='iw/2-(iw/zoom/2)':"
+                f"y='ih/2-(ih/zoom/2)':"
+                f"d={frames}:s={width}x{height}:fps={self.fps},"
+                "format=yuv420p"
+            )
+
+        return (
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},"
+            f"fps={self.fps},"
+            "format=yuv420p"
+        )
+
+    def _render_scene_clip(
+        self,
+        *,
+        image_path: Path,
+        output_path: Path,
+        duration: float,
+        width: int,
+        height: int,
+        animation_style: str,
+    ) -> None:
+        filter_text = self._build_scene_clip_filter(
+            width=width,
+            height=height,
+            duration=duration,
+            animation_style=animation_style,
+        )
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            str(image_path),
+            "-t",
+            f"{duration:.3f}",
+            "-vf",
+            filter_text,
+            "-r",
+            str(self.fps),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            str(output_path),
+        ]
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
+
     def _build_video_filter(
         self,
         *,
-        width: int,
-        height: int,
         subtitle_path: Optional[Path],
         add_short_endcard: bool,
         audio_duration: Optional[float],
     ) -> str:
-        filter_chain = [
-            f"scale={width}:{height}:force_original_aspect_ratio=increase",
-            f"crop={width}:{height}",
-            f"fps={self.fps}",
-            "format=yuv420p",
-        ]
+        filter_chain = ["format=yuv420p"]
         if subtitle_path:
             filter_chain.append(f"subtitles={subtitle_path.as_posix()}")
         if add_short_endcard and audio_duration and audio_duration > 0:
@@ -168,6 +228,7 @@ class VideoRenderer:
 
     def render_scene_sequence(
         self,
+        scenes: list,
         images: list[Path],
         audio_path: Path,
         output_path: Path,
@@ -181,17 +242,30 @@ class VideoRenderer:
         if not images:
             raise RuntimeError("No scene images found for rendering")
 
-        concat_file = self.output_dir / "images.txt"
-        lines = []
-        for image, duration in zip(images, durations, strict=False):
-            lines.append(f"file '{image.as_posix()}'")
-            lines.append(f"duration {duration:.3f}")
-        lines.append(f"file '{images[-1].as_posix()}'")
-        concat_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        clips_dir = self.output_dir / "scene_clips"
+        clips_dir.mkdir(parents=True, exist_ok=True)
+        clip_paths: list[Path] = []
+
+        for index, (scene, image, duration) in enumerate(zip(scenes, images, durations, strict=False), start=1):
+            clip_path = clips_dir / f"clip_{index:03d}.mp4"
+            animation_style = getattr(scene, "animation_style", None) or (scene.get("animation_style") if isinstance(scene, dict) else "zoom") or "zoom"
+            self._render_scene_clip(
+                image_path=image,
+                output_path=clip_path,
+                duration=duration,
+                width=width,
+                height=height,
+                animation_style=animation_style,
+            )
+            clip_paths.append(clip_path)
+
+        concat_file = self.output_dir / "clips.txt"
+        concat_file.write_text(
+            "\n".join(f"file '{clip.as_posix()}'" for clip in clip_paths) + "\n",
+            encoding="utf-8",
+        )
 
         video_filter = self._build_video_filter(
-            width=width,
-            height=height,
             subtitle_path=subtitle_path,
             add_short_endcard=add_short_endcard,
             audio_duration=audio_duration,
@@ -200,15 +274,8 @@ class VideoRenderer:
 
         logo_path = settings.watermark_logo_path
         if logo_path.exists():
-            base_filter = self._build_video_filter(
-                width=width,
-                height=height,
-                subtitle_path=None,
-                add_short_endcard=False,
-                audio_duration=audio_duration,
-            )
             filter_complex = (
-                f"[0:v]{base_filter}[base];"
+                "[0:v]format=yuv420p[base];"
                 f"[2:v]scale={settings.watermark_scale_width}:-1[wm];"
                 f"[base][wm]overlay=W-w-{settings.watermark_padding}:H-h-{settings.watermark_padding}[tmp]"
             )
