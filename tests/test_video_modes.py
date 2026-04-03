@@ -225,6 +225,15 @@ def test_real_image_prompt_uses_natural_language_scene_description() -> None:
     assert "no logo" not in prompt.lower()
 
 
+def test_clean_llm_image_prompt_enforces_pattern_and_length() -> None:
+    stage = ImageGenerationStage(job_id="img-job", mock=False, placeholder_only=False)
+    good = "focused worker, modern office desk, vertical 9:16 mid-shot composition, soft natural window lighting, realistic editorial photography"
+    bad = "This is way too long and rambly without the exact requested comma-separated structure even though it mentions a worker in an office with good lighting and realism"
+
+    assert stage._clean_llm_image_prompt(good) == good
+    assert stage._clean_llm_image_prompt(bad) == ""
+
+
 def test_short_scene_overlay_avoids_philosopher_names() -> None:
     stage = SceneStage(job_id="scene-job", mock=True)
 
