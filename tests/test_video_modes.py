@@ -217,7 +217,8 @@ def test_real_image_prompt_prioritizes_scene_concept_over_generic_style() -> Non
     assert "vertical 9:16 composition" in prompt
     assert "gold accents" not in prompt
     assert "stoic aesthetic" not in prompt
-    assert prompt.count("no text") == 1
+    assert "no text" not in prompt
+    assert "no logo" not in prompt
 
 
 def test_short_scene_overlay_avoids_philosopher_names() -> None:

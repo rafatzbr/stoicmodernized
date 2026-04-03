@@ -144,8 +144,6 @@ class ImageGenerationStage:
                 "single cohesive visual idea",
                 "cinematic lighting",
                 "modern workplace realism",
-                "no text",
-                "no logo",
             ]
         )
         return ", ".join(self._dedupe_prompt_parts(prompt_parts))
