@@ -247,7 +247,7 @@ def test_short_scene_visual_prompt_centers_takeaway_not_philosopher() -> None:
 
 
 @pytest.mark.asyncio
-async def test_subtitles_retime_scene_boundaries_from_actual_audio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_subtitles_retime_scene_boundaries_from_vtt_phrase_match(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
     monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
@@ -257,10 +257,10 @@ async def test_subtitles_retime_scene_boundaries_from_actual_audio(tmp_path: Pat
     scenes_dir.mkdir(parents=True, exist_ok=True)
     (scenes_dir / "scenes.json").write_text(
         '{"scenes":['
-        '{"scene_number":1,"start_time":0.0,"end_time":12.0,"narration_segment":"Hook line","visual_prompt":"vp1","text_overlay":"Hook"},'
-        '{"scene_number":2,"start_time":12.0,"end_time":30.0,"narration_segment":"Principle line","visual_prompt":"vp2","text_overlay":"Principle"},'
-        '{"scene_number":3,"start_time":30.0,"end_time":50.0,"narration_segment":"Application line","visual_prompt":"vp3","text_overlay":"Application"},'
-        '{"scene_number":4,"start_time":50.0,"end_time":58.0,"narration_segment":"CTA line","visual_prompt":"vp4","text_overlay":"CTA"}'
+        '{"scene_number":1,"start_time":0.0,"end_time":12.0,"narration_segment":"Stop replaying the meeting in your head.","visual_prompt":"vp1","text_overlay":"Hook"},'
+        '{"scene_number":2,"start_time":12.0,"end_time":30.0,"narration_segment":"Ask what is actually in your control right now.","visual_prompt":"vp2","text_overlay":"Principle"},'
+        '{"scene_number":3,"start_time":30.0,"end_time":50.0,"narration_segment":"Put your energy into the next useful action.","visual_prompt":"vp3","text_overlay":"Application"},'
+        '{"scene_number":4,"start_time":50.0,"end_time":58.0,"narration_segment":"Use this the next time your mind starts spiraling.","visual_prompt":"vp4","text_overlay":"CTA"}'
         '],"total_duration":58.0}',
         encoding="utf-8",
     )
@@ -270,27 +270,49 @@ async def test_subtitles_retime_scene_boundaries_from_actual_audio(tmp_path: Pat
     stage.subtitles_dir = job_dir / "subtitles"
     stage.scenes_dir = scenes_dir
     stage.audio_dir = job_dir / "audio"
-    stage._get_audio_duration = lambda _path: 48.0
+    stage.audio_dir.mkdir(parents=True, exist_ok=True)
+    (stage.audio_dir / "narration.vtt").write_text(
+        """1
+00:00:00,100 --> 00:00:02,000
+Stop replaying the meeting in your head.
+
+2
+00:00:02,000 --> 00:00:04,500
+Ask what is actually in your control right now.
+
+3
+00:00:04,500 --> 00:00:07,000
+Put your energy into the next useful action.
+
+4
+00:00:07,000 --> 00:00:09,000
+Use this the next time your mind starts spiraling.
+""",
+        encoding="utf-8",
+    )
+    stage._get_audio_duration = lambda _path: 9.0
 
     script_data = {
         "narration": """[0:00-0:12] Hook
-Hook line
+Stop replaying the meeting in your head.
 
 [0:12-0:30] Stoic Principle
-Principle line
+Ask what is actually in your control right now.
 
 [0:30-0:50] Workplace Application
-Application line
+Put your energy into the next useful action.
 
 [0:50-0:58] CTA
-CTA line"""
+Use this the next time your mind starts spiraling."""
     }
 
     await stage.run(script_data, "dummy.mp3")
 
     import json
+
     scenes = json.loads((scenes_dir / "scenes.json").read_text())["scenes"]
-    assert scenes[0]["start_time"] == 0.0
-    assert scenes[0]["end_time"] < scenes[1]["start_time"] + 0.01 or scenes[0]["end_time"] == scenes[1]["start_time"]
-    assert round(scenes[-1]["end_time"], 3) == 48.0
-    assert round(scenes[1]["start_time"], 3) == round(12.0 * (48.0 / 58.0), 3)
+    assert scenes[0]["start_time"] == 0.1
+    assert scenes[1]["start_time"] == 2.0
+    assert scenes[2]["start_time"] == 4.5
+    assert scenes[3]["start_time"] == 7.0
+    assert scenes[3]["end_time"] == 9.0
