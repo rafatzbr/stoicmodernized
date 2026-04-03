@@ -96,6 +96,10 @@ class Settings(BaseSettings):
     local_script_temperature: float = 0.7
     local_script_min_section_words: int = 8
 
+    local_image_prompt_model: Optional[str] = None
+    local_image_prompt_max_tokens: int = 220
+    local_image_prompt_temperature: float = 0.4
+
     watermark_logo_path: Path = Path('/home/rafatz/media/thumbnail_nobg.png')
     watermark_scale_width: int = 120
     watermark_padding: int = 36

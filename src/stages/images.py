@@ -1,10 +1,14 @@
 """Image generation stage module using stable diffusion CLI or local fallbacks."""
 
+import json
+import re
 import shlex
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
+
+import httpx
 
 from src.config import settings
 from src.models import ImageAsset
@@ -107,7 +111,7 @@ class ImageGenerationStage:
             scene_num = scene["scene_number"]
             image_path = self.images_dir / f"scene_{scene_num:03d}.jpg"
             scene_prompt = scene.get("visual_prompt", "")
-            full_prompt = self._compose_image_prompt(
+            full_prompt = await self._rewrite_image_prompt_with_local_llm(
                 subject=subject,
                 scene_prompt=scene_prompt,
                 overlay=scene.get("text_overlay"),
@@ -136,9 +140,58 @@ class ImageGenerationStage:
 
         return assets
 
+    async def _rewrite_image_prompt_with_local_llm(self, *, subject: str, scene_prompt: str, overlay: object) -> str:
+        fallback_prompt = self._compose_image_prompt(subject=subject, scene_prompt=scene_prompt, overlay=overlay)
+        overlay_text = str(overlay).strip() if isinstance(overlay, str) else ""
+
+        sanitized_scene_prompt = self._sanitize_scene_prompt(scene_prompt)
+        prompt = f"""
+Rewrite the following image concept into one clean natural-language prompt for Stable Diffusion 3.5 Large.
+
+Video topic: {subject}
+Scene concept: {sanitized_scene_prompt}
+Overlay takeaway: {overlay_text or 'none'}
+
+Requirements:
+- Output exactly one natural-language image prompt line.
+- Use descriptive, cinematic natural language, not comma spam.
+- Keep it visually concrete and realistic.
+- Prefer a single clear subject or focal action.
+- Emphasize modern workplace realism when appropriate.
+- Include vertical 9:16 composition naturally.
+- Do not include phrases like 'no text', 'no logo', 'negative prompt', 'vertical 9:16 frame', 'frame', or 'border'.
+- Do not mention Stable Diffusion, SDXL, model names, parameters, or camera metadata.
+- Do not include lists, bullets, JSON, or extra commentary.
+""".strip()
+
+        payload = {
+            "model": settings.local_image_prompt_model or settings.local_llm_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You rewrite image prompts into clean natural-language prompts. Return one prompt line only.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": settings.local_image_prompt_temperature,
+            "max_tokens": settings.local_image_prompt_max_tokens,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.local_llm_timeout_seconds) as client:
+                response = await client.post(settings.local_llm_base_url, json=payload)
+                response.raise_for_status()
+            data = response.json()
+            content = self._extract_message_content(data)
+            cleaned = self._clean_llm_image_prompt(content)
+            return cleaned or fallback_prompt
+        except Exception:
+            return fallback_prompt
+
     def _compose_image_prompt(self, *, subject: str, scene_prompt: str, overlay: object) -> str:
         overlay_text = str(overlay).strip() if isinstance(overlay, str) else ""
-        base_scene = scene_prompt.strip() or f"A visual concept for {subject}."
+        base_scene = self._sanitize_scene_prompt(scene_prompt) or f"A visual concept for {subject}."
         sentences = [base_scene.rstrip(". ") + "."]
         if overlay_text and overlay_text.lower() not in base_scene.lower():
             sentences.append(f"The image should emphasize {overlay_text.lower()}.")
@@ -148,6 +201,54 @@ class ImageGenerationStage:
             "Use a single clear subject, modern workplace realism, calm natural lighting, sharp focus, and a vertical 9:16 composition."
         )
         return " ".join(sentences)
+
+    def _sanitize_scene_prompt(self, scene_prompt: str) -> str:
+        cleaned = scene_prompt or ""
+        banned_phrases = [
+            "vertical 9:16 frame",
+            "vertical 9:16 composition",
+            "no text",
+            "no logo",
+            "single cohesive visual idea",
+            "cinematic lighting",
+            "modern workplace realism",
+            "gold accents",
+            "dark refined palette",
+            "dark elegant palette",
+            "atmospheric lighting",
+        ]
+        lowered = cleaned.lower()
+        for phrase in banned_phrases:
+            lowered = lowered.replace(phrase, " ")
+        lowered = re.sub(r"\s+", " ", lowered).strip(" ,.")
+        if not lowered:
+            return ""
+        return lowered[0].upper() + lowered[1:]
+
+    def _extract_message_content(self, data: dict) -> str:
+        choices = data.get("choices") or []
+        if not choices:
+            return ""
+        message = choices[0].get("message") or {}
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text_parts.append(str(item.get("text") or ""))
+            return "\n".join(part for part in text_parts if part)
+        return ""
+
+    def _clean_llm_image_prompt(self, text: str) -> str:
+        cleaned = (text or "").strip().strip('"').strip("'")
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        banned = ["no text", "no logo", "negative prompt", "vertical 9:16 frame", "border", "frame"]
+        lowered = cleaned.lower()
+        if not cleaned or any(term in lowered for term in banned):
+            return ""
+        return cleaned
 
     async def _generate_single_image(
         self,
