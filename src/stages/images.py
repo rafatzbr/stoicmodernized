@@ -133,19 +133,33 @@ class ImageGenerationStage:
 
     def _compose_image_prompt(self, *, subject: str, scene_prompt: str, overlay: object) -> str:
         overlay_text = str(overlay).strip() if isinstance(overlay, str) else ""
-        prompt_parts = [
-            scene_prompt.strip() or f"visual concept for {subject}",
-            f"topic anchor: {subject}",
-            "vertical 9:16 composition",
-            "single cohesive visual idea",
-            "concrete modern workplace details",
-            "cinematic lighting",
-            "no text",
-            "no logo",
-        ]
-        if overlay_text:
-            prompt_parts.insert(1, f"visual emphasis: {overlay_text}")
-        return ", ".join(part for part in prompt_parts if part)
+        prompt_parts = [scene_prompt.strip() or f"visual concept for {subject}"]
+        if overlay_text and overlay_text.lower() not in scene_prompt.lower():
+            prompt_parts.append(f"focus on {overlay_text.lower()}")
+        if subject and subject.lower() not in scene_prompt.lower():
+            prompt_parts.append(f"topic anchor {subject}")
+        prompt_parts.extend(
+            [
+                "vertical 9:16 composition",
+                "single cohesive visual idea",
+                "cinematic lighting",
+                "modern workplace realism",
+                "no text",
+                "no logo",
+            ]
+        )
+        return ", ".join(self._dedupe_prompt_parts(prompt_parts))
+
+    def _dedupe_prompt_parts(self, prompt_parts: list[str]) -> list[str]:
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for part in prompt_parts:
+            normalized = part.strip(" ,").lower()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            deduped.append(part.strip(" ,"))
+        return deduped
 
     async def _generate_single_image(
         self,

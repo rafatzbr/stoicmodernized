@@ -182,6 +182,9 @@ Return JSON only with this exact shape:
 Rules:
 - make the title and narration materially specific to this topic, not generic Stoicism filler
 - for Shorts, keep the title tight and natural: prefer under 12 words and do not append generic suffixes like "A Stoic Perspective"
+- for Shorts, make the hook punchy: start with the tension, consequence, or command immediately instead of explaining the setup
+- for Shorts, avoid wordy openings like "What if I told you", "You are losing hours because", or multi-clause throat-clearing before the point
+- for Shorts, keep the CTA to one natural spoken sentence; avoid generic channel boilerplate like "weekly videos on applying ancient wisdom to modern life"
 - avoid redundant phrasing such as "How to X using Stoic Y: A Stoic Perspective"
 - use practical, modern workplace language
 - mention 1-2 Stoic thinkers only when relevant
@@ -244,6 +247,10 @@ Before finalizing, check that the number of section objects equals {len(section_
         if normalized_title and normalized_title != repaired.get("title"):
             repaired["title"] = normalized_title
             repairs.append("normalized_title")
+        normalized_hook = self._normalize_hook_text(repaired.get("hook"))
+        if normalized_hook and normalized_hook != repaired.get("hook"):
+            repaired["hook"] = normalized_hook
+            repairs.append("normalized_hook")
         section_map = {
             self._clean_sentence(section.get("title")): self._clean_multiline_text(section.get("narration"))
             for section in sections
@@ -253,7 +260,7 @@ Before finalizing, check that the number of section objects equals {len(section_
         if not self._clean_sentence(repaired.get("cta")):
             cta_text = section_map.get("CTA")
             if cta_text:
-                repaired["cta"] = cta_text
+                repaired["cta"] = self._normalize_cta_text(cta_text)
                 repairs.append("derived_cta_from_cta_section")
         else:
             cta_text = section_map.get("CTA")
@@ -390,7 +397,7 @@ Before finalizing, check that the number of section objects equals {len(section_
         sections = self._normalize_sections(payload.get("sections"), section_titles)
 
         title = self._normalize_generated_title(payload.get("title")) or research_title
-        hook = self._clean_sentence(payload.get("hook"))
+        hook = self._normalize_hook_text(payload.get("hook"))
         cta = self._normalize_cta_text(payload.get("cta"))
         short_version = self._clean_multiline_text(payload.get("short_version"))
         narration = self._render_timed_narration(sections, chapters)
@@ -623,9 +630,47 @@ If this helped you, subscribe to Stoic Modernized for more weekly videos on appl
         if not text:
             return ""
         text = re.sub(r"\s+", " ", text).strip()
+        if self.video_mode == VideoMode.SHORT:
+            text = re.sub(
+                r"\bsubscribe for weekly stoic tools to master your workday without the burnout\b",
+                "Follow for practical Stoic tools you can use at work",
+                text,
+                flags=re.IGNORECASE,
+            )
+            text = re.sub(
+                r"\bsubscribe to stoic modernized for more weekly videos on applying ancient wisdom to modern life\b",
+                "Follow for practical Stoic tools that hold up at work",
+                text,
+                flags=re.IGNORECASE,
+            )
+            text = re.sub(r"\bweekly videos\b", "practical Stoic tools", text, flags=re.IGNORECASE)
+            text = re.sub(r"\s+for more\s+for\b", " for", text, flags=re.IGNORECASE)
+            text = re.sub(r"\s+", " ", text).strip()
         if not re.search(r"[.!?]$", text):
             text += "."
         return text
+
+    def _normalize_hook_text(self, value: Any) -> str:
+        text = self._clean_sentence(value)
+        if not text or self.video_mode != VideoMode.SHORT:
+            return text
+
+        text = re.sub(r"^What if I told you that\s+", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"^You are\s+", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\bThat anxiety isn't solving\b", "It won't solve", text, flags=re.IGNORECASE)
+        text = re.sub(r"\bit's just stealing\b", "it's stealing", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s+", " ", text).strip()
+        sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
+        if not sentences:
+            return text
+
+        first_sentence = sentences[0]
+        if len(first_sentence.split()) > 14:
+            shortened = re.split(r"\b(?:because|that|while|when)\b", first_sentence, maxsplit=1, flags=re.IGNORECASE)[0]
+            if len(shortened.split()) >= 4:
+                sentences[0] = shortened.strip(" ,;:") + "."
+
+        return " ".join(sentences[:2]).strip()
 
     def save_script(self, script: Script) -> Path:
         data = script.model_dump(mode="json")

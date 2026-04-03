@@ -43,7 +43,7 @@ async def test_short_mode_scene_plan_stays_within_short_limit(
     assert len(set(overlays)) == len(overlays)
     assert not any(overlay in {"Time", "Overthinking"} for overlay in overlays if overlay)
     assert all("gold accents" not in scene.visual_prompt for scene in scene_plan.scenes)
-    assert all("concrete workplace storytelling" in scene.visual_prompt for scene in scene_plan.scenes)
+    assert all("modern editorial photo" in scene.visual_prompt for scene in scene_plan.scenes)
 
 
 @pytest.mark.asyncio
@@ -212,8 +212,35 @@ def test_real_image_prompt_prioritizes_scene_concept_over_generic_style() -> Non
         overlay="Replay Loop",
     )
 
-    assert "Replay Loop" in prompt
+    assert "focus on replay loop" in prompt
     assert "office worker alone at desk after a tense meeting" in prompt
     assert "vertical 9:16 composition" in prompt
     assert "gold accents" not in prompt
     assert "stoic aesthetic" not in prompt
+    assert prompt.count("no text") == 1
+
+
+def test_short_scene_overlay_avoids_philosopher_names() -> None:
+    stage = SceneStage(job_id="scene-job", mock=True)
+
+    overlay = stage._generate_text_overlay(
+        "Marcus Aurelius reminded us that our peace depends on distinguishing between what is up to us and what is not. In the office, your preparation and attitude are yours to command, but the client's mood or the boss's final decision are not.",
+        "Stop Overthinking Work Problems with Stoic Control",
+    )
+
+    assert overlay == "Control Your Part"
+
+
+def test_short_scene_visual_prompt_centers_takeaway_not_philosopher() -> None:
+    stage = SceneStage(job_id="scene-job", mock=True)
+
+    prompt = stage._generate_visual_prompt(
+        "Stop Overthinking Work Problems with Stoic Control",
+        "Marcus Aurelius reminded us that our peace depends on distinguishing between what is up to us and what is not. In the office, your preparation and attitude are yours to command, but the client's mood or the boss's final decision are not.",
+        scene_num=2,
+        is_short=True,
+    )
+
+    assert "professional at desk weighing a checklist against incoming feedback" in prompt
+    assert "clear contrast between what can be acted on and what must be released" in prompt
+    assert "Marcus Aurelius" not in prompt

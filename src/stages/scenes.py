@@ -132,10 +132,19 @@ class SceneStage:
         action = self._scene_action(line)
         detail = self._scene_symbol(line)
         if is_short:
-            return (
-                f"vertical 9:16 frame, {scene_subject}, {action}, {setting}, {detail}, "
-                f"topic context {topic}, one clear focal subject, concrete workplace storytelling, no text, no logo"
-            )
+            prompt_parts = [
+                "vertical 9:16 frame",
+                scene_subject,
+                setting,
+                action,
+                detail,
+                f"workplace context: {topic}",
+                "single focal subject",
+                "modern editorial photo",
+                "no text",
+                "no logo",
+            ]
+            return ", ".join(part for part in prompt_parts if part)
         return (
             f"cinematic workplace scene for {topic}, {scene_subject}, {action}, {setting}, {detail}, "
             "grounded modern environment, no text, no logo"
@@ -147,6 +156,16 @@ class SceneStage:
             return label
 
         phrase_map = [
+            ("up to us", "Control Your Part"),
+            ("not up to us", "Drop The Rest"),
+            ("out of your hands", "Drop The Rest"),
+            ("not in your control", "Drop The Rest"),
+            ("not yours to command", "Control Your Part"),
+            ("preparation and attitude", "Control Your Part"),
+            ("best effort", "Best Effort Now"),
+            ("stressful email", "Pause The Reply"),
+            ("email arrives", "Pause The Reply"),
+            ("difficult feedback", "Steady Under Pressure"),
             ("overthinking", "Stop The Spiral"),
             ("replaying", "Replay Loop"),
             ("meeting", "After The Meeting"),
@@ -156,7 +175,8 @@ class SceneStage:
             ("response", "Own Your Response"),
             ("anxiety", "Pause First"),
             ("clarity", "Clear Next Step"),
-            ("subscribe", "Practice Daily"),
+            ("subscribe", "Use This Today"),
+            ("follow", "Use This Today"),
             ("training", "Train Composure"),
             ("focus", "Protect Focus"),
         ]
@@ -251,10 +271,19 @@ class SceneStage:
             "could",
             "stoic",
             "modernized",
+            "marcus",
+            "aurelius",
+            "seneca",
+            "epictetus",
+            "reminded",
+            "office",
+            "workplace",
         }
 
     def _scene_subject(self, line: str, topic: str) -> str:
         line_lower = line.lower()
+        if self._line_has_control_split(line_lower):
+            return "professional at desk weighing a checklist against incoming feedback"
         if "presentation" in line_lower:
             return "professional standing with presentation remote and note card"
         if "meeting" in line_lower:
@@ -269,6 +298,8 @@ class SceneStage:
 
     def _scene_setting(self, line: str) -> str:
         line_lower = line.lower()
+        if self._line_has_control_split(line_lower):
+            return "desk with laptop feedback open beside a handwritten to-do list"
         if "presentation" in line_lower:
             return "conference room moments before speaking"
         if "meeting" in line_lower:
@@ -283,6 +314,8 @@ class SceneStage:
         line_lower = line.lower()
         if "replay" in line_lower or "overthinking" in line_lower:
             return "visual tension showing repeated thoughts circling the subject"
+        if self._line_has_control_split(line_lower):
+            return "clear contrast between what can be acted on and what must be released"
         if "pause" in line_lower or "breath" in line_lower:
             return "subtle pause before action"
         if "control" in line_lower or "in my hands" in line_lower:
@@ -297,6 +330,8 @@ class SceneStage:
         line_lower = line.lower()
         if "overthinking" in line_lower or "loop" in line_lower:
             return "subtle looping reflections in glass or screen"
+        if self._line_has_control_split(line_lower):
+            return "simple checklist in sharp focus while notifications blur into the background"
         if "control" in line_lower:
             return "simple checklist and neatly arranged notes"
         if "presentation" in line_lower:
@@ -316,6 +351,19 @@ class SceneStage:
             seen[key] = seen.get(key, 0) + 1
             if seen[key] > 1:
                 scene.text_overlay = f"{scene.text_overlay} {seen[key]}"
+
+    def _line_has_control_split(self, line_lower: str) -> bool:
+        control_markers = [
+            "up to us",
+            "not up to us",
+            "out of your hands",
+            "not yours to command",
+            "preparation and attitude",
+            "best effort",
+            "what is in my control",
+            "what is actually under your control",
+        ]
+        return any(marker in line_lower for marker in control_markers)
 
     def save_scene_plan(self, scene_plan: ScenePlan) -> Path:
         data = {

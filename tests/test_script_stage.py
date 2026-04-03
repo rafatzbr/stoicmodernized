@@ -61,7 +61,7 @@ class TestScriptStage:
         repaired, repairs = stage._repair_generated_payload(
             {
                 "title": "How To Stop Overthinking Work Problems Using Stoic Control: A Stoic Perspective",
-                "hook": "Hook text.",
+                "hook": "You are losing hours of mental energy rehashing a meeting that ended an hour ago. That anxiety isn't solving the deadline; it's just stealing your focus from what actually matters.",
                 "cta": "A different CTA.",
                 "short_version": "Short version.",
                 "sections": [
@@ -76,7 +76,18 @@ class TestScriptStage:
         assert repaired["title"] == "How to Stop Overthinking Work Problems with Stoic Control"
         assert repaired["cta"] == "Follow for more practical Stoic tools at work."
         assert repaired["sections"][-1]["narration"] == repaired["cta"]
+        assert repaired["hook"] == "losing hours of mental energy rehashing a meeting that ended an hour ago. It won't solve the deadline; it's stealing your focus from what actually matters."
         assert "normalized_title" in repairs
+        assert "normalized_hook" in repairs
+
+    def test_short_cta_normalization_reduces_boilerplate(self) -> None:
+        stage = ScriptStage(job_id="job-7", mock=False, video_mode=VideoMode.SHORT)
+
+        result = stage._normalize_cta_text(
+            "Subscribe to Stoic Modernized for more weekly videos on applying ancient wisdom to modern life"
+        )
+
+        assert result == "Follow for practical Stoic tools that hold up at work."
 
     @pytest.mark.asyncio
     async def test_real_script_raises_when_llm_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
