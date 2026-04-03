@@ -46,6 +46,7 @@ class SubtitleStage:
             narration = script_data.get("narration", "")
             segments = self._parse_narration_to_segments(narration, audio_duration)
         segments = self._polish_segments(segments, audio_duration)
+        self._retime_scene_plan_from_script_sections(script_data, audio_duration)
         srt_content = self._format_srt(segments)
 
         srt_path = self.subtitles_dir / "subtitles.srt"
@@ -92,6 +93,65 @@ class SubtitleStage:
             return load_json(scene_path)
         except Exception:
             return None
+
+    def _retime_scene_plan_from_script_sections(self, script_data: dict, audio_duration: Optional[float]) -> None:
+        if audio_duration is None or audio_duration <= 0:
+            return
+
+        scene_plan = self._load_scene_plan()
+        if not isinstance(scene_plan, dict):
+            return
+
+        scenes = scene_plan.get("scenes")
+        if not isinstance(scenes, list) or not scenes:
+            return
+
+        section_windows = self._extract_section_windows(script_data.get("narration", ""), audio_duration)
+        if not section_windows:
+            return
+
+        spoken_scenes = [
+            scene
+            for scene in scenes
+            if isinstance(scene, dict)
+            and str(scene.get("narration_segment", "")).lower() not in {"intro branding", "outro branding"}
+        ]
+        if len(spoken_scenes) != len(section_windows):
+            return
+
+        for scene, (start, end) in zip(spoken_scenes, section_windows, strict=False):
+            scene["start_time"] = round(start, 3)
+            scene["end_time"] = round(end, 3)
+
+        scene_plan["total_duration"] = round(audio_duration, 3)
+        save_json(scene_plan, self.scenes_dir / "scenes.json")
+
+    def _extract_section_windows(self, narration: str, audio_duration: float) -> list[tuple[float, float]]:
+        matches = list(self.TIMED_BLOCK_RE.finditer((narration or "").strip()))
+        if not matches:
+            return []
+
+        nominal_windows: list[tuple[float, float]] = []
+        for match in matches:
+            start = self._parse_mmss(match.group("start"))
+            end = self._parse_mmss(match.group("end"))
+            if end <= start:
+                continue
+            nominal_windows.append((start, end))
+
+        if not nominal_windows:
+            return []
+
+        nominal_total = nominal_windows[-1][1]
+        if nominal_total <= 0:
+            return []
+
+        scale = audio_duration / nominal_total
+        actual_windows = [(start * scale, end * scale) for start, end in nominal_windows]
+        if actual_windows:
+            last_start, _ = actual_windows[-1]
+            actual_windows[-1] = (last_start, audio_duration)
+        return actual_windows
 
     def _segments_from_scene_plan(
         self, scene_plan: Optional[dict], audio_duration: Optional[float] = None

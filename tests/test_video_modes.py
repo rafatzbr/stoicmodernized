@@ -244,3 +244,53 @@ def test_short_scene_visual_prompt_centers_takeaway_not_philosopher() -> None:
     assert "professional at desk weighing a checklist against incoming feedback" in prompt
     assert "clear contrast between what can be acted on and what must be released" in prompt
     assert "Marcus Aurelius" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_subtitles_retime_scene_boundaries_from_actual_audio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+
+    job_dir = tmp_path / "jobs" / "scene-retime"
+    scenes_dir = job_dir / "scenes"
+    scenes_dir.mkdir(parents=True, exist_ok=True)
+    (scenes_dir / "scenes.json").write_text(
+        '{"scenes":['
+        '{"scene_number":1,"start_time":0.0,"end_time":12.0,"narration_segment":"Hook line","visual_prompt":"vp1","text_overlay":"Hook"},'
+        '{"scene_number":2,"start_time":12.0,"end_time":30.0,"narration_segment":"Principle line","visual_prompt":"vp2","text_overlay":"Principle"},'
+        '{"scene_number":3,"start_time":30.0,"end_time":50.0,"narration_segment":"Application line","visual_prompt":"vp3","text_overlay":"Application"},'
+        '{"scene_number":4,"start_time":50.0,"end_time":58.0,"narration_segment":"CTA line","visual_prompt":"vp4","text_overlay":"CTA"}'
+        '],"total_duration":58.0}',
+        encoding="utf-8",
+    )
+
+    stage = SubtitleStage(job_id="scene-retime", mock=False)
+    stage.job_dir = job_dir
+    stage.subtitles_dir = job_dir / "subtitles"
+    stage.scenes_dir = scenes_dir
+    stage.audio_dir = job_dir / "audio"
+    stage._get_audio_duration = lambda _path: 48.0
+
+    script_data = {
+        "narration": """[0:00-0:12] Hook
+Hook line
+
+[0:12-0:30] Stoic Principle
+Principle line
+
+[0:30-0:50] Workplace Application
+Application line
+
+[0:50-0:58] CTA
+CTA line"""
+    }
+
+    await stage.run(script_data, "dummy.mp3")
+
+    import json
+    scenes = json.loads((scenes_dir / "scenes.json").read_text())["scenes"]
+    assert scenes[0]["start_time"] == 0.0
+    assert scenes[0]["end_time"] < scenes[1]["start_time"] + 0.01 or scenes[0]["end_time"] == scenes[1]["start_time"]
+    assert round(scenes[-1]["end_time"], 3) == 48.0
+    assert round(scenes[1]["start_time"], 3) == round(12.0 * (48.0 / 58.0), 3)
