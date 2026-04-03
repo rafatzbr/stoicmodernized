@@ -1,6 +1,8 @@
 """Image generation stage module using stable diffusion CLI or local fallbacks."""
 
+import shlex
 import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -21,6 +23,7 @@ class ImageGenerationStage:
         self.placeholder_only = placeholder_only or settings.force_placeholder_images
         self.job_dir = settings.jobs_dir / job_id
         self.images_dir = self.job_dir / "images"
+        self.sd_log_path = self.images_dir / "sd-cli.log"
 
         self.sd_cli_path = settings.sd_cli_path
         self.sd_model_path = settings.sd_model_path
@@ -185,8 +188,31 @@ class ImageGenerationStage:
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
+        self._append_sd_cli_log(output_path=output_path, command=cmd, result=result)
         if result.returncode != 0:
             raise RuntimeError(f"sd-cli failed: {result.stderr}")
+
+    def _append_sd_cli_log(
+        self,
+        *,
+        output_path: Path,
+        command: list[str],
+        result: subprocess.CompletedProcess[str],
+    ) -> None:
+        self.sd_log_path.parent.mkdir(parents=True, exist_ok=True)
+        separator = "\n" + ("=" * 100) + "\n"
+        command_text = shlex.join(command)
+        entry = (
+            f"{separator}"
+            f"timestamp: {datetime.now(UTC).isoformat()}\n"
+            f"output_image: {output_path}\n"
+            f"return_code: {result.returncode}\n"
+            f"command:\n{command_text}\n\n"
+            f"stdout:\n{result.stdout or '<empty>'}\n\n"
+            f"stderr:\n{result.stderr or '<empty>'}\n"
+        )
+        with self.sd_log_path.open("a", encoding="utf-8") as handle:
+            handle.write(entry)
 
     def _postprocess_generated_image(self, image_path: Path) -> None:
         """Force generated images to cover the target frame cleanly."""
