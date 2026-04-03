@@ -28,7 +28,7 @@ class TestScriptStage:
     def test_payload_to_script_builds_timed_short_narration(self) -> None:
         stage = ScriptStage(job_id="job-2", mock=False, video_mode=VideoMode.SHORT)
         payload = {
-            "title": "Handling Micromanagement Without Losing Your Mind",
+            "title": "Handling Micromanagement Without Losing Your Mind: A Stoic Perspective",
             "hook": "Micromanagement becomes unbearable when you let it colonize your attention.",
             "cta": "Subscribe for more.",
             "short_version": "A short version.",
@@ -36,7 +36,7 @@ class TestScriptStage:
                 {"title": "Hook", "narration": "Micromanagement feels personal fast and it spreads through the whole day."},
                 {"title": "Stoic Principle", "narration": "Control your judgment, not your manager's mood, and protect your focus under pressure."},
                 {"title": "Workplace Application", "narration": "Answer with clarity, document decisions, and keep your composure when the notes keep coming."},
-                {"title": "CTA", "narration": "Follow for more practical Stoicism that actually helps you at work."},
+                {"title": "CTA", "narration": "Follow for more practical Stoicism that actually helps you at work"},
             ],
         }
 
@@ -48,11 +48,35 @@ class TestScriptStage:
             workplace_applications=["Pause before replying."],
         )
 
-        assert script.title == payload["title"]
+        assert script.title == "Handling Micromanagement Without Losing Your Mind"
         assert len(script.chapters) == 4
         assert "[0:00-0:12] Hook" in script.narration
         assert "[0:50-0:58] CTA" in script.narration
         assert "Micromanagement feels personal fast" in script.narration
+        assert script.cta == "Subscribe for more."
+
+    def test_repair_generated_payload_normalizes_short_title_and_syncs_cta(self) -> None:
+        stage = ScriptStage(job_id="job-6", mock=False, video_mode=VideoMode.SHORT)
+
+        repaired, repairs = stage._repair_generated_payload(
+            {
+                "title": "How To Stop Overthinking Work Problems Using Stoic Control: A Stoic Perspective",
+                "hook": "Hook text.",
+                "cta": "A different CTA.",
+                "short_version": "Short version.",
+                "sections": [
+                    {"title": "Hook", "narration": "Hook narration with enough words to pass validation cleanly."},
+                    {"title": "Stoic Principle", "narration": "Principle narration with enough topic specific words to pass validation."},
+                    {"title": "Workplace Application", "narration": "Application narration with enough concrete workplace guidance to pass validation."},
+                    {"title": "CTA", "narration": "Follow for more practical Stoic tools at work"},
+                ],
+            }
+        )
+
+        assert repaired["title"] == "How to Stop Overthinking Work Problems with Stoic Control"
+        assert repaired["cta"] == "Follow for more practical Stoic tools at work."
+        assert repaired["sections"][-1]["narration"] == repaired["cta"]
+        assert "normalized_title" in repairs
 
     @pytest.mark.asyncio
     async def test_real_script_raises_when_llm_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

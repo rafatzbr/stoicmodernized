@@ -47,6 +47,8 @@ class VideoRenderer:
             subtitle_path=Path(config.subtitle_path) if config.subtitle_path else None,
             width=config.width,
             height=config.height,
+            add_short_endcard=(config.width == settings.short_video_width and config.height == settings.short_video_height),
+            audio_duration=audio_duration,
         )
 
         if image_paths:
@@ -96,15 +98,27 @@ class VideoRenderer:
     def _scene_durations(self, scenes: list, audio_duration: Optional[float]) -> list[float]:
         if not scenes:
             return [3.0]
-        if audio_duration and audio_duration > 0:
-            duration = audio_duration / len(scenes)
-            return [max(0.8, duration) for _ in scenes]
 
-        durations = []
+        raw_durations = []
         for scene in scenes:
             raw = float(scene.end_time - scene.start_time)
-            durations.append(max(1.0, raw))
-        return durations or [3.0]
+            raw_durations.append(max(0.1, raw))
+
+        if audio_duration and audio_duration > 0:
+            total_raw = sum(raw_durations)
+            if total_raw > 0:
+                scale = audio_duration / total_raw
+                scaled = [max(0.8, duration * scale) for duration in raw_durations]
+                adjustment = audio_duration - sum(scaled)
+                scaled[-1] = max(0.8, scaled[-1] + adjustment)
+                return scaled
+
+        return [max(1.0, raw) for raw in raw_durations] or [3.0]
+
+    def _output_duration_limit(self, audio_duration: Optional[float]) -> Optional[str]:
+        if not audio_duration or audio_duration <= 0:
+            return None
+        return f"{audio_duration:.3f}"
 
     def _resolve_image_paths(self, scenes: list) -> list[Path]:
         image_dir = self.job_dir / "images"
@@ -116,6 +130,42 @@ class VideoRenderer:
                 paths.append(path)
         return paths
 
+    def _escape_drawtext(self, text: str) -> str:
+        return text.replace("\\", r"\\").replace(":", r"\:").replace("'", r"\'")
+
+    def _build_endcard_drawtext(self, audio_duration: Optional[float]) -> str:
+        endcard_text = self._escape_drawtext("subscribe to @stoic-modernized")
+        start_time = max(0.0, (audio_duration or 0.0) - 3.0)
+        return (
+            "drawtext="
+            f"text='{endcard_text}':"
+            "fontcolor=white:fontsize=48:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+            "box=1:boxcolor=black@0.45:boxborderw=24:"
+            "x=(w-text_w)/2:y=(h-text_h)/2:"
+            f"enable='gte(t,{start_time:.2f})'"
+        )
+
+    def _build_video_filter(
+        self,
+        *,
+        width: int,
+        height: int,
+        subtitle_path: Optional[Path],
+        add_short_endcard: bool,
+        audio_duration: Optional[float],
+    ) -> str:
+        filter_chain = [
+            f"scale={width}:{height}:force_original_aspect_ratio=increase",
+            f"crop={width}:{height}",
+            f"fps={self.fps}",
+            "format=yuv420p",
+        ]
+        if subtitle_path:
+            filter_chain.append(f"subtitles={subtitle_path.as_posix()}")
+        if add_short_endcard and audio_duration and audio_duration > 0:
+            filter_chain.append(self._build_endcard_drawtext(audio_duration))
+        return ",".join(filter_chain)
+
     def render_scene_sequence(
         self,
         images: list[Path],
@@ -125,6 +175,8 @@ class VideoRenderer:
         subtitle_path: Optional[Path] = None,
         width: int = 1920,
         height: int = 1080,
+        add_short_endcard: bool = False,
+        audio_duration: Optional[float] = None,
     ) -> subprocess.CompletedProcess:
         if not images:
             raise RuntimeError("No scene images found for rendering")
@@ -137,20 +189,36 @@ class VideoRenderer:
         lines.append(f"file '{images[-1].as_posix()}'")
         concat_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-        video_filter = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps={self.fps},format=yuv420p"
-        if subtitle_path:
-            video_filter += f",subtitles={subtitle_path.as_posix()}"
+        video_filter = self._build_video_filter(
+            width=width,
+            height=height,
+            subtitle_path=subtitle_path,
+            add_short_endcard=add_short_endcard,
+            audio_duration=audio_duration,
+        )
+        duration_limit = self._output_duration_limit(audio_duration)
 
         logo_path = settings.watermark_logo_path
         if logo_path.exists():
+            base_filter = self._build_video_filter(
+                width=width,
+                height=height,
+                subtitle_path=None,
+                add_short_endcard=False,
+                audio_duration=audio_duration,
+            )
             filter_complex = (
-                f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
-                f"crop={width}:{height},fps={self.fps},format=yuv420p[base];"
+                f"[0:v]{base_filter}[base];"
                 f"[2:v]scale={settings.watermark_scale_width}:-1[wm];"
                 f"[base][wm]overlay=W-w-{settings.watermark_padding}:H-h-{settings.watermark_padding}[tmp]"
             )
+            post_logo_filters = []
             if subtitle_path:
-                filter_complex += f";[tmp]subtitles={subtitle_path.as_posix()}[vout]"
+                post_logo_filters.append(f"subtitles={subtitle_path.as_posix()}")
+            if add_short_endcard and audio_duration and audio_duration > 0:
+                post_logo_filters.append(self._build_endcard_drawtext(audio_duration))
+            if post_logo_filters:
+                filter_complex += f";[tmp]{','.join(post_logo_filters)}[vout]"
             else:
                 filter_complex += ";[tmp]null[vout]"
 
@@ -195,9 +263,10 @@ class VideoRenderer:
                 "192k",
                 "-ar",
                 "48000",
-                "-shortest",
-                str(output_path),
             ]
+            if duration_limit:
+                cmd.extend(["-t", duration_limit])
+            cmd.extend(["-shortest", str(output_path)])
         else:
             cmd = [
                 "ffmpeg",
@@ -234,8 +303,9 @@ class VideoRenderer:
                 "192k",
                 "-ar",
                 "48000",
-                "-shortest",
-                str(output_path),
             ]
+            if duration_limit:
+                cmd.extend(["-t", duration_limit])
+            cmd.extend(["-shortest", str(output_path)])
 
         return subprocess.run(cmd, capture_output=True, text=True, check=True)

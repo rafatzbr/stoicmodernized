@@ -67,14 +67,15 @@ class ScriptStage:
         )
 
         parsed_payload = generation.get("parsed_payload") or {}
-        validation_error = self._validate_generated_payload(parsed_payload, topic=topic)
+        repaired_payload, repairs = self._repair_generated_payload(parsed_payload)
+        validation_error = self._validate_generated_payload(repaired_payload, topic=topic)
         failure_reason = generation.get("error") or validation_error
         succeeded = bool(generation.get("success")) and not bool(validation_error)
 
         self._write_generation_artifacts(
             raw_response=generation.get("raw_response", ""),
             parsed_payload=generation.get("parsed_payload") or {},
-            final_payload=parsed_payload,
+            final_payload=repaired_payload,
             report={
                 "job_id": self.job_id,
                 "video_mode": self.video_mode.value,
@@ -86,6 +87,7 @@ class ScriptStage:
                 "script_generation_succeeded": succeeded,
                 "failure_reason": failure_reason,
                 "llm_error": generation.get("error"),
+                "repairs_applied": repairs,
                 "raw_response_path": "local_llm_raw.txt",
                 "parsed_payload_path": "local_llm_parsed.json",
                 "final_payload_path": "script_generation_final.json",
@@ -97,7 +99,7 @@ class ScriptStage:
             raise ScriptGenerationError(failure_reason or "local_llm_script_generation_failed")
 
         return self._payload_to_script(
-            payload=parsed_payload,
+            payload=repaired_payload,
             topic=topic,
             research_title=research_title,
             key_insights=key_insights,
@@ -121,7 +123,33 @@ class ScriptStage:
         ) or "- No external sources available; rely on supplied research notes."
         insight_lines = "\n".join(f"- {item}" for item in key_insights) or "- No key insights provided"
         application_lines = "\n".join(f"- {item}" for item in workplace_applications) or "- No workplace applications provided"
-        section_rules = "\n".join(f"- {title}" for title in section_blueprint)
+        section_titles = self._section_blueprint()
+        section_rules = "\n".join(f"- {title}" for title in section_titles)
+        exact_sections_json = ",\n    ".join(
+            f'{{"title": "{title}", "narration": "string"}}' for title in section_titles
+        )
+        short_mode_extra = ""
+        if self.video_mode == VideoMode.SHORT:
+            short_mode_extra = """
+CRITICAL SHORT-MODE REQUIREMENTS:
+- You must return exactly 4 section objects.
+- The section titles must be exactly and only:
+  1. Hook
+  2. Stoic Principle
+  3. Workplace Application
+  4. CTA
+- Do not invent alternate section titles.
+- Do not merge sections.
+- Do not omit CTA.
+- Do not return 3 sections.
+- The sections array must look like this exact title structure:
+  [
+    {"title": "Hook", "narration": "..."},
+    {"title": "Stoic Principle", "narration": "..."},
+    {"title": "Workplace Application", "narration": "..."},
+    {"title": "CTA", "narration": "..."}
+  ]
+""".strip()
 
         prompt = f"""
 You are writing a faceless YouTube script for {settings.channel_name}.
@@ -147,21 +175,27 @@ Return JSON only with this exact shape:
   "cta": "string",
   "short_version": "string",
   "sections": [
-    {{"title": "string", "narration": "string"}}
+    {exact_sections_json}
   ]
 }}
 
 Rules:
 - make the title and narration materially specific to this topic, not generic Stoicism filler
+- for Shorts, keep the title tight and natural: prefer under 12 words and do not append generic suffixes like "A Stoic Perspective"
+- avoid redundant phrasing such as "How to X using Stoic Y: A Stoic Perspective"
 - use practical, modern workplace language
 - mention 1-2 Stoic thinkers only when relevant
 - no markdown fences, no commentary, no chain-of-thought, no placeholders
 - each section narration should be 2-6 sentences and flow naturally when spoken by TTS
 - short_version must fit a sub-60-second Short and should still be topic-specific
+- the top-level cta must match the CTA section's spoken call to action in substance
 - sections must match this order and count exactly:
 {section_rules}
+- section titles must exactly match the required titles above
 - avoid repeating the same sentence structure across sections
 - do not include timestamps in the JSON
+{short_mode_extra}
+Before finalizing, check that the number of section objects equals {len(section_titles)}.
 """.strip()
 
         payload = {
@@ -169,7 +203,7 @@ Rules:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You write clean JSON for a YouTube automation pipeline. Respond with JSON only.",
+                    "content": "You write clean JSON for a YouTube automation pipeline. Respond with JSON only. Follow the exact required section schema.",
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -199,6 +233,61 @@ Rules:
                 "error": f"local_llm_request_failed: {type(exc).__name__}",
             }
 
+    def _repair_generated_payload(self, payload: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+        if not isinstance(payload, dict):
+            return payload, []
+
+        repaired = dict(payload)
+        repairs: list[str] = []
+        sections = repaired.get("sections") if isinstance(repaired.get("sections"), list) else []
+        normalized_title = self._normalize_generated_title(repaired.get("title"))
+        if normalized_title and normalized_title != repaired.get("title"):
+            repaired["title"] = normalized_title
+            repairs.append("normalized_title")
+        section_map = {
+            self._clean_sentence(section.get("title")): self._clean_multiline_text(section.get("narration"))
+            for section in sections
+            if isinstance(section, dict)
+        }
+
+        if not self._clean_sentence(repaired.get("cta")):
+            cta_text = section_map.get("CTA")
+            if cta_text:
+                repaired["cta"] = cta_text
+                repairs.append("derived_cta_from_cta_section")
+        else:
+            cta_text = section_map.get("CTA")
+            if cta_text:
+                normalized_cta = self._normalize_cta_text(cta_text)
+                repaired["cta"] = normalized_cta
+                for section in sections:
+                    if isinstance(section, dict) and self._clean_sentence(section.get("title")) == "CTA":
+                        if self._clean_multiline_text(section.get("narration")) != normalized_cta:
+                            section["narration"] = normalized_cta
+                            repairs.append("aligned_cta_section_with_top_level_cta")
+                        break
+                if normalized_cta != cta_text:
+                    repairs.append("normalized_cta_from_cta_section")
+
+        if not self._clean_multiline_text(repaired.get("short_version")) and self.video_mode == VideoMode.SHORT:
+            short_version = self._build_short_version_from_sections(section_map)
+            if short_version:
+                repaired["short_version"] = short_version
+                repairs.append("derived_short_version_from_short_sections")
+
+        return repaired, repairs
+
+    def _build_short_version_from_sections(self, section_map: dict[str, str]) -> str:
+        ordered_titles = ["Hook", "Stoic Principle", "Workplace Application", "CTA"]
+        lines: list[str] = []
+        timestamps = ["0:00-0:12", "0:12-0:30", "0:30-0:50", "0:50-0:58"]
+        for ts, title in zip(timestamps, ordered_titles, strict=False):
+            narration = self._clean_multiline_text(section_map.get(title))
+            if not narration:
+                return ""
+            lines.append(f"[{ts}] {title}\n{narration}")
+        return "\n\n".join(lines)
+
     def _write_generation_artifacts(
         self,
         *,
@@ -223,13 +312,17 @@ Rules:
             return f"local_llm_payload_missing_fields:{','.join(missing)}"
 
         sections = payload.get("sections")
-        if not isinstance(sections, list) or len(sections) != len(self._section_blueprint()):
+        expected_titles = self._section_blueprint()
+        if not isinstance(sections, list) or len(sections) != len(expected_titles):
             return "local_llm_payload_wrong_section_count"
 
         cleaned_sections: list[str] = []
         for index, section in enumerate(sections, start=1):
             if not isinstance(section, dict):
                 return f"local_llm_section_{index}_not_an_object"
+            title = self._clean_sentence(section.get("title"))
+            if title != expected_titles[index - 1]:
+                return f"local_llm_section_{index}_wrong_title"
             narration = self._clean_multiline_text(section.get("narration"))
             if len(narration.split()) < settings.local_script_min_section_words:
                 return f"local_llm_section_{index}_too_short"
@@ -296,9 +389,9 @@ Rules:
         section_titles = [chapter.title for chapter in chapters]
         sections = self._normalize_sections(payload.get("sections"), section_titles)
 
-        title = self._clean_sentence(payload.get("title")) or research_title
+        title = self._normalize_generated_title(payload.get("title")) or research_title
         hook = self._clean_sentence(payload.get("hook"))
-        cta = self._clean_sentence(payload.get("cta"))
+        cta = self._normalize_cta_text(payload.get("cta"))
         short_version = self._clean_multiline_text(payload.get("short_version"))
         narration = self._render_timed_narration(sections, chapters)
 
@@ -501,6 +594,38 @@ If this helped you, subscribe to Stoic Modernized for more weekly videos on appl
         text = value.replace("\r", "\n")
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip()
+
+    def _normalize_generated_title(self, value: Any) -> str:
+        title = self._clean_sentence(value)
+        if not title:
+            return ""
+
+        title = re.sub(r"\s*\|\s*Stoic Modernized\s*$", "", title, flags=re.IGNORECASE)
+        title = re.sub(r"\s*[-:]\s*A Stoic Perspective\s*$", "", title, flags=re.IGNORECASE)
+        title = re.sub(r"\s*[-:]\s*Stoic Perspective\s*$", "", title, flags=re.IGNORECASE)
+        title = re.sub(r"\s+", " ", title).strip(" -:")
+
+        if self.video_mode == VideoMode.SHORT:
+            title = re.sub(r"^How To\b", "How to", title)
+            title = re.sub(r"\bUsing Stoic Control\b", "with Stoic Control", title, flags=re.IGNORECASE)
+            words = title.split()
+            if len(words) > 12:
+                trimmed = [
+                    word
+                    for word in words
+                    if word.lower() not in {"stoic", "stoicism", "perspective", "modernized"}
+                ]
+                title = " ".join((trimmed or words)[:12]).strip()
+        return title
+
+    def _normalize_cta_text(self, value: Any) -> str:
+        text = self._clean_sentence(value)
+        if not text:
+            return ""
+        text = re.sub(r"\s+", " ", text).strip()
+        if not re.search(r"[.!?]$", text):
+            text += "."
+        return text
 
     def save_script(self, script: Script) -> Path:
         data = script.model_dump(mode="json")

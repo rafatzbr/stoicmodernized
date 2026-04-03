@@ -8,6 +8,10 @@ from src.config import settings
 from src.models import ImageAsset
 
 
+class ImageGenerationError(RuntimeError):
+    """Raised when real image generation fails."""
+
+
 class ImageGenerationStage:
     """Handles image generation for scenes."""
 
@@ -40,29 +44,49 @@ class ImageGenerationStage:
         if self._sd_cli_available():
             return await self._real_generate(scene_plan)
 
-        return await self._generate_placeholder_images(scene_plan, style="local")
+        raise ImageGenerationError(
+            "sd_cli_unavailable: stable diffusion CLI or model files are missing; use --placeholder-images if you want local placeholder cards"
+        )
 
     def _sd_cli_available(self) -> bool:
         return Path(self.sd_cli_path).exists() and Path(self.sd_model_path).exists()
+
+    def _extract_subject(self, scene_plan: dict) -> str:
+        topic = scene_plan.get("topic") if isinstance(scene_plan, dict) else None
+        if isinstance(topic, str) and topic.strip():
+            return topic.strip()
+
+        scenes = scene_plan.get("scenes", []) if isinstance(scene_plan, dict) else []
+        for scene in scenes:
+            if not isinstance(scene, dict):
+                continue
+            for key in ("text_overlay", "narration_segment", "visual_prompt"):
+                value = scene.get(key)
+                if isinstance(value, str) and value.strip() and value.strip().lower() not in {"intro branding", "outro branding"}:
+                    return value.strip()[:120]
+        return "stoic modern work"
 
     async def _generate_placeholder_images(
         self, scene_plan: dict, style: str = "local"
     ) -> list[ImageAsset]:
         assets = []
+        subject = self._extract_subject(scene_plan)
         for scene in scene_plan.get("scenes", []):
             image_path = self.images_dir / f"scene_{scene['scene_number']:03d}.jpg"
+            scene_prompt = scene.get("visual_prompt", "Stoic visual")
+            focused_prompt = f"subject: {subject} | scene: {scene_prompt}"
             self._create_scene_card(
                 image_path=image_path,
                 title=f"Scene {scene['scene_number']:03d}",
-                prompt=scene.get("visual_prompt", "Stoic visual"),
-                overlay=scene.get("text_overlay") or "Stoic Modernized",
+                prompt=focused_prompt,
+                overlay=scene.get("text_overlay") or subject,
                 style=style,
             )
             assets.append(
                 ImageAsset(
                     scene_number=scene["scene_number"],
                     image_path=str(image_path),
-                    prompt=scene.get("visual_prompt", ""),
+                    prompt=focused_prompt,
                     seed=-1,
                 )
             )
@@ -71,17 +95,18 @@ class ImageGenerationStage:
 
     async def _real_generate(self, scene_plan: dict) -> list[ImageAsset]:
         assets = []
-        base_prompt = (
-            "vertical composition, minimalist stoic background, ancient roman column "
-            "silhouette, black marble texture, gold accents, dramatic cinematic lighting, "
-            "dark philosophical aesthetic, empty center space"
-        )
-        negative_prompt = "people, face, crowd, beach, ocean, water, snow, text, logo, border, frame, margin, white border, blank edge, empty white space, poster, flyer"
+        subject = self._extract_subject(scene_plan)
+        negative_prompt = "people, face, crowd, beach, ocean, water, snow, text, logo, border, frame, margin, white border, blank edge, poster, flyer"
 
         for scene in scene_plan.get("scenes", []):
             scene_num = scene["scene_number"]
             image_path = self.images_dir / f"scene_{scene_num:03d}.jpg"
-            full_prompt = f"{base_prompt}, {scene['visual_prompt']}"
+            scene_prompt = scene.get("visual_prompt", "")
+            full_prompt = self._compose_image_prompt(
+                subject=subject,
+                scene_prompt=scene_prompt,
+                overlay=scene.get("text_overlay"),
+            )
 
             try:
                 await self._generate_single_image(
@@ -90,14 +115,10 @@ class ImageGenerationStage:
                     negative_prompt=negative_prompt,
                 )
                 self._postprocess_generated_image(image_path)
-            except Exception:
-                self._create_scene_card(
-                    image_path=image_path,
-                    title=f"Scene {scene_num:03d}",
-                    prompt=scene.get("visual_prompt", full_prompt),
-                    overlay=scene.get("text_overlay") or "Stoic Modernized",
-                    style="fallback",
-                )
+            except Exception as exc:
+                raise ImageGenerationError(
+                    f"image_generation_failed_for_scene_{scene_num}: {type(exc).__name__}: {exc}"
+                ) from exc
 
             assets.append(
                 ImageAsset(
@@ -109,6 +130,22 @@ class ImageGenerationStage:
             )
 
         return assets
+
+    def _compose_image_prompt(self, *, subject: str, scene_prompt: str, overlay: object) -> str:
+        overlay_text = str(overlay).strip() if isinstance(overlay, str) else ""
+        prompt_parts = [
+            scene_prompt.strip() or f"visual concept for {subject}",
+            f"topic anchor: {subject}",
+            "vertical 9:16 composition",
+            "single cohesive visual idea",
+            "concrete modern workplace details",
+            "cinematic lighting",
+            "no text",
+            "no logo",
+        ]
+        if overlay_text:
+            prompt_parts.insert(1, f"visual emphasis: {overlay_text}")
+        return ", ".join(part for part in prompt_parts if part)
 
     async def _generate_single_image(
         self,
@@ -179,7 +216,7 @@ class ImageGenerationStage:
         }.get(style, "#d4af37")
 
         safe_prompt = prompt.replace("'", "’")[:180]
-        safe_overlay = overlay.replace("'", "’")[:40]
+        safe_overlay = overlay.replace("'", "’")[:60]
         label = f"{title}\n\n{safe_overlay}\n\n{safe_prompt}"
 
         subprocess.run(

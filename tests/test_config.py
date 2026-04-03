@@ -63,25 +63,27 @@ class TestYouTubePrivacy:
 class TestSettings:
     """Tests for Settings class."""
 
-    def test_default_values(self) -> None:
+    def test_default_values(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Should have correct default values."""
-        assert settings.channel_name == "Stoic Modernized"
-        assert settings.video_width == 1920
-        assert settings.video_height == 1080
-        assert settings.short_video_width == 1080
-        assert settings.short_video_height == 1920
-        assert settings.default_video_mode == VideoMode.SHORT
-        assert settings.video_fps == 30
-        assert settings.tts_provider == TTSProvider.LOCAL
-        assert settings.tts_voice == "en-US-GuyNeural"
-        assert settings.tts_speed == 1.0
-        assert settings.sd_image_width == 544
-        assert settings.sd_image_height == 960
-        assert settings.youtube_privacy_status == YouTubePrivacy.UNLISTED
-        assert settings.local_script_model is None
-        assert settings.local_script_max_tokens == 1800
-        assert settings.local_script_temperature == 0.7
-        assert settings.mock_mode is False
+        monkeypatch.delenv("MOCK_MODE", raising=False)
+        test_settings = Settings(_env_file=None)
+        assert test_settings.channel_name == "Stoic Modernized"
+        assert test_settings.video_width == 1920
+        assert test_settings.video_height == 1080
+        assert test_settings.short_video_width == 1080
+        assert test_settings.short_video_height == 1920
+        assert test_settings.default_video_mode == VideoMode.SHORT
+        assert test_settings.video_fps == 30
+        assert test_settings.tts_provider == TTSProvider.LOCAL
+        assert test_settings.tts_voice == "en-US-GuyNeural"
+        assert test_settings.tts_speed == 1.0
+        assert test_settings.sd_image_width == 544
+        assert test_settings.sd_image_height == 960
+        assert test_settings.youtube_privacy_status == YouTubePrivacy.UNLISTED
+        assert test_settings.local_script_model is None
+        assert test_settings.local_script_max_tokens == 1800
+        assert test_settings.local_script_temperature == 0.7
+        assert test_settings.mock_mode is False
 
     def test_db_path_is_path_object(self) -> None:
         """Should create db_path as Path object."""

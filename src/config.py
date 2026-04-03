@@ -4,7 +4,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     """Global application settings."""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
     project_root: Path = Path(__file__).parent.parent
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     background_music_volume: float = 0.15
 
     tts_provider: TTSProvider = TTSProvider.LOCAL
-    tts_voice: str = "en-US-GuyNeural"
+    tts_voice: str = Field(default="en-US-GuyNeural", validation_alias=AliasChoices("TTS_VOICE", "TS_VOICE"))
     tts_speed: float = 1.0
     tts_api_key: Optional[str] = None
 
