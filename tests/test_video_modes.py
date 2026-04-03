@@ -332,13 +332,14 @@ Use this the next time your mind starts spiraling."""
     assert scenes[3]["end_time"] == 9.0
 
 
-def test_zoom_animation_style_uses_duration_aware_zoompan_filter() -> None:
+def test_zoom_animation_style_uses_stable_centered_zoompan_filter() -> None:
     renderer = VideoRenderer(job_id="render-job", mock=False)
     filter_text = renderer._build_scene_clip_filter(width=1080, height=1920, duration=12.0, animation_style="zoom")
     assert "zoompan=" in filter_text
     assert "s=1080x1920" in filter_text
-    assert "1.08" in filter_text
-    assert "0.000" in filter_text
+    assert "on/" in filter_text
+    assert "(iw-iw/zoom)/2" in filter_text
+    assert "(ih-ih/zoom)/2" in filter_text
 
 
 def test_non_zoom_animation_style_uses_static_filter() -> None:
