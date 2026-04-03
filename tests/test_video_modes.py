@@ -207,22 +207,21 @@ def test_scene_durations_follow_scene_timing_when_audio_present() -> None:
     assert round(sum(durations), 2) == 23.0
 
 
-def test_real_image_prompt_prioritizes_scene_concept_over_generic_style() -> None:
+def test_real_image_prompt_uses_natural_language_scene_description() -> None:
     stage = ImageGenerationStage(job_id="img-job", mock=False, placeholder_only=False)
 
     prompt = stage._compose_image_prompt(
         subject="How to Stop Overthinking Work Problems with Stoic Control",
-        scene_prompt="office worker alone at desk after a tense meeting, looping reflections in laptop screen, conference room visible behind glass",
+        scene_prompt="A single focused worker in a modern minimalist office returning to one task at a clean, organized desk.",
         overlay="Replay Loop",
     )
 
-    assert "focus on replay loop" in prompt
-    assert "office worker alone at desk after a tense meeting" in prompt
-    assert "vertical 9:16 composition" in prompt
-    assert "gold accents" not in prompt
-    assert "stoic aesthetic" not in prompt
-    assert "no text" not in prompt
-    assert "no logo" not in prompt
+    assert prompt.startswith("A single focused worker in a modern minimalist office")
+    assert "The image should emphasize replay loop." in prompt
+    assert "Keep the scene clearly connected to the video topic: How to Stop Overthinking Work Problems with Stoic Control." in prompt
+    assert "Use a single clear subject, modern workplace realism, calm natural lighting, sharp focus, and a vertical 9:16 composition." in prompt
+    assert "no text" not in prompt.lower()
+    assert "no logo" not in prompt.lower()
 
 
 def test_short_scene_overlay_avoids_philosopher_names() -> None:
@@ -321,7 +320,6 @@ Use this the next time your mind starts spiraling."""
     assert scenes[2]["start_time"] == 4.5
     assert scenes[3]["start_time"] == 7.0
     assert scenes[3]["end_time"] == 9.0
-
 
 
 def test_zoom_animation_style_uses_zoompan_filter() -> None:

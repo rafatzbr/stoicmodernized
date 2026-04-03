@@ -76,8 +76,10 @@ class Settings(BaseSettings):
     sd_t5xxl_path: str = "/data/sd-models/t5xxl_fp16.safetensors"
     sd_image_width: int = 544
     sd_image_height: int = 960
-    sd_cfg_scale: float = 7.0
+    sd_cfg_scale: float = 4.5
+    sd_steps: int = 40
     sd_sampling_method: str = "euler"
+    sd_negative_prompt: str = "blurry, low quality, deformed, extra people, crowd, cluttered desk, chaos, multiple objects, text, logo, watermark, border, frame, poster, flyer, overexposed, burnt, beach, ocean, water, snow"
     force_placeholder_images: bool = False
 
     youtube_api_key: Optional[str] = None

@@ -33,7 +33,9 @@ class ImageGenerationStage:
         self.sd_width = settings.sd_image_width
         self.sd_height = settings.sd_image_height
         self.sd_cfg_scale = settings.sd_cfg_scale
+        self.sd_steps = settings.sd_steps
         self.sd_sampling_method = settings.sd_sampling_method
+        self.sd_negative_prompt = settings.sd_negative_prompt
 
     async def run(self, scene_plan: dict) -> list[ImageAsset]:
         self.images_dir.mkdir(parents=True, exist_ok=True)
@@ -99,7 +101,7 @@ class ImageGenerationStage:
     async def _real_generate(self, scene_plan: dict) -> list[ImageAsset]:
         assets = []
         subject = self._extract_subject(scene_plan)
-        negative_prompt = "people, face, crowd, beach, ocean, water, snow, text, logo, border, frame, margin, white border, blank edge, poster, flyer"
+        negative_prompt = self.sd_negative_prompt
 
         for scene in scene_plan.get("scenes", []):
             scene_num = scene["scene_number"]
@@ -136,31 +138,16 @@ class ImageGenerationStage:
 
     def _compose_image_prompt(self, *, subject: str, scene_prompt: str, overlay: object) -> str:
         overlay_text = str(overlay).strip() if isinstance(overlay, str) else ""
-        prompt_parts = [scene_prompt.strip() or f"visual concept for {subject}"]
-        if overlay_text and overlay_text.lower() not in scene_prompt.lower():
-            prompt_parts.append(f"focus on {overlay_text.lower()}")
-        if subject and subject.lower() not in scene_prompt.lower():
-            prompt_parts.append(f"topic anchor {subject}")
-        prompt_parts.extend(
-            [
-                "vertical 9:16 composition",
-                "single cohesive visual idea",
-                "cinematic lighting",
-                "modern workplace realism",
-            ]
+        base_scene = scene_prompt.strip() or f"A visual concept for {subject}."
+        sentences = [base_scene.rstrip(". ") + "."]
+        if overlay_text and overlay_text.lower() not in base_scene.lower():
+            sentences.append(f"The image should emphasize {overlay_text.lower()}.")
+        if subject and subject.lower() not in base_scene.lower():
+            sentences.append(f"Keep the scene clearly connected to the video topic: {subject}.")
+        sentences.append(
+            "Use a single clear subject, modern workplace realism, calm natural lighting, sharp focus, and a vertical 9:16 composition."
         )
-        return ", ".join(self._dedupe_prompt_parts(prompt_parts))
-
-    def _dedupe_prompt_parts(self, prompt_parts: list[str]) -> list[str]:
-        seen: set[str] = set()
-        deduped: list[str] = []
-        for part in prompt_parts:
-            normalized = part.strip(" ,").lower()
-            if not normalized or normalized in seen:
-                continue
-            seen.add(normalized)
-            deduped.append(part.strip(" ,"))
-        return deduped
+        return " ".join(sentences)
 
     async def _generate_single_image(
         self,
@@ -180,6 +167,7 @@ class ImageGenerationStage:
             "-p", prompt,
             "-n", negative_prompt,
             "--cfg-scale", str(self.sd_cfg_scale),
+            "--steps", str(self.sd_steps),
             "--sampling-method", self.sd_sampling_method,
             "--clip-on-cpu",
             "--vae-on-cpu",
