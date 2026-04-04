@@ -264,7 +264,12 @@ def scene(
     script_data = load_json(Path(job_record.script_path))
     console.print(f"[bold]Creating scene plan for:[/bold] {script_data['title']}")
 
-    stage = SceneStage(job_id=job_id, mock=mock)
+    scene_mock = mock
+    if not scene_mock and not settings.mock_mode:
+        scene_mock = True
+        console.print("[yellow]Using mock scene planner in hybrid local mode[/yellow]")
+
+    stage = SceneStage(job_id=job_id, mock=scene_mock)
     scene_plan = asyncio.run(stage.run(script_data))
     scene_path = stage.save_scene_plan(scene_plan)
 
