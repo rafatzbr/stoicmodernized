@@ -75,6 +75,7 @@ class ScenePlan(BaseModel):
     intro_duration: float = 3.0
     outro_duration: float = 5.0
     total_duration: float = 0.0
+    topic: str = ""
 
     @model_validator(mode="after")
     def compute_total_duration(self) -> "ScenePlan":

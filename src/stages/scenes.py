@@ -1,6 +1,7 @@
 """Scene planning stage module."""
 
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -343,14 +344,38 @@ class SceneStage:
         return "small symbolic props that support the idea without text"
 
     def _dedupe_overlays(self, scenes: list[Scene]) -> None:
-        seen: dict[str, int] = {}
+        seen: set[str] = set()
         for scene in scenes:
             if not scene.text_overlay:
                 continue
-            key = scene.text_overlay.lower()
-            seen[key] = seen.get(key, 0) + 1
-            if seen[key] > 1:
-                scene.text_overlay = f"{scene.text_overlay} {seen[key]}"
+            original = scene.text_overlay.strip()
+            candidate = original
+            suffix = 2
+            while candidate.lower() in seen:
+                candidate = self._variant_overlay(original, scene.narration_segment, suffix)
+                suffix += 1
+            scene.text_overlay = candidate
+            seen.add(candidate.lower())
+
+    def _variant_overlay(self, overlay: str, narration_segment: str, suffix: int) -> str:
+        narration = narration_segment.lower()
+        variants = {
+            "what you control": ["Control Your Part", "Act On Your Part", "Control The Next Step"],
+            "own your response": ["Choose Your Response", "Hold Your Composure", "Respond With Clarity"],
+            "use this today": ["Try This Today", "Practice This Today", "Use It Today"],
+            "pause first": ["Take The Beat", "Breathe Before Reply", "Pause The Spiral"],
+        }
+        choices = variants.get(overlay.lower(), [])
+        if choices:
+            index = min(suffix - 2, len(choices) - 1)
+            return choices[index]
+        if "control" in narration:
+            return "Control The Next Step"
+        if "response" in narration or "react" in narration:
+            return "Choose Your Response"
+        if "follow" in narration or "subscribe" in narration:
+            return "Try This Today"
+        return overlay
 
     def _line_has_control_split(self, line_lower: str) -> bool:
         control_markers = [
@@ -376,7 +401,7 @@ class SceneStage:
             "outro_duration": scene_plan.outro_duration,
             "total_duration": scene_plan.total_duration,
             "scenes": [s.model_dump() for s in scene_plan.scenes],
-            "generated_at": "TODO: Add timestamp",
+            "generated_at": datetime.now(UTC).isoformat(),
         }
         return save_json(data, self.scenes_dir / "scenes.json")
 

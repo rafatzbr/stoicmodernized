@@ -167,6 +167,9 @@ export function DashboardPage() {
           if (selectedJobId) {
             await loadJobDetail(selectedJobId);
           }
+          if (!cancelled) {
+            setRunId(null);
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -250,6 +253,33 @@ export function DashboardPage() {
       setRunLoading(false);
     }
   }, [provider, selectedJobId, selectedSteps, showNotice, topic, videoMode]);
+
+  const onRunSpecificSteps = useCallback(
+    async (steps: string[]) => {
+      if (!steps.length) {
+        return;
+      }
+
+      setRunLoading(true);
+      try {
+        const result = await startSteps({
+          topic,
+          job_id: selectedJobId || null,
+          video_mode: videoMode,
+          provider,
+          steps,
+        });
+        setRunId(result.run_id);
+        setRunState(null);
+        showNotice(`Rerun started: ${result.run_id}`, 'success');
+      } catch (error) {
+        showNotice(getErrorMessage(error, 'Failed to rerun selected steps.'), 'error');
+      } finally {
+        setRunLoading(false);
+      }
+    },
+    [provider, selectedJobId, showNotice, topic, videoMode],
+  );
 
   const onStopRun = useCallback(async () => {
     if (!runId) {
@@ -418,7 +448,18 @@ export function DashboardPage() {
                     </Typography>
                   </Paper>
                 ) : (
-                  <JobAssets jobDetail={jobDetail} />
+                  <JobAssets
+                    jobDetail={jobDetail}
+                    onRefresh={() => {
+                      if (selectedJobId) {
+                        void loadJobDetail(selectedJobId);
+                      }
+                    }}
+                    onRerunSteps={(steps) => {
+                      void onRunSpecificSteps(steps);
+                    }}
+                    rerunBusy={runLoading || Boolean(runId && runState?.running)}
+                  />
                 )}
                 <FileEditors
                   envContent={envContent}

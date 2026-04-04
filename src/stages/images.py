@@ -122,6 +122,9 @@ class ImageGenerationStage:
                     prompt=full_prompt,
                     output_path=image_path,
                     negative_prompt=negative_prompt,
+                    subject=subject,
+                    scene_prompt=scene_prompt,
+                    overlay=scene.get("text_overlay"),
                 )
                 self._postprocess_generated_image(image_path)
             except Exception as exc:
@@ -153,8 +156,10 @@ Scene concept: {sanitized_scene_prompt}
 Overlay takeaway: {overlay_text or 'none'}
 
 Requirements:
-- Output exactly one natural-language image prompt line.
-- Use descriptive, cinematic natural language, not comma spam.
+- Output exactly one prompt line.
+- Follow this pattern exactly: [subject], [setting], [composition], [lighting], [style]
+- Keep the full prompt at 50 words maximum.
+- Use descriptive natural language, not keyword spam.
 - Keep it visually concrete and realistic.
 - Prefer a single clear subject or focal action.
 - Emphasize modern workplace realism when appropriate.
@@ -260,6 +265,10 @@ Requirements:
         lowered = cleaned.lower()
         if not cleaned or any(term in lowered for term in banned):
             return ""
+        if len(cleaned.split()) > 50:
+            return ""
+        if cleaned.count(',') < 4:
+            return ""
         return cleaned
 
     async def _generate_single_image(
@@ -268,6 +277,9 @@ Requirements:
         output_path: Path,
         negative_prompt: str = "",
         seed: int = -1,
+        subject: str = "",
+        scene_prompt: str = "",
+        overlay: object = None,
     ) -> None:
         cmd = self._build_sd_command(
             prompt=prompt,
@@ -279,16 +291,17 @@ Requirements:
             sampling_method=self.sd_sampling_method,
         )
 
+        attempt_id = self._append_sd_cli_log_start(output_path=output_path, command=cmd)
         result = subprocess.run(cmd, capture_output=True, text=True)
-        self._append_sd_cli_log(output_path=output_path, command=cmd, result=result)
+        self._append_sd_cli_log_result(attempt_id=attempt_id, result=result)
         if result.returncode == 0:
             return
 
         if self._is_sd_cli_assert_failure(result.stderr):
             retry_prompt = self._build_safe_retry_prompt(
-                subject=self.job_dir.name,
-                scene_prompt=prompt,
-                overlay="focus",
+                subject=subject,
+                scene_prompt=scene_prompt or prompt,
+                overlay=str(overlay).strip() if isinstance(overlay, str) else "focus",
             )
             retry_negative = self._build_safe_retry_negative_prompt()
             retry_cmd = self._build_sd_command(
@@ -300,8 +313,9 @@ Requirements:
                 steps=32,
                 sampling_method="euler",
             )
+            retry_attempt_id = self._append_sd_cli_log_start(output_path=output_path, command=retry_cmd)
             retry_result = subprocess.run(retry_cmd, capture_output=True, text=True)
-            self._append_sd_cli_log(output_path=output_path, command=retry_cmd, result=retry_result)
+            self._append_sd_cli_log_result(attempt_id=retry_attempt_id, result=retry_result)
             if retry_result.returncode == 0:
                 return
             raise RuntimeError(
@@ -344,24 +358,34 @@ Requirements:
         lowered = (stderr or "").lower()
         return "ggml_assert" in lowered or "assert(i01" in lowered
 
-    def _append_sd_cli_log(
-        self,
-        *,
-        output_path: Path,
-        command: list[str],
-        result: subprocess.CompletedProcess[str],
-    ) -> None:
+    def _append_sd_cli_log_start(self, *, output_path: Path, command: list[str]) -> str:
         self.sd_log_path.parent.mkdir(parents=True, exist_ok=True)
         separator = "\n" + ("=" * 100) + "\n"
         command_text = shlex.join(command)
+        attempt_id = f"{datetime.now(UTC).isoformat()}::{output_path.name}"
         entry = (
             f"{separator}"
+            f"attempt_id: {attempt_id}\n"
             f"timestamp: {datetime.now(UTC).isoformat()}\n"
             f"output_image: {output_path}\n"
-            f"return_code: {result.returncode}\n"
             f"command:\n{command_text}\n\n"
+            f"status: started\n"
+        )
+        with self.sd_log_path.open("a", encoding="utf-8") as handle:
+            handle.write(entry)
+        return attempt_id
+
+    def _append_sd_cli_log_result(
+        self,
+        *,
+        attempt_id: str,
+        result: subprocess.CompletedProcess[str],
+    ) -> None:
+        entry = (
+            f"return_code: {result.returncode}\n"
             f"stdout:\n{result.stdout or '<empty>'}\n\n"
             f"stderr:\n{result.stderr or '<empty>'}\n"
+            f"status: finished ({attempt_id})\n"
         )
         with self.sd_log_path.open("a", encoding="utf-8") as handle:
             handle.write(entry)

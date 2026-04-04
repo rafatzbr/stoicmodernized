@@ -234,11 +234,10 @@ class YouTubeUploader:
             "Timestamps:",
         ])
 
-        current_time = 0
         for chapter in chapters:
-            timestamp_str = f"{int(current_time // 60):02d}:{int(current_time % 60):02d}"
+            timestamp = float(chapter.get("timestamp", 0) or 0)
+            timestamp_str = f"{int(timestamp // 60):02d}:{int(timestamp % 60):02d}"
             lines.append(f"{timestamp_str} {chapter.get('title', '')}")
-            current_time = chapter.get("timestamp", current_time)
 
         lines.extend([
             "",

@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     sd_cfg_scale: float = 4.5
     sd_steps: int = 40
     sd_sampling_method: str = "euler"
-    sd_negative_prompt: str = "blurry, low quality, deformed, extra people, crowd, cluttered desk, chaos, multiple objects, text, logo, watermark, border, frame, poster, flyer, overexposed, burnt, beach, ocean, water, snow"
+    sd_negative_prompt: str = "blurry, low quality, deformed, extra people, clutter, text, logo, watermark, overexposed"
     force_placeholder_images: bool = False
 
     youtube_api_key: Optional[str] = None
@@ -100,8 +100,8 @@ class Settings(BaseSettings):
     local_image_prompt_max_tokens: int = 220
     local_image_prompt_temperature: float = 0.4
 
-    watermark_logo_path: Path = Path('/home/rafatz/media/thumbnail_nobg.png')
-    watermark_scale_width: int = 120
+    watermark_logo_path: Path = Path('/home/rafatz/media/logo_transparent.png')
+    watermark_scale_width: int = 240
     watermark_padding: int = 36
 
     mock_mode: bool = False

@@ -100,21 +100,22 @@ class EdgeTTSAudio(TTSAudioInterface):
         rate_percent = int(round((self.speed - 1.0) * 100))
         rate = f"{rate_percent:+d}%"
 
-        result = subprocess.run(
-            [
-                binary,
-                "--voice",
-                kwargs.get("voice", self.voice),
-                "--rate",
-                rate,
-                "--text",
-                text,
-                "--write-media",
-                str(output_path),
-            ],
-            capture_output=True,
-            text=True,
-        )
+        cmd = [
+            binary,
+            "--voice",
+            kwargs.get("voice", self.voice),
+            "--rate",
+            rate,
+            "--text",
+            text,
+            "--write-media",
+            str(output_path),
+        ]
+        subtitles_path = kwargs.get("subtitles_path")
+        if subtitles_path:
+            cmd.extend(["--write-subtitles", str(subtitles_path)])
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
             raise RuntimeError(f"edge-tts failed: {result.stderr.strip()}")
@@ -195,14 +196,14 @@ class TTSStage:
         if provider == "elevenlabs":
             return ElevenLabsTTSAudio()
         if provider in {"edge", "edge-tts"}:
-            edge_voice = settings.tts_voice if settings.tts_voice != "adam" else "en-US-GuyNeural"
-            return EdgeTTSAudio(voice=edge_voice, speed=settings.tts_speed)
+            return EdgeTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed)
         return LocalTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed)
 
     async def run(self, scene_plan: dict) -> Path:
         self.audio_dir.mkdir(parents=True, exist_ok=True)
         extension = ".mp3" if self.provider in {"edge", "edge-tts", "elevenlabs"} and not self.mock else ".wav"
         audio_path = self.audio_dir / f"narration{extension}"
+        subtitles_path = self.audio_dir / "narration.vtt"
 
         narration_segments = [
             scene.get("narration_segment", "")
@@ -224,7 +225,10 @@ class TTSStage:
             return await self.audio_interface.generate_audio(all_text, self.audio_dir / "narration.wav")
 
         try:
-            return await self.audio_interface.generate_audio(all_text, audio_path)
+            kwargs = {}
+            if self.provider in {"edge", "edge-tts"}:
+                kwargs["subtitles_path"] = subtitles_path
+            return await self.audio_interface.generate_audio(all_text, audio_path, **kwargs)
         except Exception:
             fallback = LocalTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed)
             return await fallback.generate_audio(all_text, self.audio_dir / "narration.wav")

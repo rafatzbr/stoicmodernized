@@ -1,6 +1,9 @@
 """Main CLI entry point for stoic-modernized."""
 
 import asyncio
+import contextlib
+import io
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
@@ -13,7 +16,7 @@ from src.config import VideoMode, settings
 from src.database import db
 from src.logging_config import JobLogger
 from src.models import Scene, VideoRenderConfig
-from src.stages.images import ImageGenerationStage
+from src.stages.images import ImageGenerationError, ImageGenerationStage
 from src.stages.render import VideoRenderer
 from src.stages.research import ResearchStage
 from src.stages.scenes import SceneStage
@@ -30,6 +33,43 @@ app = typer.Typer(
 )
 
 console = Console()
+
+
+class TeeTextIO(io.TextIOBase):
+    """Mirror writes to multiple text streams."""
+
+    def __init__(self, *streams: io.TextIOBase):
+        self.streams = streams
+
+    def write(self, s: str) -> int:
+        for stream in self.streams:
+            try:
+                stream.write(s)
+            except ValueError:
+                continue
+        return len(s)
+
+    def flush(self) -> None:
+        for stream in self.streams:
+            try:
+                stream.flush()
+            except ValueError:
+                continue
+
+
+@contextlib.contextmanager
+def job_output_capture(job_id: str):
+    """Persist stdout/stderr for a job while preserving normal console output."""
+    log_dir = settings.jobs_dir / job_id
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"{job_id}.log"
+    db.update_job(job_id, log_path=str(log_path))
+
+    with log_path.open("a", encoding="utf-8") as log_file:
+        tee_out = TeeTextIO(sys.stdout, log_file)
+        tee_err = TeeTextIO(sys.stderr, log_file)
+        with contextlib.redirect_stdout(tee_out), contextlib.redirect_stderr(tee_err):
+            yield log_path
 
 
 def print_header() -> None:
@@ -132,17 +172,19 @@ def research(
         job_record = db.create_job(topic)
         job_id = job_record.job_id
 
+    logger = JobLogger(job_id)
+    db.update_job(job_id, log_path=logger.log_path)
+
     console.print(f"[bold]Job ID:[/bold] {job_id}")
     console.print(f"[bold]Topic:[/bold] {topic}")
 
-    logger = JobLogger(job_id)
     logger.info(f"Starting research for topic: {topic}")
 
     stage = ResearchStage(job_id=job_id, mock=mock)
     results = asyncio.run(stage.run(topic))
     research_path = stage.save_results(results)
 
-    db.update_job(job_id, status="research_complete", research_path=str(research_path))
+    db.update_job(job_id, status="research_complete", research_path=str(research_path), log_path=logger.log_path)
 
     console.print()
     console.print("[bold green]Research Complete![/bold green]")
@@ -281,10 +323,19 @@ def images(
     console.print(f"[bold]Generating {len(scene_plan['scenes'])} images for scenes...[/bold]")
 
     stage = ImageGenerationStage(job_id=job_id, mock=mock, placeholder_only=placeholder_only)
-    assets = asyncio.run(stage.run(scene_plan))
+    try:
+        assets = asyncio.run(stage.run(scene_plan))
+    except ImageGenerationError as exc:
+        error_text = str(exc)
+        db.update_job(job_id, status="images_failed", error_message=error_text)
+        console.print()
+        console.print("[bold red]Image Generation Failed![/bold red]")
+        console.print(f"[dim]Reason:[/dim] {error_text}")
+        raise typer.Exit(code=1)
+
     assets_path = stage.save_assets(assets)
 
-    db.update_job(job_id, status="images_complete", images_dir=str(stage.images_dir))
+    db.update_job(job_id, status="images_complete", images_dir=str(stage.images_dir), error_message=None)
 
     console.print()
     console.print("[bold green]Image Generation Complete![/bold green]")
@@ -444,60 +495,62 @@ def upload(
 def run(
     topic: str = typer.Argument(..., help="Topic for the video"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data for all stages"),
-    provider: str = typer.Option("local", "--provider", "-p", help="TTS provider (local, edge, or elevenlabs)"),
+    provider: str = typer.Option("edge", "--provider", "-p", help="TTS provider (local, edge, or elevenlabs)"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
     video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
     placeholder_images: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
 ) -> None:
     """Run the complete pipeline for a topic."""
-    print_header()
-    console.print(f"[bold]Running complete pipeline for:[/bold] {topic}")
-    if skip_upload:
-        console.print("[yellow]Upload stage will be skipped[/yellow]")
-    if placeholder_images:
-        console.print("[yellow]Using placeholder scene cards instead of sd-cli[/yellow]")
-
-    research_stage_mock = mock or settings.mock_mode
-    script_stage_mock = mock or settings.mock_mode
-    scene_stage_mock = mock or settings.mock_mode
-    media_stage_mock = mock or settings.mock_mode
-
-    if not mock and not settings.mock_mode:
-        console.print(
-            f"[yellow]Using hybrid local mode: real research + real script + mock scene planner + real local media generation ({video_mode.value})[/yellow]"
-        )
-        research_stage_mock = False
-        script_stage_mock = False
-        scene_stage_mock = True
-        media_stage_mock = False
-    else:
-        console.print("[yellow]Using mock mode for local-friendly generation[/yellow]")
-
     job_record = db.create_job(topic)
     job_id = job_record.job_id
-    console.print(f"[bold]Job ID:[/bold] {job_id}")
-    console.print()
 
-    research(topic=topic, job_id=job_id, mock=research_stage_mock)
-    script(job_id=job_id, mock=script_stage_mock, video_mode=video_mode)
-    scene(job_id=job_id, mock=scene_stage_mock)
-    tts(job_id=job_id, provider=provider, mock=media_stage_mock)
-    images(job_id=job_id, mock=media_stage_mock, placeholder_only=placeholder_images)
-    subtitles(job_id=job_id, mock=media_stage_mock)
-    render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode)
-    metadata(job_id=job_id, mock=script_stage_mock)
+    with job_output_capture(job_id):
+        print_header()
+        console.print(f"[bold]Running complete pipeline for:[/bold] {topic}")
+        if skip_upload:
+            console.print("[yellow]Upload stage will be skipped[/yellow]")
+        if placeholder_images:
+            console.print("[yellow]Using placeholder scene cards instead of sd-cli[/yellow]")
 
-    if not skip_upload:
-        upload(job_id=job_id, mock=mock)
-    else:
-        db.update_job(job_id, status="ready_for_upload")
+        research_stage_mock = mock or settings.mock_mode
+        script_stage_mock = mock or settings.mock_mode
+        scene_stage_mock = mock or settings.mock_mode
+        media_stage_mock = mock or settings.mock_mode
 
-    console.print()
-    console.print("[bold green]Pipeline Complete![/bold green]")
-    console.print(f"[dim]Job ID:[/dim] {job_id}")
-    console.print(f"[dim]Output directory:[/dim] {settings.jobs_dir / job_id}")
-    console.print()
-    console.print("[dim]To view job details:[/dim] python -m src.main jobs")
+        if not mock and not settings.mock_mode:
+            console.print(
+                f"[yellow]Using hybrid local mode: real research + real script + mock scene planner + real local media generation ({video_mode.value})[/yellow]"
+            )
+            research_stage_mock = False
+            script_stage_mock = False
+            scene_stage_mock = True
+            media_stage_mock = False
+        else:
+            console.print("[yellow]Using mock mode for local-friendly generation[/yellow]")
+
+        console.print(f"[bold]Job ID:[/bold] {job_id}")
+        console.print()
+
+        research(topic=topic, job_id=job_id, mock=research_stage_mock)
+        script(job_id=job_id, mock=script_stage_mock, video_mode=video_mode)
+        scene(job_id=job_id, mock=scene_stage_mock)
+        tts(job_id=job_id, provider=provider, mock=media_stage_mock)
+        images(job_id=job_id, mock=media_stage_mock, placeholder_only=placeholder_images)
+        subtitles(job_id=job_id, mock=media_stage_mock)
+        render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode)
+        metadata(job_id=job_id, mock=script_stage_mock)
+
+        if not skip_upload:
+            upload(job_id=job_id, mock=mock)
+        else:
+            db.update_job(job_id, status="ready_for_upload")
+
+        console.print()
+        console.print("[bold green]Pipeline Complete![/bold green]")
+        console.print(f"[dim]Job ID:[/dim] {job_id}")
+        console.print(f"[dim]Output directory:[/dim] {settings.jobs_dir / job_id}")
+        console.print()
+        console.print("[dim]To view job details:[/dim] python -m src.main jobs")
 
 
 @app.command()
@@ -574,6 +627,8 @@ def status(
         table.add_row("Video", job_record.video_path)
     if job_record.metadata_path:
         table.add_row("Metadata", job_record.metadata_path)
+    if job_record.log_path:
+        table.add_row("Log", job_record.log_path)
 
     console.print(table)
 

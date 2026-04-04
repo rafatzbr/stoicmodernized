@@ -5,7 +5,7 @@ import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import MovieRoundedIcon from '@mui/icons-material/MovieRounded';
-import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import {
   Box,
   Button,
@@ -101,32 +101,35 @@ function PreviewText({ content }: { content: string }) {
         lineHeight: 1.6,
       }}
     >
-      <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
-        <Box component="tbody">
-          {lines.map((line, index) => (
-            <Box component="tr" key={`${index + 1}-${line.slice(0, 12)}`}>
-              <Box
-                component="td"
-                sx={{
-                  userSelect: 'none',
-                  width: 1,
-                  pr: 2,
-                  pl: 1.5,
-                  py: 0.1,
-                  textAlign: 'right',
-                  verticalAlign: 'top',
-                  color: 'rgba(216, 225, 255, 0.45)',
-                  borderRight: '1px solid rgba(216, 225, 255, 0.08)',
-                }}
-              >
-                {index + 1}
-              </Box>
-              <Box component="td" sx={{ px: 2, py: 0.1, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {line || ' '}
-              </Box>
+      <Box sx={{ width: '100%' }}>
+        {lines.map((line, index) => (
+          <Box
+            key={`${index + 1}-${line.slice(0, 12)}`}
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '56px minmax(0, 1fr)',
+              alignItems: 'start',
+            }}
+          >
+            <Box
+              sx={{
+                userSelect: 'none',
+                px: 1.5,
+                py: 0.1,
+                textAlign: 'right',
+                color: 'rgba(216, 225, 255, 0.45)',
+                borderRight: '1px solid rgba(216, 225, 255, 0.08)',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              {index + 1}
             </Box>
-          ))}
-        </Box>
+            <Box sx={{ px: 2, py: 0.1, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: 0 }}>
+              {line || ' '}
+            </Box>
+          </Box>
+        ))}
       </Box>
     </Box>
   );
@@ -230,7 +233,17 @@ function AssetPreview({ asset }: { asset: JobAsset }) {
   );
 }
 
-export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
+export function JobAssets({
+  jobDetail,
+  onRefresh,
+  onRerunSteps,
+  rerunBusy,
+}: {
+  jobDetail: JobDetail | null;
+  onRefresh: () => void;
+  onRerunSteps: (steps: string[]) => void;
+  rerunBusy: boolean;
+}) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const assetSummary = useMemo(() => {
@@ -262,33 +275,77 @@ export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
       <Card>
         <CardContent>
           <Stack spacing={2}>
-            <div>
-              <Typography variant="overline" color="secondary.main">
-                Output inspection
-              </Typography>
-              <Typography variant="h6">Selected job assets</Typography>
-            </div>
-
-            {!jobDetail ? (
-              <Stack spacing={1} alignItems="center" sx={{ py: 5, textAlign: 'center' }}>
-                <FolderOpenRoundedIcon color="disabled" />
-                <Typography variant="body1">No job selected</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Pick a job from the list to inspect generated files.
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+              <div>
+                <Typography variant="overline" color="secondary.main">
+                  Output inspection
                 </Typography>
+                <Typography variant="h6">Selected job assets</Typography>
+              </div>
+              <Button size="small" startIcon={<RefreshRoundedIcon />} onClick={onRefresh}>
+                Refresh
+              </Button>
+            </Stack>
+
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap" alignItems={{ xs: 'stretch', sm: 'center' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mr: { sm: 1 } }}>
+                  Quick reruns
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!jobDetail || rerunBusy}
+                  onClick={() => onRerunSteps(['tts', 'subtitles', 'render', 'metadata'])}
+                >
+                  Rerun TTS→Render
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!jobDetail || rerunBusy}
+                  onClick={() => onRerunSteps(['images', 'subtitles', 'render', 'metadata'])}
+                >
+                  Rerun Images→Render
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!jobDetail || rerunBusy}
+                  onClick={() => onRerunSteps(['subtitles', 'render', 'metadata'])}
+                >
+                  Rerun Subtitles→Render
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!jobDetail || rerunBusy}
+                  onClick={() => onRerunSteps(['render', 'metadata'])}
+                >
+                  Rerun Render
+                </Button>
               </Stack>
-            ) : (
-              <>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
-                  <Chip label={jobDetail.status} color={jobDetail.status === 'completed' ? 'success' : 'default'} size="small" />
-                  <Chip label={jobDetail.job_id} size="small" variant="outlined" />
-                  <Chip label={`${jobDetail.assets.length} assets`} size="small" variant="outlined" />
-                  {assetSummary ? <Chip label={`${assetSummary.images} images • ${assetSummary.audio} audio • ${assetSummary.videos} video`} size="small" variant="outlined" /> : null}
+
+              {!jobDetail ? (
+                <Stack spacing={1} alignItems="center" sx={{ py: 5, textAlign: 'center' }}>
+                  <FolderOpenRoundedIcon color="disabled" />
+                  <Typography variant="body1">No job selected</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Pick a job from the list to inspect generated files and enable quick reruns.
+                  </Typography>
                 </Stack>
+              ) : (
+                <>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
+                    <Chip label={jobDetail.status} color={jobDetail.status === 'completed' ? 'success' : 'default'} size="small" />
+                    <Chip label={jobDetail.job_id} size="small" variant="outlined" />
+                    <Chip label={`${jobDetail.assets.length} assets`} size="small" variant="outlined" />
+                    {assetSummary ? <Chip label={`${assetSummary.images} images • ${assetSummary.audio} audio • ${assetSummary.videos} video`} size="small" variant="outlined" /> : null}
+                  </Stack>
 
-                <Divider />
+                  <Divider />
 
-                <List disablePadding sx={{ display: 'grid', gap: 1 }}>
+                  <List disablePadding sx={{ display: 'grid', gap: 1 }}>
                   {jobDetail.assets.length === 0 ? (
                     <Box sx={{ py: 2 }}>
                       <Typography variant="body2" color="text.secondary">
@@ -301,28 +358,18 @@ export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
                         key={asset.path}
                         divider={false}
                         secondaryAction={
-                          <Stack direction="row" spacing={1}>
+                          asset.url ? (
                             <Button
                               size="small"
-                              startIcon={<VisibilityRoundedIcon />}
-                              onClick={() => setPreviewIndex(index)}
-                              disabled={!asset.url}
+                              component={Link}
+                              href={asset.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              startIcon={<DownloadRoundedIcon />}
                             >
-                              Preview
+                              Open
                             </Button>
-                            {asset.url ? (
-                              <Button
-                                size="small"
-                                component={Link}
-                                href={asset.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                startIcon={<DownloadRoundedIcon />}
-                              >
-                                Open
-                              </Button>
-                            ) : null}
-                          </Stack>
+                          ) : null
                         }
                         sx={{
                           px: 1.5,
@@ -332,10 +379,25 @@ export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
                           borderColor: 'divider',
                         }}
                       >
-                        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ pr: 18 }}>
+                        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ pr: 10, minWidth: 0 }}>
                           {renderAssetIcon(asset.relative)}
                           <ListItemText
-                            primary={asset.relative}
+                            primary={
+                              asset.url ? (
+                                <Link
+                                  component="button"
+                                  type="button"
+                                  underline="hover"
+                                  color="inherit"
+                                  onClick={() => setPreviewIndex(index)}
+                                  sx={{ textAlign: 'left', fontWeight: 600 }}
+                                >
+                                  {asset.relative}
+                                </Link>
+                              ) : (
+                                asset.relative
+                              )
+                            }
                             secondary={`${formatBytes(asset.size)}${asset.mime ? ` • ${asset.mime}` : ''}`}
                           />
                         </Stack>
@@ -346,7 +408,8 @@ export function JobAssets({ jobDetail }: { jobDetail: JobDetail | null }) {
               </>
             )}
           </Stack>
-        </CardContent>
+        </Stack>
+      </CardContent>
       </Card>
 
       <Dialog open={Boolean(previewAsset)} onClose={() => setPreviewIndex(null)} maxWidth="lg" fullWidth>

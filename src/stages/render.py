@@ -59,6 +59,8 @@ class VideoRenderer:
                     "-y",
                     "-i",
                     str(image_paths[0]),
+                    "-vf",
+                    f"scale={config.width}:{config.height}:force_original_aspect_ratio=increase,crop={config.width}:{config.height}",
                     "-frames:v",
                     "1",
                     str(thumbnail_path),

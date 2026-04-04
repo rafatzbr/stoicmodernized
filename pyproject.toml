@@ -33,6 +33,9 @@ dependencies = [
     "httpx>=0.25.0",
     "rich>=13.0.0",
     "click>=8.1.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
@@ -47,15 +50,19 @@ dev = [
 
 [project.scripts]
 stoic-modernized = "src.main:app"
+stoic-modernized-ui = "src.ui:app"
 
 [project.urls]
 Homepage = "https://github.com/rafatz/stoic-modernized"
 Documentation = "https://github.com/rafatz/stoic-modernized#readme"
 Repository = "https://github.com/rafatz/stoic-modernized.git"
 
+[tool.setuptools]
+py-modules = []
+
 [tool.setuptools.packages.find]
 where = ["."]
-packages = ["src"]
+include = ["src*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
