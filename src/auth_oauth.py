@@ -169,7 +169,7 @@ def main():
         from googleapiclient.discovery import build
 
         youtube = build("youtube", "v3", credentials=creds)
-        channel = youtube.channels().list(part="snippet,contentDetails").execute()
+        channel = youtube.channels().list(part="snippet,contentDetails", id="mine").execute()
 
         if channel.get("items"):
             channel_name = channel["items"][0]["snippet"]["title"]
