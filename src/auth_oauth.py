@@ -50,13 +50,15 @@ def authenticate_headless() -> Credentials:
     print("\n[bold]Stoic Modernized - Headless OAuth2 Authentication[/bold]\n")
     print("[dim]This method does not require a browser.[/dim]\n")
     
-    # Use InstalledAppFlow with implicit localhost redirect
+    # Use InstalledAppFlow
     flow = InstalledAppFlow.from_client_secrets_file(
         str(CREDENTIALS_FILE), SCOPES
     )
     
-    # Get the authorization URL without explicit redirect_uri
-    # InstalledAppFlow handles localhost automatically
+    # Explicitly set the redirect_uri to match what's in credentials file
+    flow.redirect_uri = 'http://localhost'
+    
+    # Get the authorization URL
     auth_url, _ = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
