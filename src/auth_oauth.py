@@ -28,8 +28,11 @@ except ImportError:
     print("   pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2")
     sys.exit(1)
 
-# OAuth2 scope - YouTube upload permission
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+# OAuth2 scope - YouTube upload and read permissions
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly"
+]
 
 # Paths
 HOME_DIR = Path.home()
