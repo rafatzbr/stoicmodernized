@@ -87,15 +87,17 @@ For servers or environments without a browser:
 python -m src.auth_oauth --headless
 ```
 
-This will:
-1. Display an authorization URL
-2. You open the URL manually (or copy to another device)
-3. Sign in and grant permission
-4. Copy the authorization code from the redirect URL
-5. Paste the code back to the terminal
-6. Save the token to `~/.stoic-modernized/oauth2_token.json`
-
 **Headless flow steps:**
+
+1. **Run the command** - It will display an authorization URL
+2. **Open the URL** - Copy and paste it into your browser (or on another device)
+3. **Sign in** - Use your Google account
+4. **Grant permission** - Allow the app to upload videos to YouTube
+5. **Redirect page** - You'll see "Refused to connect" or similar - this is normal
+6. **Copy the code** - The URL in your browser's address bar will be very long. Copy everything after `code=`
+7. **Paste the code** - Return to the terminal and paste the authorization code
+
+**Example:**
 
 ```
 Step 1: Open this URL in your browser:
@@ -103,8 +105,19 @@ Step 1: Open this URL in your browser:
 
 Step 2: Sign in with your Google account
 Step 3: Grant permission to upload videos to YouTube
-Step 4: Copy the authorization code from the redirect URL (after 'code=')
-Step 5: Enter the authorization code in the terminal
+Step 4: You'll be redirected to a page that says 'Refused to connect'
+Step 5: Copy the entire URL from your browser's address bar
+Step 6: Extract the authorization code (the part after 'code=')
+
+Example URL:
+  http://localhost/?code=4/0AeanS7a...very_long_code...xyz&scope=...
+
+The code is everything between 'code=' and '&scope=':
+  4/0AeanS7a...very_long_code...xyz
+
+Enter the authorization code: 4/0AeanS7a...paste_code_here...xyz
+
+✓ Token saved to: /home/rafatz/.stoic-modernized/oauth2_token.json
 ```
 
 ### 6. Test the Upload

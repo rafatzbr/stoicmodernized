@@ -4,7 +4,7 @@
 
 ### 1. OAuth2 Authentication
 - **Script**: `src/auth_oauth.py`
-- **Usage**: `python -m src.auth_oauth`
+- **Usage**: `python -m src.auth_oauth` (browser) or `python -m src.auth_oauth --headless` (no browser)
 - **Purpose**: Authorize the app to upload videos to your YouTube channel
 - **Output**: Creates `~/.stoic-modernized/oauth2_token.json`
 
@@ -42,13 +42,14 @@ Updated `src/main.py`:
 **Created:**
 - `src/auth_oauth.py` - OAuth2 authentication script
 - `YOUTUBE_UPLOAD.md` - Setup guide
+- `YOUTUBE_QUICK_REF.md` - Quick reference
 
 **Modified:**
 - `src/stages/upload.py` - Real YouTube upload implementation
 - `src/main.py` - CLI commands updated
 - `src/config.py` - Added credentials path setting
 - `pyproject.toml` - Added OAuth2 dependencies
-- `README.md` - Added YouTube upload section
+- `README.md` - YouTube upload section added
 
 ## How to Use
 
@@ -86,11 +87,16 @@ python -m src.auth_oauth
 ```bash
 python -m src.auth_oauth --headless
 ```
-This will:
-- Display an authorization URL
-- You open it manually
-- Paste the authorization code back
-- Save token to `~/.stoic-modernized/oauth2_token.json`
+
+**Headless flow:**
+1. Command displays authorization URL
+2. Open URL in browser
+3. Sign in and grant permission
+4. See "Refused to connect" - this is normal
+5. Copy the URL from address bar
+6. Extract the code (everything after `code=`)
+7. Paste code back to terminal
+8. Token saved to `~/.stoic-modernized/oauth2_token.json`
 
 ### Step 5: Run Pipeline
 ```bash
@@ -136,11 +142,14 @@ Make sure you ran `python -m src.auth_oauth` successfully.
 pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 ```
 
+**"Refused to connect" during headless auth**
+This is normal! Just copy the URL from your browser's address bar and extract the code.
+
 ## Next Steps
 
 1. ✅ Install OAuth2 dependencies
 2. ✅ Download OAuth2 credentials from Google Cloud
-3. ⏳ Run `python -m src.auth_oauth` to authenticate
+3. ⏳ Run `python -m src.auth_oauth` or `python -m src.auth_oauth --headless` to authenticate
 4. ⏳ Test with `python -m src.main upload <job_id>`
 
 ---

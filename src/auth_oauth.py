@@ -50,11 +50,13 @@ def authenticate_headless() -> Credentials:
     print("\n[bold]Stoic Modernized - Headless OAuth2 Authentication[/bold]\n")
     print("[dim]This method does not require a browser.[/dim]\n")
     
+    # Use InstalledAppFlow with implicit localhost redirect
     flow = InstalledAppFlow.from_client_secrets_file(
         str(CREDENTIALS_FILE), SCOPES
     )
     
-    # Get the authorization URL
+    # Get the authorization URL without explicit redirect_uri
+    # InstalledAppFlow handles localhost automatically
     auth_url, _ = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
@@ -66,7 +68,9 @@ def authenticate_headless() -> Credentials:
     
     print("[bold]Step 2:[/bold] Sign in with your Google account")
     print("[bold]Step 3:[/bold] Grant permission to upload videos to YouTube")
-    print("[bold]Step 4:[/bold] Copy the authorization code from the redirect URL\n")
+    print("[bold]Step 4:[/bold] You'll be redirected to a page that says 'Refused to connect'")
+    print("[bold]Step 5:[/bold] Copy the entire URL from your browser's address bar")
+    print("[bold]Step 6:[/bold] Extract the authorization code (the part after 'code=')\n")
     
     auth_code = input("Enter the authorization code: ").strip()
     
@@ -74,8 +78,15 @@ def authenticate_headless() -> Credentials:
         print("[red]✗ No authorization code provided[/red]")
         sys.exit(1)
     
-    print("\n[bold]Step 5:[/bold] Exchanging code for token...")
-    flow.fetch_token(code=auth_code)
+    print("\n[bold]Step 7:[/bold] Exchanging code for token...")
+    
+    # Use fetch_token with code parameter
+    try:
+        flow.fetch_token(code=auth_code)
+    except Exception as e:
+        print(f"[red]✗ Token exchange failed: {e}[/red]")
+        print("\n[dim]Make sure you copied the code correctly (no extra characters)[/dim]")
+        sys.exit(1)
     
     return flow.credentials
 
