@@ -155,7 +155,7 @@ class VideoRenderer:
         style = (animation_style or "zoom").lower()
 
         if style == "zoom":
-            target_zoom = 1.05
+            target_zoom = 1.10
             frame_divisor = max(1, frames - 1)
             return (
                 f"scale={target_width}:{target_height}:force_original_aspect_ratio=increase,"

@@ -36,6 +36,10 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
     "python-multipart>=0.0.9",
+    "google-api-python-client>=2.0.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-auth-httplib2>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +55,7 @@ dev = [
 [project.scripts]
 stoic-modernized = "src.main:app"
 stoic-modernized-ui = "src.ui:app"
+stoic-auth-oauth = "src.auth_oauth:main"
 
 [project.urls]
 Homepage = "https://github.com/rafatz/stoic-modernized"

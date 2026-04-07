@@ -76,13 +76,14 @@ class Settings(BaseSettings):
     sd_t5xxl_path: str = "/data/sd-models/t5xxl_fp16.safetensors"
     sd_image_width: int = 544
     sd_image_height: int = 960
-    sd_cfg_scale: float = 4.5
-    sd_steps: int = 40
+    sd_cfg_scale: float = 3.8  # Rafael 2026-04-05: Lower for more natural results (3.5-4.0 range)
+    sd_steps: int = 30  # Rafael 2026-04-05: Start with 40, compare with 30-36
     sd_sampling_method: str = "euler"
-    sd_negative_prompt: str = "blurry, low quality, deformed, extra people, clutter, text, logo, watermark, overexposed"
+    sd_negative_prompt: str = "blurry, low quality, deformed, extra people in foreground, cluttered desk, text, logo, watermark, overexposed, bad hands, extra fingers, missing fingers, duplicate objects, malformed laptop, distorted pen, plastic skin, uncanny smile, centered headshot, stiff stock photo pose, oversmoothed skin, multiple computers"
     force_placeholder_images: bool = False
 
     youtube_api_key: Optional[str] = None
+    youtube_credentials_path: Optional[str] = None
     youtube_privacy_status: YouTubePrivacy = YouTubePrivacy.UNLISTED
     youtube_schedule_datetime: Optional[str] = None
 

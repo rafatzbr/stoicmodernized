@@ -13,6 +13,47 @@ Automate faceless YouTube video creation for the **Stoic Modernized** channel, t
 - **Shorts + long-video modes** with vertical and landscape outputs
 - **Firefox-friendlier MP4 output** with browser-safe H.264/AAC settings
 - **Structured logging** per job
+- **OAuth2 YouTube upload** - Upload videos directly to your channel
+
+## Image Prompt Generation
+
+The pipeline now uses a **base prompt template with llama.cpp refinement** to generate varied, valid image prompts.
+
+### How It Works
+
+1. **Base Template** - Defines the visual identity for Stoic Modernized channel
+2. **Random Expansion** - Combines professions, actions, locations, objects randomly
+3. **llama.cpp Refinement** - Qwen3.5 model expands the base into a detailed prompt
+4. **Seed Management** - Each scene gets a unique seed to ensure variety
+
+### Manual Testing
+
+```bash
+cd /home/rafatz/projects/stoic-modernized
+python -m src.prompt_generator "staying calm when work feels urgent"
+```
+
+### Automatic Generation
+
+The image generation stage (`src/stages/images.py`) automatically uses this system:
+
+- Each scene gets a random seed from `src/prompt_seed.json`
+- Predefined elements are combined randomly
+- llama.cpp refines into a detailed prompt
+- Output is sanitized and validated before use
+
+### Predefined Elements
+
+You can customize these in `src/stages/images.py`:
+
+- **PROFESSIONS** - Types of people/workers
+- **ACTIONS** - What they're doing
+- **LOCATIONS** - Where the scene takes place
+- **CONCRETE_OBJECTS** - Items visible in the scene
+- **BACKGROUNDS** - Background details
+- **FOREGROUNDS** - Foreground details
+
+Each run randomly combines these, so prompts vary while maintaining the channel identity.
 
 ## Quick Start
 
@@ -48,230 +89,104 @@ python -m src.main idea --count 5 --mock
 #### Research a Topic
 
 ```bash
-python -m src.main research --topic "handling workplace stress" --mock
-# or attach to existing job
-python -m src.main research --topic "handling workplace stress" --job-id <job-id> --mock
+python -m src.main research --topic "your topic here" --mock
 ```
 
-#### Generate Script
+#### Create Script
 
 ```bash
-python -m src.main script --job-id <job-id> --mock
+python -m src.main script --job-id <job_id> --mock
 ```
 
-Real script runs now save inspection artifacts under `output/jobs/<job-id>/script/`:
-- `script_generation_report.json` — whether local LLM succeeded and whether fallback was used
-- `local_llm_raw.txt` — raw local-LLM response content
-- `local_llm_parsed.json` — parsed JSON payload from the local model
-- `script_generation_final.json` — final payload actually used to build `script.json`
-
-#### Create Scene Plan
+#### Generate Audio
 
 ```bash
-python -m src.main scene --job-id <job-id> --mock
-```
-
-#### Generate TTS Audio
-
-```bash
-python -m src.main tts --job-id <job-id> --mock
+python -m src.main tts --job-id <job_id> --mock
 ```
 
 #### Generate Images
 
 ```bash
-python -m src.main images --job-id <job-id> --mock
-python -m src.main images --job-id <job-id> --placeholder-images
+python -m src.main images --job-id <job_id> --mock
 ```
 
 #### Generate Subtitles
 
 ```bash
-python -m src.main subtitles --job-id <job-id> --mock
+python -m src.main subtitles --job-id <job_id> --mock
 ```
 
 #### Render Video
 
 ```bash
-python -m src.main render --job-id <job-id> --mock
-```
-
-#### Generate YouTube Metadata
-
-```bash
-python -m src.main metadata --job-id <job-id> --mock
+python -m src.main render --job-id <job_id> --mock
 ```
 
 #### Upload to YouTube
 
 ```bash
-python -m src.main upload --job-id <job-id> --mock
+python -m src.main upload --job-id <job_id>
 ```
 
-#### Run Complete Pipeline
+### Running the Full Pipeline
 
 ```bash
-python -m src.main run "handling workplace stress" --video-mode short --provider edge --skip-upload
-python -m src.main run "handling workplace stress" --video-mode short --provider edge --skip-upload --placeholder-images
-python -m src.main run "handling workplace stress" --video-mode long --provider edge --skip-upload
-```
-
-#### View Jobs
-
-```bash
-python -m src.main jobs
-python -m src.main jobs --status completed
-python -m src.main status <job-id>
-```
-
-## Local Management UI
-
-A lightweight local web UI is available to manage the pipeline.
-
-Run it with:
-
-```bash
-uvicorn src.ui:app --host 0.0.0.0 --port 8000
-```
-
-The UI lets you:
-- start a full video generation
-- view related assets for a job
-- select which steps to run
-- edit `.env` variables such as API keys
-- edit `src/config.py` and rerun with new settings
-- choose short or long video mode and TTS provider
-
-#### Retry Failed Stage
-
-```bash
-python -m src.main retry <job-id> --stage research --mock
-python -m src.main retry <job-id> --mock  # retry from beginning
+python -m src.main run --video-mode short --mock
 ```
 
 ## Configuration
 
-### Environment Variables
+Edit `.env` to configure:
 
-See `.env.example` for all available options.
+- `TTS_PROVIDER` - TTS provider (`local`, `edge`, or `elevenlabs`)
+- `TTS_VOICE` - Voice to use (for ElevenLabs)
+- `YOUTUBE_API_KEY` - YouTube API key (for upload)
+- `YOUTUBE_CREDENTIALS_PATH` - Path to OAuth2 credentials JSON file (optional, defaults to `~/.stoic-modernized/client_secret.json`)
+- `YOUTUBE_PRIVACY_STATUS` - Upload privacy (`public`, `unlisted`, or `private`)
+- `YOUTUBE_SCHEDULE_DATETIME` - Schedule upload in ISO 8601 format (optional)
+- `MOCK_MODE` - Enable mock mode (`true` or `false`)
+- `FORCE_PLACEHOLDER_IMAGES` - Use local generated cards instead of SD (`true` or `false`)
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MOCK_MODE` | Enable mock mode for all stages | `false` |
-| `TTS_API_KEY` | ElevenLabs API key (optional) | - |
-| `YOUTUBE_API_KEY` | YouTube Data API key (optional) | - |
-| `YOUTUBE_PRIVACY_STATUS` | Video privacy: public, unlisted, private | `unlisted` |
+## YouTube Upload Setup
 
-### Video Settings
+See **[YOUTUBE_UPLOAD.md](YOUTUBE_UPLOAD.md)** for detailed setup instructions.
 
-- **Short mode**: vertical 1080x1920, target <= 60s
-- **Long mode**: landscape 1920x1080
-- **FPS**: 30
-- **Background Music Volume**: 15%
+Quick setup:
+```bash
+# Install OAuth2 dependencies
+pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2
 
-### TTS Settings
+# Download OAuth2 credentials from Google Cloud Console
+# Place in ~/.stoic-modernized/client_secret.json or set YOUTUBE_CREDENTIALS_PATH
 
-- **Default Provider**: local
-- **Supported Providers**: local, edge, elevenlabs
-- **Recommended Edge voice**: `en-US-GuyNeural`
+# Authenticate
+python -m src.auth_oauth
 
-### Image Generation Settings
+# Upload video
+python -m src.main upload <job_id>
+```
 
-- **Provider**: sd-cli (stable-diffusion.cpp)
-- **Output Resolution**: 1080x1920 (vertical for YouTube Shorts/Reels)
-- **Sampling Method**: euler
-
-## Project Structure
+## Architecture
 
 ```
 src/
-├── main.py           # CLI entry point with all commands
-├── config.py         # Pydantic settings with env loading
-├── models.py         # Pydantic data models
-├── database.py       # SQLite job tracking with SQLAlchemy
-├── utils.py          # Helper functions (JSON, paths, etc.)
-├── logging_config.py # Job-specific and pipeline logging
+├── main.py          # CLI entry point
+├── config.py        # Settings and configuration
+├── database.py      # SQLite database operations
+├── models.py        # Data models
+├── logging_config.py # Logging setup
+├── utils.py         # Utility functions
 ├── stages/
-│   ├── research.py   # Research and source gathering
-│   ├── script.py     # Script generation
-│   ├── scenes.py     # Scene planning from script
-│   ├── tts.py        # Text-to-speech audio generation
-│   ├── images.py     # Image generation for scenes
-│   ├── subtitles.py  # SRT subtitle generation
-│   ├── render.py     # ffmpeg video rendering
-│   └── upload.py     # YouTube upload (stub)
+│   ├── research.py      # Topic research
+│   ├── script.py        # Script generation
+│   ├── tts.py           # Text-to-speech
+│   ├── images.py        # Image generation
+│   ├── subtitles.py     # Subtitle generation
+│   ├── render.py        # Video rendering
+│   └── upload.py        # YouTube upload
+└── prompt_generator.py  # Prompt generation (NEW)
 ```
-
-## Pipeline Stages
-
-| Stage | Input | Output |
-|-------|-------|--------|
-| research | topic | research.json (sources, insights) |
-| script | research.json | script.json (narration, chapters) |
-| scenes | script.json | scenes.json (scene breakdown, visual prompts) |
-| tts | scenes.json | narration.wav |
-| images | scenes.json | scene_XXX.jpg (one per scene) |
-| subtitles | script.json | subtitles.srt, subtitles.json |
-| render | all assets | final.mp4, thumbnail.jpg |
-| metadata | script.json, scenes.json | metadata.json (title, description, tags) |
-| upload | video, metadata | YouTube video URL |
-
-## Mock Mode
-
-Mock mode is enabled by default when:
-- `MOCK_MODE=true` in .env
-- `--mock` flag is passed to any command
-
-In mock mode:
-- Research generates sample Stoic sources
-- Scripts are templated with Stoic wisdom
-- Images are still generated as local scene cards
-- Audio is still generated as a local WAV narration track
-- Video rendering still creates a real MP4 from generated assets
-- Upload returns a mock YouTube URL
-
-This means the local pipeline remains testable end-to-end even without external APIs or model backends.
-
-## Brand Voice
-
-The Stoic Modernized channel follows these guidelines:
-
-- **Calm, practical, concise, modern**
-- **Not preachy, not academic**
-- **Avoid cheesy motivational language**
-- **Always translate Stoic ideas into concrete workplace situations**
-
-## Provider Implementations
-
-### TTS Providers
-
-- **local**: Generates a real WAV narration asset locally without requiring external APIs
-- **edge**: Uses the installed `edge-tts` CLI for much more natural narration output
-- **elevenlabs**: Real ElevenLabs API integration when credentials are configured; otherwise the pipeline safely falls back to local generation
-
-### Image Generation
-
-- **sd_cli**: Integration with stable-diffusion.cpp CLI when local models are available
-- **local fallback**: Generates branded scene-card JPEGs with ImageMagick when sd-cli or models are unavailable
-- **dall_e**: Placeholder for DALL-E 3 API (stub)
-
-### YouTube Upload
-
-- **google-api-python-client**: Real upload requires API key configuration
-- Currently uses mock upload in mock mode
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Job not found"**: Make sure you ran the research stage first, or use the correct job ID from `python -m src.main jobs`
-
-2. **Missing assets**: Each stage depends on previous stage outputs. Run stages in order or use `python -m src.main run --topic "..." --mock`
-
-3. **Mock mode not working**: Check that `MOCK_MODE` is not set to `true` in your .env, or add `--mock` flag to commands
-
-4. **ffmpeg errors**: Install ffmpeg: `apt-get install ffmpeg` or `brew install ffmpeg`
 
 ## License
 
-MIT
+MIT License

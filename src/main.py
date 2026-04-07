@@ -432,7 +432,6 @@ def metadata(
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
 ) -> None:
     """Generate YouTube metadata (title, description, tags, chapters)."""
-    _ = mock
     print_header()
     job_record = _load_job_record(job_id)
 
@@ -441,7 +440,7 @@ def metadata(
         raise typer.Exit(code=1)
 
     script_data = load_json(Path(job_record.script_path))
-    uploader = YouTubeUploader(mock=True)
+    uploader = YouTubeUploader(mock=mock)
     metadata_payload = uploader.generate_metadata(
         script_title=script_data["title"],
         chapters=script_data.get("chapters", []),
@@ -472,6 +471,18 @@ def upload(
         console.print("[red]Error: No metadata found. Run metadata stage first.[/red]")
         raise typer.Exit(code=1)
 
+    # Check if OAuth2 is configured when not in mock mode
+    if not mock and not settings.youtube_api_key:
+        console.print("[yellow]⚠ YouTube API key not configured[/yellow]")
+        console.print("[yellow]⚠ OAuth2 credentials not found[/yellow]")
+        console.print("\n[bold]To enable YouTube uploads:[/bold]")
+        console.print("  1. Run: python -m src.auth_oauth")
+        console.print("  2. Follow the browser authentication flow")
+        console.print("\n[bold]Or use mock mode for testing:[/bold]")
+        console.print("  python -m src.main upload --mock <job_id>")
+        console.print()
+        raise typer.Exit(code=1)
+
     metadata_payload = load_json(Path(job_record.metadata_path))
     uploader = YouTubeUploader(mock=mock)
     result = asyncio.run(
@@ -487,12 +498,15 @@ def upload(
 
     console.print()
     if result.upload_status == "completed":
-        console.print("[bold green]Upload Complete![/bold green]")
+        console.print("[bold green]✓ Upload Complete![/bold green]")
         console.print(f"[dim]Video URL:[/dim] {result.video_url}")
+        console.print(f"\n[dim]To view your video:[/dim] {result.video_url}")
     else:
-        console.print("[bold yellow]Upload not completed.[/bold yellow]")
+        console.print("[bold yellow]✗ Upload not completed.[/bold yellow]")
         if result.error:
             console.print(f"[dim]Reason:[/dim] {result.error}")
+            if "oauth" in result.error.lower() or "token" in result.error.lower():
+                console.print("\n[dim]Run: python -m src.auth_oauth to re-authenticate[/dim]")
     console.print(f"[dim]Job ID:[/dim] {job_id}")
 
 
