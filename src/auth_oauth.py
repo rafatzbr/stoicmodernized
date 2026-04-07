@@ -3,12 +3,20 @@
 
 Run this once to authorize the Stoic Modernized app to upload videos to your YouTube channel.
 
+Supports both browser-based and headless (manual code) authentication.
+
 Usage:
+    # Browser-based (default)
     python -m src.auth_oauth
+    
+    # Headless (no browser required)
+    python -m src.auth_oauth --headless
 """
 
 import os
+import sys
 from pathlib import Path
+import webbrowser
 
 try:
     from google.oauth2 import service_account
@@ -18,7 +26,7 @@ try:
 except ImportError:
     print("[red]Missing google-auth libraries. Install with:[/red]")
     print("   pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2")
-    exit(1)
+    sys.exit(1)
 
 # OAuth2 scope - YouTube upload permission
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -30,12 +38,60 @@ STOIC_DIR = HOME_DIR / ".stoic-modernized"
 # Try to get credentials path from config, otherwise use default
 try:
     from src.config import settings
-    credentials_filename = os.path.basename(settings.youtube_credentials_path) if settings.youtube_credentials_path else "client_secret.json"
     CREDENTIALS_FILE = Path(settings.youtube_credentials_path) if settings.youtube_credentials_path else STOIC_DIR / "client_secret.json"
 except ImportError:
     CREDENTIALS_FILE = STOIC_DIR / "client_secret.json"
 
 TOKEN_FILE = STOIC_DIR / "oauth2_token.json"  # Generated token
+
+
+def authenticate_headless() -> Credentials:
+    """Authenticate using manual code entry (no browser)."""
+    print("\n[bold]Stoic Modernized - Headless OAuth2 Authentication[/bold]\n")
+    print("[dim]This method does not require a browser.[/dim]\n")
+    
+    flow = InstalledAppFlow.from_client_secrets_file(
+        str(CREDENTIALS_FILE), SCOPES
+    )
+    
+    # Get the authorization URL
+    auth_url, _ = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='consent'
+    )
+    
+    print("[bold]Step 1:[/bold] Open this URL in your browser:")
+    print(f"  {auth_url}\n")
+    
+    print("[bold]Step 2:[/bold] Sign in with your Google account")
+    print("[bold]Step 3:[/bold] Grant permission to upload videos to YouTube")
+    print("[bold]Step 4:[/bold] Copy the authorization code from the redirect URL\n")
+    
+    auth_code = input("Enter the authorization code: ").strip()
+    
+    if not auth_code:
+        print("[red]✗ No authorization code provided[/red]")
+        sys.exit(1)
+    
+    print("\n[bold]Step 5:[/bold] Exchanging code for token...")
+    flow.fetch_token(code=auth_code)
+    
+    return flow.credentials
+
+
+def authenticate_browser() -> Credentials:
+    """Authenticate using browser (default)."""
+    print("\n[bold]Stoic Modernized - OAuth2 Authentication[/bold]\n")
+    print("[dim]This will open your browser for authentication.[/dim]\n")
+    
+    flow = InstalledAppFlow.from_client_secrets_file(
+        str(CREDENTIALS_FILE), SCOPES
+    )
+    
+    creds = flow.run_local_server(port=0, open_browser=True)
+    
+    return creds
 
 
 def main():
@@ -57,7 +113,7 @@ def main():
         print("  6. Download the JSON file and save it as:")
         print(f"     {CREDENTIALS_FILE}")
         print("\n[yellow]Exiting. Please create the credentials file and run again.[/yellow]\n")
-        exit(1)
+        sys.exit(1)
 
     print(f"✓ Credentials file found: {CREDENTIALS_FILE}")
 
@@ -74,15 +130,16 @@ def main():
     # If no valid credentials, run OAuth flow
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            print("Refreshing expired token...")
+            print("\n[bold]Refreshing expired token...[/bold]")
             creds.refresh(Request())
         else:
-            print("\n[bold]Opening browser for authentication...[/bold]\n")
-            print("If the browser doesn't open automatically, go to:")
-            flow = InstalledAppFlow.from_client_secrets_file(
-                str(CREDENTIALS_FILE), SCOPES
-            )
-            creds = flow.run_local_server(port=0)
+            # Check if headless mode is requested
+            headless = '--headless' in sys.argv or '-h' in sys.argv
+            
+            if headless:
+                creds = authenticate_headless()
+            else:
+                creds = authenticate_browser()
 
         # Save the credentials
         with open(TOKEN_FILE, "w") as token:
@@ -111,7 +168,7 @@ def main():
     except Exception as e:
         print(f"[red]✗ Authentication test failed: {e}[/red]")
         print("\n[yellow]Please check your credentials and try again.[/yellow]\n")
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

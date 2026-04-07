@@ -67,16 +67,45 @@ cp client_secret.json ~/.stoic-modernized/
 
 ### 5. Authenticate
 
-Run the OAuth2 authentication script:
+**Option A: Browser-based authentication (default)**
+
 ```bash
 python -m src.auth_oauth
 ```
 
 This will:
-1. Open your browser
+1. Open your browser automatically
 2. Ask you to sign in with your Google account
 3. Request permission to upload videos to YouTube
 4. Save the token to `~/.stoic-modernized/oauth2_token.json`
+
+**Option B: Headless authentication (no browser required)**
+
+For servers or environments without a browser:
+
+```bash
+python -m src.auth_oauth --headless
+```
+
+This will:
+1. Display an authorization URL
+2. You open the URL manually (or copy to another device)
+3. Sign in and grant permission
+4. Copy the authorization code from the redirect URL
+5. Paste the code back to the terminal
+6. Save the token to `~/.stoic-modernized/oauth2_token.json`
+
+**Headless flow steps:**
+
+```
+Step 1: Open this URL in your browser:
+  https://accounts.google.com/o/oauth2/auth?...
+
+Step 2: Sign in with your Google account
+Step 3: Grant permission to upload videos to YouTube
+Step 4: Copy the authorization code from the redirect URL (after 'code=')
+Step 5: Enter the authorization code in the terminal
+```
 
 ### 6. Test the Upload
 

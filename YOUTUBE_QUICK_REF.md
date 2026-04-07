@@ -76,13 +76,20 @@ echo "YOUTUBE_CREDENTIALS_PATH=/path/to/client_secret.json" >> .env
 ```
 
 ### Step 4: Authenticate
+
+**Browser-based (default):**
 ```bash
 python -m src.auth_oauth
 ```
+
+**Headless (no browser):**
+```bash
+python -m src.auth_oauth --headless
+```
 This will:
-- Open browser
-- Ask you to sign in
-- Request upload permission
+- Display an authorization URL
+- You open it manually
+- Paste the authorization code back
 - Save token to `~/.stoic-modernized/oauth2_token.json`
 
 ### Step 5: Run Pipeline
