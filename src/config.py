@@ -113,6 +113,10 @@ class Settings(BaseSettings):
     local_image_prompt_max_tokens: int = 220
     local_image_prompt_temperature: float = 0.4
 
+    local_scene_model: Optional[str] = None
+    local_scene_max_tokens: int = 1400
+    local_scene_temperature: float = 0.3
+
     watermark_logo_path: Path = Path('/home/rafatz/media/logo_transparent.png')
     watermark_scale_width: int = 240
     watermark_padding: int = 36

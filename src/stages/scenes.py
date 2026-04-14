@@ -1,9 +1,12 @@
 """Scene planning stage module."""
 
+import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+import httpx
 
 from src.config import VideoMode, settings
 from src.models import Scene, ScenePlan
@@ -123,7 +126,177 @@ class SceneStage:
         )
 
     async def _real_scene_plan(self, script_data: dict) -> ScenePlan:
-        raise NotImplementedError("Real scene planning requires AI integration")
+        base_plan = await self._mock_scene_plan(script_data)
+        spoken_scenes = [
+            scene for scene in base_plan.scenes if scene.narration_segment not in {"Intro branding", "Outro branding"}
+        ]
+        if not spoken_scenes:
+            return base_plan
+
+        planned = await self._generate_scene_details_with_local_llm(script_data, spoken_scenes)
+        if not planned:
+            return base_plan
+
+        plan_by_number = {
+            int(item["scene_number"]): item
+            for item in planned
+            if isinstance(item, dict) and isinstance(item.get("scene_number"), int)
+        }
+
+        updated_scenes: list[Scene] = []
+        for scene in base_plan.scenes:
+            replacement = plan_by_number.get(scene.scene_number)
+            if replacement:
+                updated_scenes.append(
+                    Scene(
+                        scene_number=scene.scene_number,
+                        start_time=scene.start_time,
+                        end_time=scene.end_time,
+                        narration_segment=scene.narration_segment,
+                        visual_prompt=str(replacement.get("visual_prompt") or scene.visual_prompt).strip(),
+                        text_overlay=self._normalize_overlay(str(replacement.get("text_overlay") or scene.text_overlay or "")).strip()
+                        or scene.text_overlay,
+                        animation_style=str(replacement.get("animation_style") or scene.animation_style or "zoom").strip() or "zoom",
+                    )
+                )
+            else:
+                updated_scenes.append(scene)
+
+        self._dedupe_overlays(updated_scenes)
+        return ScenePlan(
+            scenes=updated_scenes,
+            intro_duration=base_plan.intro_duration,
+            outro_duration=base_plan.outro_duration,
+            total_duration=base_plan.total_duration,
+            topic=base_plan.topic,
+        )
+
+    async def _generate_scene_details_with_local_llm(
+        self, script_data: dict, scenes: list[Scene]
+    ) -> list[dict[str, Any]]:
+        title = str(script_data.get("title") or script_data.get("topic") or settings.channel_name).strip()
+        topic = str(script_data.get("topic") or title).strip()
+        is_short = len(scenes) <= 4
+        scene_lines = []
+        for scene in scenes:
+            scene_lines.append(
+                {
+                    "scene_number": scene.scene_number,
+                    "narration_segment": scene.narration_segment,
+                    "baseline_visual_prompt": scene.visual_prompt,
+                    "baseline_text_overlay": scene.text_overlay,
+                }
+            )
+
+        prompt = f"""
+You are planning scenes for a faceless YouTube video for {settings.channel_name}.
+
+Topic: {topic}
+Title: {title}
+Mode: {'short vertical video' if is_short else 'long-form video'}
+
+Return JSON only in this exact shape:
+{{
+  "scenes": [
+    {{
+      "scene_number": 1,
+      "visual_prompt": "string",
+      "text_overlay": "string",
+      "animation_style": "zoom"
+    }}
+  ]
+}}
+
+Rules:
+- return exactly {len(scenes)} scene objects
+- keep the same scene_number values provided in the input
+- visual_prompt must be concrete and photographable, not abstract
+- no references to text, captions, logos, watermarks, titles, or split screens
+- prefer modern workplace realism, candid editorial photography, one clear subject, grounded objects
+- text_overlay should be 1-4 words, sharp, natural, and not repetitive
+- animation_style should usually be "zoom" and occasionally "fade"
+- do not change narration text; only plan visuals/overlay
+- output JSON only
+
+Input scenes:
+{json.dumps(scene_lines, ensure_ascii=False, indent=2)}
+""".strip()
+
+        payload = {
+            "model": settings.local_scene_model or settings.local_llm_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You write strict JSON for a video automation pipeline. Respond with JSON only.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": settings.local_scene_temperature,
+            "max_tokens": settings.local_scene_max_tokens,
+            "response_format": {"type": "json_object"},
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.local_llm_timeout_seconds) as client:
+                response = await client.post(settings.local_llm_base_url, json=payload)
+                response.raise_for_status()
+            data = response.json()
+            content = self._extract_message_content(data)
+            parsed = json.loads(content)
+        except Exception:
+            return []
+
+        raw_scenes = parsed.get("scenes") if isinstance(parsed, dict) else None
+        if not isinstance(raw_scenes, list):
+            return []
+
+        validated: list[dict[str, Any]] = []
+        for item in raw_scenes:
+            if not isinstance(item, dict):
+                continue
+            scene_number = item.get("scene_number")
+            if not isinstance(scene_number, int):
+                continue
+            visual_prompt = str(item.get("visual_prompt") or "").strip()
+            text_overlay = self._normalize_overlay(str(item.get("text_overlay") or "").strip())
+            animation_style = str(item.get("animation_style") or "zoom").strip() or "zoom"
+            if not visual_prompt:
+                continue
+            validated.append(
+                {
+                    "scene_number": scene_number,
+                    "visual_prompt": visual_prompt,
+                    "text_overlay": text_overlay,
+                    "animation_style": animation_style,
+                }
+            )
+
+        if len(validated) != len(scenes):
+            return []
+        return validated
+
+    def _extract_message_content(self, data: dict[str, Any]) -> str:
+        choices = data.get("choices") or []
+        if not choices:
+            return ""
+        message = choices[0].get("message") or {}
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            text_parts: list[str] = []
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text_parts.append(str(item.get("text") or ""))
+            return "\n".join(part for part in text_parts if part)
+        return ""
+
+    def _normalize_overlay(self, overlay: str) -> str:
+        cleaned = re.sub(r"[^A-Za-z0-9' -]+", " ", overlay)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        words = cleaned.split()
+        return " ".join(words[:4]).strip()
 
     def _generate_visual_prompt(
         self, topic: str, line: str, scene_num: int, is_short: bool, label: Optional[str] = None

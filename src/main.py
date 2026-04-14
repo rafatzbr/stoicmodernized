@@ -264,10 +264,11 @@ def scene(
     script_data = load_json(Path(job_record.script_path))
     console.print(f"[bold]Creating scene plan for:[/bold] {script_data['title']}")
 
-    scene_mock = mock
-    if not scene_mock and not settings.mock_mode:
-        scene_mock = True
-        console.print("[yellow]Using mock scene planner in hybrid local mode[/yellow]")
+    scene_mock = mock or settings.mock_mode
+    if scene_mock:
+        console.print("[yellow]Using mock scene planner[/yellow]")
+    else:
+        console.print("[green]Using local-LLM scene planner[/green]")
 
     stage = SceneStage(job_id=job_id, mock=scene_mock)
     scene_plan = asyncio.run(stage.run(script_data))
@@ -543,11 +544,11 @@ def run(
 
         if not mock and not settings.mock_mode:
             console.print(
-                f"[yellow]Using hybrid local mode: real research + real script + mock scene planner + real local media generation ({video_mode.value})[/yellow]"
+                f"[green]Using hybrid local mode: real research + real script + real scene planner + real local media generation ({video_mode.value})[/green]"
             )
             research_stage_mock = False
             script_stage_mock = False
-            scene_stage_mock = True
+            scene_stage_mock = False
             media_stage_mock = False
         else:
             console.print("[yellow]Using mock mode for local-friendly generation[/yellow]")
