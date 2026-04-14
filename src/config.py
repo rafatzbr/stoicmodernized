@@ -14,12 +14,14 @@ class TTSProvider(str, Enum):
     LOCAL = "local"
     EDGE = "edge"
     ELEVENLABS = "elevenlabs"
+    VOXCPM = "voxcpm"
 
 
 class ImageProvider(str, Enum):
     """Supported image generation providers."""
 
     SD_CLI = "sd_cli"
+    SD_SERVER = "sd_server"
     DALL_E = "dall_e"
 
 
@@ -69,6 +71,11 @@ class Settings(BaseSettings):
     tts_speed: float = 1.0
     tts_api_key: Optional[str] = None
 
+    subtitle_asr_enabled: bool = True
+    subtitle_asr_model: str = "openai/whisper-tiny.en"
+    subtitle_asr_language: str = "english"
+    subtitle_asr_chunk_length_s: int = 20
+
     sd_cli_path: str = "/home/rafatz/dev/stable-diffusion.cpp/build/bin/sd-cli"
     sd_model_path: str = "/data/sd-models/sd3.5_large.safetensors"
     sd_clip_l_path: str = "/data/sd-models/clip_l.safetensors"
@@ -77,10 +84,15 @@ class Settings(BaseSettings):
     sd_image_width: int = 544
     sd_image_height: int = 960
     sd_cfg_scale: float = 3.8  # Rafael 2026-04-05: Lower for more natural results (3.5-4.0 range)
-    sd_steps: int = 30  # Rafael 2026-04-05: Start with 40, compare with 30-36
+    sd_steps: int = 20  # Rafael 2026-04-05: Start with 40, compare with 30-36
     sd_sampling_method: str = "euler"
     sd_negative_prompt: str = "blurry, low quality, deformed, extra people in foreground, cluttered desk, text, logo, watermark, overexposed, bad hands, extra fingers, missing fingers, duplicate objects, malformed laptop, distorted pen, plastic skin, uncanny smile, centered headshot, stiff stock photo pose, oversmoothed skin, multiple computers"
     force_placeholder_images: bool = False
+
+    # SD Server (local stable diffusion web UI or ComfyUI)
+    sd_server_url: str = "http://localhost:1234"
+    sd_server_api_path: str = "/sdapi/v1/txt2img"
+    sd_server_timeout_seconds: float = 300.0
 
     youtube_api_key: Optional[str] = None
     youtube_credentials_path: Optional[str] = None

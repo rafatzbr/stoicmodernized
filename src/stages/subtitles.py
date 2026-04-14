@@ -13,6 +13,8 @@ from src.utils import load_json, save_json
 class SubtitleStage:
     """Handles subtitle generation."""
 
+    _asr_pipeline = None
+
     TIMED_BLOCK_RE = re.compile(
         r"^\[(?P<start>\d+:\d{2})-(?P<end>\d+:\d{2})\]\s*(?P<title>.+?)\n(?P<body>.*?)(?=\n\[\d+:\d{2}-\d+:\d{2}\]|\Z)",
         re.DOTALL | re.MULTILINE,
@@ -39,6 +41,8 @@ class SubtitleStage:
     ) -> SubtitleResult:
         audio_duration = self._get_audio_duration(audio_path) if audio_path else None
         segments = self._load_edge_tts_segments()
+        if not segments and audio_path and settings.subtitle_asr_enabled:
+            segments = self._transcribe_audio_segments(audio_path)
         if not segments:
             scene_plan = self._load_scene_plan()
             segments = self._segments_from_scene_plan(scene_plan, audio_duration)
@@ -93,6 +97,72 @@ class SubtitleStage:
             return load_json(scene_path)
         except Exception:
             return None
+
+    def _transcribe_audio_segments(self, audio_path: str) -> list[SubtitleSegment]:
+        try:
+            pipe = self._get_asr_pipeline()
+            result = pipe(
+                audio_path,
+                return_timestamps=True,
+                generate_kwargs={
+                    "task": "transcribe",
+                    "language": settings.subtitle_asr_language,
+                },
+            )
+        except Exception:
+            return []
+
+        chunks = result.get("chunks") if isinstance(result, dict) else None
+        if not isinstance(chunks, list):
+            return []
+
+        segments: list[SubtitleSegment] = []
+        for chunk in chunks:
+            if not isinstance(chunk, dict):
+                continue
+            text = self._clean_subtitle_text(str(chunk.get("text") or ""))
+            timestamps = chunk.get("timestamp") or chunk.get("timestamps")
+            if not text or not isinstance(timestamps, (list, tuple)) or len(timestamps) != 2:
+                continue
+            start, end = timestamps
+            if start is None or end is None:
+                continue
+            try:
+                start_f = float(start)
+                end_f = float(end)
+            except (TypeError, ValueError):
+                continue
+            if end_f <= start_f:
+                continue
+            segments.append(
+                SubtitleSegment(
+                    start_time=round(start_f, 3),
+                    end_time=round(end_f, 3),
+                    text=text,
+                )
+            )
+        return segments
+
+    def _get_asr_pipeline(self):
+        if SubtitleStage._asr_pipeline is not None:
+            return SubtitleStage._asr_pipeline
+
+        import torch
+        from transformers import pipeline
+
+        device = 0 if torch.cuda.is_available() else -1
+        model_kwargs = {"low_cpu_mem_usage": True}
+        if torch.cuda.is_available():
+            model_kwargs["torch_dtype"] = torch.float16
+
+        SubtitleStage._asr_pipeline = pipeline(
+            "automatic-speech-recognition",
+            model=settings.subtitle_asr_model,
+            chunk_length_s=settings.subtitle_asr_chunk_length_s,
+            device=device,
+            model_kwargs=model_kwargs,
+        )
+        return SubtitleStage._asr_pipeline
 
     def _retime_scene_plan_from_vtt_matches(
         self, segments: list[SubtitleSegment], audio_duration: Optional[float]
