@@ -14,7 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 
-const providerOptions = ['edge', 'local', 'elevenlabs'];
+const providerOptions = ['edge', 'local', 'elevenlabs', 'voxcpm'];
 const videoModeOptions = ['short', 'long'];
 
 type Props = {

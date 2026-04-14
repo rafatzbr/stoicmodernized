@@ -68,6 +68,20 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function extractEnvValue(content: string, key: string): string | null {
+  const line = content
+    .split('\n')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${key}=`) && !item.startsWith(`#`));
+
+  if (!line) {
+    return null;
+  }
+
+  const raw = line.slice(key.length + 1).trim();
+  return raw.replace(/^['"]|['"]$/g, '');
+}
+
 export function DashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
@@ -77,7 +91,7 @@ export function DashboardPage() {
   const [jobDetailLoading, setJobDetailLoading] = useState(false);
   const [topic, setTopic] = useState('workplace stress');
   const [videoMode, setVideoMode] = useState('short');
-  const [provider, setProvider] = useState('edge');
+  const [provider, setProvider] = useState('voxcpm');
   const [runId, setRunId] = useState<string | null>(null);
   const [runState, setRunState] = useState<RunState | null>(null);
   const [runLoading, setRunLoading] = useState(false);
@@ -119,6 +133,11 @@ export function DashboardPage() {
       const [envResult, configResult] = await Promise.all([fetchEnv(), fetchConfigFile()]);
       setEnvContent(envResult.content);
       setConfigContent(configResult.content);
+
+      const envProvider = extractEnvValue(envResult.content, 'TTS_PROVIDER');
+      if (envProvider) {
+        setProvider(envProvider);
+      }
     } catch (error) {
       showNotice(getErrorMessage(error, 'Failed to load config files.'), 'error');
     } finally {
