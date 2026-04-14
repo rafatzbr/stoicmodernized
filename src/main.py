@@ -285,7 +285,7 @@ def scene(
 @app.command()
 def tts(
     job_id: str = typer.Argument(..., help="Job ID from scene stage"),
-    provider: str = typer.Option("local", "--provider", "-p", help="TTS provider (local, edge, or elevenlabs)"),
+    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (local, edge, elevenlabs, or voxcpm)"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
 ) -> None:
     """Generate TTS narration for the video."""
@@ -441,9 +441,14 @@ def metadata(
 
     script_data = load_json(Path(job_record.script_path))
     uploader = YouTubeUploader(mock=mock)
+
+    # Extract script narration text for AI description generation
+    script_text = script_data.get("narration", "")
+
     metadata_payload = uploader.generate_metadata(
         script_title=script_data["title"],
         chapters=script_data.get("chapters", []),
+        script_text=script_text,
     )
     metadata_path = _save_metadata(job_id, metadata_payload)
 
@@ -514,7 +519,7 @@ def upload(
 def run(
     topic: str = typer.Argument(..., help="Topic for the video"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data for all stages"),
-    provider: str = typer.Option("edge", "--provider", "-p", help="TTS provider (local, edge, or elevenlabs)"),
+    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (local, edge, elevenlabs, or voxcpm)"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
     video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
     placeholder_images: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
