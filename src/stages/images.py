@@ -729,8 +729,8 @@ STYLE_SUFFIX = "natural office photography, candid editorial realism, soft windo
 
 BOUNDARY_SCENE_TEMPLATES = {
     "pause first": {
-        "object_only": "Smartphone turned face-down beside an open laptop and a small notebook on a tidy work desk, unread notifications glowing faintly on a second monitor in the background, natural office details, no person visible",
-        "hands_only": "Close view of hands at a work desk, one hand turning a smartphone face-down beside an open laptop, the other hand resting near a notebook and pen, notification glow softly blurred in the background",
+        "object_only": "Smartphone already lying face-down on a tidy work desk beside an open laptop and a small notebook, screen hidden, unread email and chat notifications glowing on a second monitor in the background, deliberate pause before replying, natural office details, no person visible",
+        "hands_only": "Close view of hands at a work desk just after placing a smartphone face-down beside an open laptop, fingers leaving the phone on the desk instead of holding it, the other hand resting near an open notebook and pen, unread email and chat notifications softly glowing on a background monitor, calm pause before replying, no face visible",
         "over_shoulder": "Over-the-shoulder view of a worker at a desk, phone turned face-down beside laptop before replying, inbox and chat notifications softly blurred on the monitor, notebook and pen ready beside the keyboard",
         "environment": "Modern office workspace with a chair pulled in toward a desk, phone face-down beside laptop, notebook and pen arranged neatly, Slack or email notifications glowing softly on a distant monitor, subtle office movement blurred behind",
         "person_medium": "Office worker seated at a desk, looking at a laptop while setting a smartphone face-down beside the keyboard, notebook and pen visible, unread notifications softly blurred on a second monitor, upper body visible, slightly off-center",
@@ -746,7 +746,7 @@ BOUNDARY_SCENE_TEMPLATES = {
         "object_only": "Laptop open on a quiet desk after a meeting, notebook with a few bullet points, pen resting across the page, empty conference chairs blurred in the background, warm office light",
         "hands_only": "Hands writing a few bullet points in a notebook beside an open laptop after a meeting, coffee cup and conference room glass wall blurred in the background",
         "over_shoulder": "Over-the-shoulder view of a worker alone at a desk after a meeting, writing notes beside an open laptop while empty conference chairs and a glass wall sit softly blurred behind",
-        "environment": "Quiet office desk after a meeting, laptop open, notebook with pen, abandoned conference room blurred in the background, warm evening office light, no person visible",
+        "environment": "Quiet office desk after a tense meeting, laptop still open beside a notebook with fresh bullet notes and an uncapped pen, half-finished water glass and pushed-back conference chairs visible through a glass wall in the background, coworkers gone, warm late-day office light, realistic aftermath of a difficult meeting, no person visible",
         "person_medium": "Worker alone at a desk after a meeting, writing in a notebook beside an open laptop, empty conference room chairs softly blurred behind, tired office atmosphere but composed posture, upper body visible",
     },
     "use this today": {
@@ -803,7 +803,10 @@ def build_narrative_scene_prompt(
 ) -> str:
     scene_key = _normalize_scene_key(overlay, scene_prompt, narration_segment)
     if scene_key:
-        return BOUNDARY_SCENE_TEMPLATES[scene_key].get(mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
+        effective_mode = mode
+        if scene_key == "pause first" and mode == "hands_only":
+            effective_mode = "object_only"
+        return BOUNDARY_SCENE_TEMPLATES[scene_key].get(effective_mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
     return _generic_mode_prompt(mode, subject, narration_segment)
 
 # Scene modes for variety
