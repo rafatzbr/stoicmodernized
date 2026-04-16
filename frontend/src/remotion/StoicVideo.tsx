@@ -29,14 +29,14 @@ const getSceneTransform = (
 
   switch (scene.animationStyle) {
     case 'pan-left':
-      return `scale(1.08) translateX(${interpolate(progress, [0, 1], [2, -2])}%)`;
+      return `translateX(${interpolate(progress, [0, 1], [4, -4])}%) translateY(${interpolate(progress, [0, 1], [1.5, -1.5])}%) scale(${interpolate(progress, [0, 1], [1.14, 1.22])})`;
     case 'pan-right':
-      return `scale(1.08) translateX(${interpolate(progress, [0, 1], [-2, 2])}%)`;
+      return `translateX(${interpolate(progress, [0, 1], [-4, 4])}%) translateY(${interpolate(progress, [0, 1], [-1.5, 1.5])}%) scale(${interpolate(progress, [0, 1], [1.14, 1.22])})`;
     case 'fade':
-      return `scale(${interpolate(progress, [0, 1], [1.02, 1.06])})`;
+      return `translateY(${interpolate(progress, [0, 1], [3, -3])}%) scale(${interpolate(progress, [0, 1], [1.12, 1.2])})`;
     case 'zoom':
     default:
-      return `scale(${interpolate(progress, [0, 1], [1.04, 1.12])})`;
+      return `translateY(${interpolate(progress, [0, 1], [2.5, -2.5])}%) scale(${interpolate(progress, [0, 1], [1.16, 1.28])})`;
   }
 };
 
@@ -587,9 +587,13 @@ const SceneLayer: React.FC<{
   });
   const transform = getSceneTransform(scene, frame, durationInFrames);
   const overlayY = interpolate(entrance, [0, 1], [16, 0]);
+  const sceneOpacity = interpolate(frame, [0, 8, durationInFrames - 8, durationInFrames], [0, 1, 1, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
 
   return (
-    <AbsoluteFill>
+    <AbsoluteFill style={{overflow: 'hidden', opacity: sceneOpacity}}>
       <Img
         src={resolveAssetSrc(scene.imageSrc)}
         style={{
@@ -597,6 +601,8 @@ const SceneLayer: React.FC<{
           height: '100%',
           objectFit: 'cover',
           transform,
+          transformOrigin: 'center center',
+          willChange: 'transform',
         }}
       />
       <AbsoluteFill
