@@ -18,6 +18,7 @@ from src.logging_config import JobLogger
 from src.models import Scene, VideoRenderConfig
 from src.stages.images import ImageGenerationError, ImageGenerationStage
 from src.stages.render import VideoRenderer
+from src.stages.remotion_renderer import RemotionRenderer
 from src.stages.research import ResearchStage
 from src.stages.scenes import SceneStage
 from src.stages.script import ScriptGenerationError, ScriptStage
@@ -380,9 +381,13 @@ def subtitles(
 def render(
     job_id: str = typer.Argument(..., help="Job ID from subtitles stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
-    video_mode: VideoMode = typer.Option(VideoMode.LONG, "--video-mode", help="Video mode: short or long"),
+    video_mode: VideoMode = typer.Option(VideoMode.SHORT, "--video-mode", help="Video mode: short or long"),
+    renderer_type: str = typer.Option(
+        "ffmpeg", "--renderer", "-r",
+        help="Renderer to use: ffmpeg or remotion"
+    ),
 ) -> None:
-    """Render the final video with ffmpeg."""
+    """Render the final video with ffmpeg or Remotion."""
     print_header()
     job_record = _load_job_record(job_id)
 
@@ -396,34 +401,49 @@ def render(
         console.print("[red]Error: No subtitles found. Run subtitles stage first.[/red]")
         raise typer.Exit(code=1)
 
-    scenes_data = load_json(Path(job_record.scene_plan_path)).get("scenes", [])
-    scenes = [Scene(**scene) for scene in scenes_data]
-
-    renderer = VideoRenderer(job_id=job_id, mock=mock)
-    output_path = renderer.output_dir / "final.mp4"
     width = settings.short_video_width if video_mode == VideoMode.SHORT else settings.video_width
     height = settings.short_video_height if video_mode == VideoMode.SHORT else settings.video_height
-    config = VideoRenderConfig(
-        scenes=scenes,
-        audio_path=job_record.audio_path,
-        subtitle_path=job_record.subtitle_path,
-        output_path=str(output_path),
-        width=width,
-        height=height,
-    )
-    result = asyncio.run(renderer.run(config))
+
+    if renderer_type == "remotion":
+        mode = "portrait" if video_mode == VideoMode.SHORT else "landscape"
+        console.print(f"[bold cyan]Using Remotion renderer ({mode})[/bold cyan]")
+        renderer = RemotionRenderer(
+            job_id=job_id,
+            frontend_dir=settings.project_root / "frontend",
+            width=width,
+            height=height,
+            fps=settings.video_fps,
+            mode=mode,
+        )
+        result = renderer.run()
+        output_path = result['video_path']
+    else:
+        scenes_data = load_json(Path(job_record.scene_plan_path)).get("scenes", [])
+        scenes = [Scene(**scene) for scene in scenes_data]
+
+        renderer = VideoRenderer(job_id=job_id, mock=mock)
+        output_path = renderer.output_dir / "final.mp4"
+        config = VideoRenderConfig(
+            scenes=scenes,
+            audio_path=job_record.audio_path,
+            subtitle_path=job_record.subtitle_path,
+            output_path=str(output_path),
+            width=width,
+            height=height,
+        )
+        result = asyncio.run(renderer.run(config))
 
     db.update_job(
         job_id,
         status="render_complete",
-        video_path=result.video_path,
-        thumbnail_path=result.thumbnail_path,
+        video_path=result['video_path'] if isinstance(result, dict) else result.video_path,
     )
 
     console.print()
     console.print("[bold green]Rendering Complete![/bold green]")
-    console.print(f"[dim]Video path:[/dim] {result.video_path}")
-    console.print(f"[dim]Thumbnail path:[/dim] {result.thumbnail_path}")
+    console.print(f"[dim]Video path:[/dim] {result['video_path'] if isinstance(result, dict) else result.video_path}")
+    console.print(f"[dim]Renderer:[/dim] {renderer_type}")
+    console.print(f"[dim]Mode:[/dim] {video_mode.value}")
     console.print(f"[dim]Next step:[/dim] python -m src.main metadata {job_id}")
 
 
