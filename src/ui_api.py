@@ -42,6 +42,7 @@ class RunRequest(BaseModel):
     topic: str
     video_mode: str = "short"
     provider: str = "edge"
+    platform: str | None = None
     skip_upload: bool = True
 
 
@@ -50,6 +51,7 @@ class StepsRequest(BaseModel):
     job_id: str | None = None
     video_mode: str = "short"
     provider: str = "edge"
+    platform: str | None = None
     steps: list[str]
 
 
@@ -219,6 +221,8 @@ def start_run(request: RunRequest) -> dict[str, str]:
         "--provider",
         request.provider,
     ]
+    if request.platform:
+        cmd += ["--platform", request.platform]
     if request.skip_upload:
         cmd.append("--skip-upload")
     return {"run_id": _spawn_command(cmd)}
@@ -246,7 +250,10 @@ def start_steps(request: StepsRequest) -> dict[str, str | None]:
         elif step == "subtitles":
             commands.append(["python3", "-m", "src.main", "subtitles", current_job_id or ""])
         elif step == "render":
-            commands.append(["python3", "-m", "src.main", "render", current_job_id or "", "--video-mode", request.video_mode])
+            cmd = ["python3", "-m", "src.main", "render", current_job_id or "", "--video-mode", request.video_mode]
+            if request.platform:
+                cmd += ["--platform", request.platform]
+            commands.append(cmd)
         elif step == "metadata":
             commands.append(["python3", "-m", "src.main", "metadata", current_job_id or ""])
         elif step == "upload":

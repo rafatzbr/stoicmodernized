@@ -91,6 +91,7 @@ export function DashboardPage() {
   const [jobDetailLoading, setJobDetailLoading] = useState(false);
   const [topic, setTopic] = useState('workplace stress');
   const [videoMode, setVideoMode] = useState('short');
+  const [platform, setPlatform] = useState('auto');
   const [provider, setProvider] = useState('voxcpm');
   const [runId, setRunId] = useState<string | null>(null);
   const [runState, setRunState] = useState<RunState | null>(null);
@@ -211,7 +212,13 @@ export function DashboardPage() {
   const onStart = useCallback(async () => {
     setRunLoading(true);
     try {
-      const result = await startRun({ topic, video_mode: videoMode, provider, skip_upload: true });
+      const result = await startRun({
+        topic,
+        video_mode: videoMode,
+        provider,
+        platform: platform === 'auto' ? null : platform,
+        skip_upload: true,
+      });
       setRunId(result.run_id);
       setRunState(null);
       showNotice(`Run started: ${result.run_id}`, 'success');
@@ -220,7 +227,7 @@ export function DashboardPage() {
     } finally {
       setRunLoading(false);
     }
-  }, [provider, showNotice, topic, videoMode]);
+  }, [platform, provider, showNotice, topic, videoMode]);
 
   const onSelectJob = useCallback(
     async (jobId: string) => {
@@ -261,6 +268,7 @@ export function DashboardPage() {
         job_id: selectedJobId || null,
         video_mode: videoMode,
         provider,
+        platform: platform === 'auto' ? null : platform,
         steps: selectedSteps,
       });
       setRunId(result.run_id);
@@ -271,7 +279,7 @@ export function DashboardPage() {
     } finally {
       setRunLoading(false);
     }
-  }, [provider, selectedJobId, selectedSteps, showNotice, topic, videoMode]);
+  }, [platform, provider, selectedJobId, selectedSteps, showNotice, topic, videoMode]);
 
   const onRunSpecificSteps = useCallback(
     async (steps: string[]) => {
@@ -286,6 +294,7 @@ export function DashboardPage() {
           job_id: selectedJobId || null,
           video_mode: videoMode,
           provider,
+          platform: platform === 'auto' ? null : platform,
           steps,
         });
         setRunId(result.run_id);
@@ -297,7 +306,7 @@ export function DashboardPage() {
         setRunLoading(false);
       }
     },
-    [provider, selectedJobId, showNotice, topic, videoMode],
+    [platform, provider, selectedJobId, showNotice, topic, videoMode],
   );
 
   const onStopRun = useCallback(async () => {
@@ -427,11 +436,13 @@ export function DashboardPage() {
                   topic={topic}
                   videoMode={videoMode}
                   provider={provider}
+                  platform={platform}
                   isStarting={runLoading}
                   isSuggestingTopic={suggestingTopic}
                   onTopicChange={setTopic}
                   onVideoModeChange={setVideoMode}
                   onProviderChange={setProvider}
+                  onPlatformChange={setPlatform}
                   onSuggestTopic={onSuggestTopic}
                   onStart={onStart}
                 />

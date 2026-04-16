@@ -25,6 +25,7 @@ export async function startRun(payload: {
   topic: string;
   video_mode: string;
   provider: string;
+  platform?: string | null;
   skip_upload: boolean;
 }) {
   const res = await api.post<{ run_id: string }>('/api/runs', payload);
@@ -36,6 +37,7 @@ export async function startSteps(payload: {
   job_id?: string | null;
   video_mode: string;
   provider: string;
+  platform?: string | null;
   steps: string[];
 }) {
   const res = await api.post<{ run_id: string; job_id?: string | null }>('/api/runs/steps', payload);

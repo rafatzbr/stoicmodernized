@@ -97,11 +97,18 @@ def index() -> HTMLResponse:
             <option value='short'>short</option>
             <option value='long'>long</option>
           </select>
+          <label>Platform preset</label>
+          <select name='platform'>
+            <option value='auto'>auto</option>
+            <option value='youtube'>youtube</option>
+            <option value='tiktok'>tiktok</option>
+          </select>
           <label>TTS provider</label>
           <select name='provider'>
             <option value='edge'>edge</option>
             <option value='local'>local</option>
             <option value='elevenlabs'>elevenlabs</option>
+            <option value='voxcpm'>voxcpm</option>
           </select>
           <label>Skip upload</label>
           <select name='skip_upload'>
@@ -124,11 +131,18 @@ def index() -> HTMLResponse:
             <option value='short'>short</option>
             <option value='long'>long</option>
           </select>
+          <label>Platform preset</label>
+          <select name='platform'>
+            <option value='auto'>auto</option>
+            <option value='youtube'>youtube</option>
+            <option value='tiktok'>tiktok</option>
+          </select>
           <label>TTS provider</label>
           <select name='provider'>
             <option value='edge'>edge</option>
             <option value='local'>local</option>
             <option value='elevenlabs'>elevenlabs</option>
+            <option value='voxcpm'>voxcpm</option>
           </select>
           <label>Comma-separated steps</label>
           <input name='steps' value='research,script,scene,tts,images,subtitles,render,metadata' />
@@ -162,8 +176,16 @@ def index() -> HTMLResponse:
 
 
 @app.post('/run')
-def run_full(topic: str = Form(...), video_mode: str = Form(...), provider: str = Form(...), skip_upload: str = Form(...)) -> HTMLResponse:
+def run_full(
+    topic: str = Form(...),
+    video_mode: str = Form(...),
+    platform: str = Form('auto'),
+    provider: str = Form(...),
+    skip_upload: str = Form(...),
+) -> HTMLResponse:
     args = ["run", topic, "--video-mode", video_mode, "--provider", provider]
+    if platform != 'auto':
+        args += ['--platform', platform]
     if skip_upload == 'true':
         args.append('--skip-upload')
     result = run_cli(args)
@@ -175,6 +197,7 @@ def run_steps(
     topic: str = Form(...),
     job_id: str = Form(''),
     video_mode: str = Form(...),
+    platform: str = Form('auto'),
     provider: str = Form(...),
     steps: str = Form(...),
 ) -> HTMLResponse:
@@ -209,7 +232,10 @@ def run_steps(
             result = run_cli(["subtitles", current_job_id])
             outputs.append(f"## subtitles\n{result.stdout}\n{result.stderr}")
         elif step == 'render':
-            result = run_cli(["render", current_job_id, "--video-mode", video_mode])
+            args = ["render", current_job_id, "--video-mode", video_mode]
+            if platform != 'auto':
+                args += ['--platform', platform]
+            result = run_cli(args)
             outputs.append(f"## render\n{result.stdout}\n{result.stderr}")
         elif step == 'metadata':
             result = run_cli(["metadata", current_job_id])

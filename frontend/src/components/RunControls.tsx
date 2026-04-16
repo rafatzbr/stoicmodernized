@@ -16,16 +16,19 @@ import {
 
 const providerOptions = ['edge', 'local', 'elevenlabs', 'voxcpm'];
 const videoModeOptions = ['short', 'long'];
+const platformOptions = ['auto', 'youtube', 'tiktok'];
 
 type Props = {
   topic: string;
   videoMode: string;
   provider: string;
+  platform: string;
   isStarting: boolean;
   isSuggestingTopic?: boolean;
   onTopicChange: (value: string) => void;
   onVideoModeChange: (value: string) => void;
   onProviderChange: (value: string) => void;
+  onPlatformChange: (value: string) => void;
   onSuggestTopic: () => void;
   onStart: () => void;
 };
@@ -34,11 +37,13 @@ export function RunControls({
   topic,
   videoMode,
   provider,
+  platform,
   isStarting,
   isSuggestingTopic = false,
   onTopicChange,
   onVideoModeChange,
   onProviderChange,
+  onPlatformChange,
   onSuggestTopic,
   onStart,
 }: Props) {
@@ -91,6 +96,22 @@ export function RunControls({
                 onChange={(event) => onVideoModeChange(String(event.target.value))}
               >
                 {videoModeOptions.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel id="platform-label">Platform preset</InputLabel>
+              <Select
+                labelId="platform-label"
+                value={platform}
+                label="Platform preset"
+                onChange={(event) => onPlatformChange(String(event.target.value))}
+              >
+                {platformOptions.map((option) => (
                   <MenuItem key={option} value={option}>
                     {option}
                   </MenuItem>
