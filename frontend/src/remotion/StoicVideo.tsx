@@ -9,7 +9,7 @@ import {
   spring,
   useCurrentFrame,
 } from 'remotion';
-import type {RemotionRenderProps, RemotionScene} from './types';
+import type {RemotionPlatform, RemotionRenderProps, RemotionScene} from './types';
 
 const TEXT_COLOR = '#ffffff';
 const HIGHLIGHT_COLOR = '#FFD166';
@@ -40,11 +40,16 @@ const getSceneTransform = (
   }
 };
 
+const getPlatform = (mode: RemotionRenderProps['mode'], platform?: RemotionPlatform) => {
+  return platform ?? (mode === 'portrait' ? 'tiktok' : 'youtube');
+};
+
 const StoicVideo: React.FC<RemotionRenderProps> = ({
   title,
   topic,
   channelName,
   mode,
+  platform,
   fps,
   scenes,
   subtitles,
@@ -54,35 +59,41 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   ctaText,
 }) => {
   const frame = useCurrentFrame();
-  const isPortrait = mode === 'portrait';
+  const resolvedPlatform = getPlatform(mode, platform);
+  const isTikTok = resolvedPlatform === 'tiktok';
   const totalFrames = Math.max(1, Math.round(durationInSeconds * fps));
 
-  const subtitleCardStyle: React.CSSProperties = useMemo(() => ({
-    position: 'absolute',
-    left: isPortrait ? '6%' : '8%',
-    right: isPortrait ? '6%' : '8%',
-    bottom: isPortrait ? 120 : 62,
-    zIndex: 30,
-    padding: isPortrait ? '20px 22px 24px' : '18px 26px 22px',
-    borderRadius: isPortrait ? 28 : 22,
-    background: 'linear-gradient(180deg, rgba(6,8,16,0.34), rgba(6,8,16,0.78))',
-    border: '1px solid rgba(255,255,255,0.1)',
-    boxShadow: '0 22px 80px rgba(0,0,0,0.45)',
-    backdropFilter: 'blur(18px)',
-  }), [isPortrait]);
+  const subtitleCardStyle: React.CSSProperties = useMemo(
+    () => ({
+      position: 'absolute',
+      left: isTikTok ? '5.5%' : '7%',
+      right: isTikTok ? '5.5%' : '7%',
+      bottom: isTikTok ? 140 : 58,
+      zIndex: 30,
+      padding: isTikTok ? '22px 22px 26px' : '16px 22px 18px',
+      borderRadius: isTikTok ? 30 : 18,
+      background: isTikTok
+        ? 'linear-gradient(180deg, rgba(13,13,25,0.28), rgba(13,13,25,0.82))'
+        : 'linear-gradient(180deg, rgba(4,10,20,0.22), rgba(4,10,20,0.64))',
+      border: isTikTok ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.08)',
+      boxShadow: isTikTok ? '0 24px 90px rgba(0,0,0,0.48)' : '0 16px 50px rgba(0,0,0,0.32)',
+      backdropFilter: 'blur(18px)',
+    }),
+    [isTikTok],
+  );
 
   const channelStyle: React.CSSProperties = {
     position: 'absolute',
-    top: isPortrait ? 82 : 48,
-    left: isPortrait ? 34 : 54,
+    top: isTikTok ? 88 : 42,
+    left: isTikTok ? 30 : 54,
     zIndex: 25,
-    padding: isPortrait ? '10px 16px' : '10px 18px',
-    borderRadius: 999,
-    background: 'rgba(7,10,20,0.45)',
+    padding: isTikTok ? '10px 15px' : '10px 18px',
+    borderRadius: isTikTok ? 18 : 999,
+    background: isTikTok ? 'rgba(7,10,20,0.48)' : 'rgba(7,10,20,0.38)',
     border: '1px solid rgba(255,255,255,0.12)',
-    fontSize: isPortrait ? 24 : 28,
-    fontWeight: 700,
-    letterSpacing: '0.04em',
+    fontSize: isTikTok ? 22 : 26,
+    fontWeight: 800,
+    letterSpacing: isTikTok ? '0.08em' : '0.04em',
     color: TEXT_COLOR,
     textTransform: 'uppercase',
     boxShadow: '0 10px 30px rgba(0,0,0,0.28)',
@@ -90,25 +101,42 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
   const titleStyle: React.CSSProperties = {
     position: 'absolute',
-    top: isPortrait ? 148 : 104,
-    left: isPortrait ? 34 : 54,
-    right: isPortrait ? 34 : 54,
+    top: isTikTok ? 154 : 110,
+    left: isTikTok ? 30 : 54,
+    right: isTikTok ? 52 : 54,
     zIndex: 25,
-    fontSize: isPortrait ? 50 : 54,
-    lineHeight: 1.03,
-    fontWeight: 900,
-    letterSpacing: '-0.03em',
+    fontSize: isTikTok ? 58 : 48,
+    lineHeight: isTikTok ? 0.98 : 1.02,
+    fontWeight: 950,
+    letterSpacing: '-0.05em',
     color: TEXT_COLOR,
     textShadow: '0 8px 28px rgba(0,0,0,0.45)',
-    maxWidth: isPortrait ? '85%' : '62%',
+    maxWidth: isTikTok ? '86%' : '58%',
+  };
+
+  const kickerStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: isTikTok ? 250 : 188,
+    left: isTikTok ? 30 : 54,
+    zIndex: 25,
+    padding: isTikTok ? '12px 16px' : '10px 14px',
+    borderRadius: 999,
+    background: isTikTok
+      ? 'linear-gradient(135deg, rgba(251,113,133,0.85), rgba(245,158,11,0.92))'
+      : 'rgba(255,255,255,0.12)',
+    color: isTikTok ? '#111827' : 'rgba(255,255,255,0.92)',
+    fontSize: isTikTok ? 22 : 20,
+    fontWeight: 900,
+    letterSpacing: isTikTok ? '0.03em' : '0.02em',
+    textTransform: 'uppercase',
   };
 
   const progressStyle: React.CSSProperties = {
     position: 'absolute',
-    top: isPortrait ? 48 : 32,
-    left: isPortrait ? '6%' : '18%',
-    width: isPortrait ? '88%' : '64%',
-    height: isPortrait ? 8 : 6,
+    top: isTikTok ? 50 : 30,
+    left: isTikTok ? '5.5%' : '18%',
+    width: isTikTok ? '89%' : '64%',
+    height: isTikTok ? 8 : 5,
     borderRadius: 999,
     overflow: 'hidden',
     background: 'rgba(255,255,255,0.15)',
@@ -125,9 +153,9 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
   const logoStyle: React.CSSProperties = {
     position: 'absolute',
-    top: isPortrait ? 42 : 28,
-    right: isPortrait ? 26 : 34,
-    width: isPortrait ? 76 : 110,
+    top: isTikTok ? 42 : 28,
+    right: isTikTok ? 24 : 34,
+    width: isTikTok ? 72 : 108,
     height: 'auto',
     zIndex: 30,
     opacity: 0.88,
@@ -139,7 +167,9 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
     inset: 0,
     background: [
       'radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.36) 100%)',
-      'linear-gradient(180deg, rgba(4,8,18,0.58) 0%, rgba(4,8,18,0.08) 22%, rgba(4,8,18,0.1) 68%, rgba(4,8,18,0.8) 100%)',
+      isTikTok
+        ? 'linear-gradient(180deg, rgba(4,8,18,0.6) 0%, rgba(4,8,18,0.1) 22%, rgba(4,8,18,0.12) 68%, rgba(4,8,18,0.86) 100%)'
+        : 'linear-gradient(180deg, rgba(4,8,18,0.42) 0%, rgba(4,8,18,0.04) 20%, rgba(4,8,18,0.08) 66%, rgba(4,8,18,0.74) 100%)',
     ].join(','),
     zIndex: 5,
   };
@@ -163,7 +193,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
             <SceneLayer
               scene={scene}
               durationInFrames={durationInFrames}
-              isPortrait={isPortrait}
+              isTikTok={isTikTok}
               fps={fps}
             />
           </Sequence>
@@ -178,6 +208,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
       <div style={channelStyle}>{channelName}</div>
       <div style={titleStyle}>{topic || title}</div>
+      <div style={kickerStyle}>{isTikTok ? 'Mindset reset' : 'Practical Stoicism for modern work'}</div>
 
       {logoSrc ? <Img src={resolveAssetSrc(logoSrc)} style={logoStyle} /> : null}
 
@@ -229,13 +260,13 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
-                justifyContent: 'center',
-                gap: isPortrait ? '8px 10px' : '10px 12px',
-                fontSize: isPortrait ? 54 : 62,
-                lineHeight: 1.08,
-                fontWeight: 900,
-                letterSpacing: '-0.03em',
-                textAlign: 'center',
+                justifyContent: isTikTok ? 'flex-start' : 'center',
+                gap: isTikTok ? '8px 10px' : '8px 12px',
+                fontSize: isTikTok ? 56 : 46,
+                lineHeight: isTikTok ? 1.02 : 1.08,
+                fontWeight: 950,
+                letterSpacing: '-0.04em',
+                textAlign: isTikTok ? 'left' : 'center',
                 color: TEXT_COLOR,
                 textShadow: '0 6px 26px rgba(0,0,0,0.4)',
               }}
@@ -275,50 +306,62 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
             style={{
               justifyContent: 'center',
               alignItems: 'center',
-              padding: isPortrait ? '64px' : '80px',
-              background: 'linear-gradient(135deg, rgba(5,8,22,0.9), rgba(17,24,39,0.88), rgba(88,28,135,0.82))',
+              padding: isTikTok ? '64px' : '80px',
+              background: isTikTok
+                ? 'linear-gradient(135deg, rgba(5,8,22,0.9), rgba(17,24,39,0.88), rgba(88,28,135,0.82))'
+                : 'linear-gradient(135deg, rgba(5,8,22,0.94), rgba(10,24,40,0.92), rgba(18,58,92,0.84))',
               zIndex: 40,
             }}
           >
             <div
               style={{
-                padding: isPortrait ? '18px 22px' : '16px 22px',
+                padding: isTikTok ? '18px 22px' : '14px 20px',
                 borderRadius: 999,
                 border: '1px solid rgba(255,255,255,0.14)',
                 background: 'rgba(255,255,255,0.06)',
                 color: HIGHLIGHT_COLOR,
                 textTransform: 'uppercase',
-                letterSpacing: '0.18em',
+                letterSpacing: isTikTok ? '0.18em' : '0.12em',
                 fontWeight: 800,
-                marginBottom: isPortrait ? 22 : 16,
+                marginBottom: isTikTok ? 22 : 18,
                 transform: `scale(${interpolate(ctaPulse, [0, 1], [0.92, 1])})`,
               }}
             >
-              Stoic Modernized
+              {isTikTok ? channelName : 'Stoic Modernized on YouTube'}
             </div>
             <div
               style={{
                 color: TEXT_COLOR,
-                fontSize: isPortrait ? 84 : 92,
+                fontSize: isTikTok ? 84 : 72,
                 fontWeight: 950,
                 lineHeight: 0.95,
                 letterSpacing: '-0.05em',
                 textAlign: 'center',
-                marginBottom: isPortrait ? 24 : 18,
+                marginBottom: isTikTok ? 24 : 18,
                 textShadow: '0 12px 40px rgba(0,0,0,0.35)',
                 transform: `translateY(${interpolate(ctaPulse, [0, 1], [24, 0])}px)`,
               }}
             >
-              Subscribe for
-              <br />
-              calm ambition
+              {isTikTok ? (
+                <>
+                  Subscribe for
+                  <br />
+                  calm ambition
+                </>
+              ) : (
+                <>
+                  Watch the full lesson,
+                  <br />
+                  then subscribe
+                </>
+              )}
             </div>
             <div
               style={{
-                maxWidth: isPortrait ? '88%' : '70%',
+                maxWidth: isTikTok ? '88%' : '62%',
                 textAlign: 'center',
                 color: 'rgba(255,255,255,0.92)',
-                fontSize: isPortrait ? 32 : 34,
+                fontSize: isTikTok ? 32 : 28,
                 lineHeight: 1.2,
                 fontWeight: 600,
               }}
@@ -329,7 +372,25 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
         </Sequence>
       ) : null}
 
-      {!isPortrait ? (
+      {isTikTok ? (
+        <div
+          style={{
+            position: 'absolute',
+            right: 24,
+            top: 116,
+            zIndex: 30,
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            color: 'rgba(255,255,255,0.58)',
+            fontSize: 18,
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            fontWeight: 700,
+          }}
+        >
+          {channelName}
+        </div>
+      ) : (
         <div
           style={{
             position: 'absolute',
@@ -341,34 +402,14 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
             background: 'rgba(7,10,20,0.45)',
             border: '1px solid rgba(255,255,255,0.08)',
             color: 'rgba(255,255,255,0.9)',
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: 700,
             letterSpacing: '0.02em',
           }}
         >
-          Practical Stoicism for modern work
+          New episodes on calm ambition and boundaries
         </div>
-      ) : null}
-
-      {isPortrait ? (
-        <div
-          style={{
-            position: 'absolute',
-            right: 26,
-            top: 110,
-            zIndex: 30,
-            writingMode: 'vertical-rl',
-            textOrientation: 'mixed',
-            color: 'rgba(255,255,255,0.55)',
-            fontSize: 18,
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            fontWeight: 700,
-          }}
-        >
-          Stoic Modernized
-        </div>
-      ) : null}
+      )}
     </AbsoluteFill>
   );
 };
@@ -376,9 +417,9 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 const SceneLayer: React.FC<{
   scene: RemotionScene;
   durationInFrames: number;
-  isPortrait: boolean;
+  isTikTok: boolean;
   fps: number;
-}> = ({scene, durationInFrames, isPortrait, fps}) => {
+}> = ({scene, durationInFrames, isTikTok, fps}) => {
   const frame = useCurrentFrame();
   const entrance = spring({
     fps,
@@ -401,24 +442,26 @@ const SceneLayer: React.FC<{
       />
       <AbsoluteFill
         style={{
-          background: isPortrait
+          background: isTikTok
             ? 'linear-gradient(180deg, rgba(0,0,0,0.10), rgba(0,0,0,0.18))'
-            : 'linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.14))',
+            : 'linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.12))',
         }}
       />
       {scene.textOverlay ? (
         <div
           style={{
             position: 'absolute',
-            top: isPortrait ? 230 : 180,
-            left: isPortrait ? 34 : 54,
+            top: isTikTok ? 290 : 236,
+            left: isTikTok ? 30 : 54,
             zIndex: 12,
-            padding: isPortrait ? '14px 20px' : '14px 22px',
-            borderRadius: 18,
-            background: 'linear-gradient(135deg, rgba(17,24,39,0.62), rgba(88,28,135,0.42))',
+            padding: isTikTok ? '14px 20px' : '12px 18px',
+            borderRadius: isTikTok ? 18 : 14,
+            background: isTikTok
+              ? 'linear-gradient(135deg, rgba(17,24,39,0.62), rgba(88,28,135,0.42))'
+              : 'linear-gradient(135deg, rgba(4,12,24,0.68), rgba(15,23,42,0.52))',
             border: '1px solid rgba(255,255,255,0.12)',
             color: TEXT_COLOR,
-            fontSize: isPortrait ? 28 : 30,
+            fontSize: isTikTok ? 28 : 24,
             fontWeight: 800,
             letterSpacing: '0.02em',
             transform: `translateY(${overlayY}px)`,

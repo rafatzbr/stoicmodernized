@@ -15,11 +15,14 @@ export type RemotionSubtitle = {
   words?: {startTime: number; endTime: number; text: string}[] | null;
 };
 
+export type RemotionPlatform = 'youtube' | 'tiktok';
+
 export type RemotionRenderProps = {
   title: string;
   topic: string;
   channelName: string;
   mode: 'landscape' | 'portrait';
+  platform?: RemotionPlatform;
   fps: number;
   durationInSeconds: number;
   audioSrc: string;

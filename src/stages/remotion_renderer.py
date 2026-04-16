@@ -205,6 +205,7 @@ class RemotionRenderer:
             'topic': scenes[0].get('topic', '') if scenes else '',
             'channelName': channel_name,
             'mode': self.mode,
+            'platform': 'tiktok' if self.mode == 'portrait' else 'youtube',
             'fps': self.fps,
             'durationInSeconds': total_duration,
             'audioSrc': audio_relative,
