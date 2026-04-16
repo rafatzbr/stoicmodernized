@@ -22,6 +22,7 @@ class RemotionRenderer:
         height: int = 1080,
         fps: int = 30,
         mode: str = 'landscape',  # 'landscape' or 'portrait'
+        platform: Optional[str] = None,
     ):
         self.job_id = job_id
         self.frontend_dir = frontend_dir
@@ -29,13 +30,14 @@ class RemotionRenderer:
         self.height = height
         self.fps = fps
         self.mode = mode
+        self.platform = platform or ('tiktok' if mode == 'portrait' else 'youtube')
         self.job_dir = Path('/home/rafatz/projects/stoic-modernized/output/jobs') / job_id
         self.public_dir = self.job_dir / 'public'
         self.output_path = self.job_dir / 'remotion_output.mp4'
 
     def run(self) -> dict:
         """Run the Remotion render pipeline."""
-        print(f"[RemotionRenderer] Starting render for job {self.job_id} ({self.mode})")
+        print(f"[RemotionRenderer] Starting render for job {self.job_id} ({self.mode}, platform={self.platform})")
 
         # Prepare directories
         self.public_dir.mkdir(parents=True, exist_ok=True)
@@ -205,7 +207,7 @@ class RemotionRenderer:
             'topic': scenes[0].get('topic', '') if scenes else '',
             'channelName': channel_name,
             'mode': self.mode,
-            'platform': 'tiktok' if self.mode == 'portrait' else 'youtube',
+            'platform': self.platform,
             'fps': self.fps,
             'durationInSeconds': total_duration,
             'audioSrc': audio_relative,

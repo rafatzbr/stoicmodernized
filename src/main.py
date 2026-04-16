@@ -12,7 +12,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.config import VideoMode, settings
+from src.config import RemotionPlatform, VideoMode, settings
 from src.database import db
 from src.logging_config import JobLogger
 from src.models import Scene, VideoRenderConfig
@@ -386,6 +386,11 @@ def render(
         "ffmpeg", "--renderer", "-r",
         help="Renderer to use: ffmpeg or remotion"
     ),
+    platform: Optional[RemotionPlatform] = typer.Option(
+        None,
+        "--platform",
+        help="Remotion platform preset: youtube or tiktok. Defaults from video mode if omitted.",
+    ),
 ) -> None:
     """Render the final video with ffmpeg or Remotion."""
     print_header()
@@ -406,7 +411,8 @@ def render(
 
     if renderer_type == "remotion":
         mode = "portrait" if video_mode == VideoMode.SHORT else "landscape"
-        console.print(f"[bold cyan]Using Remotion renderer ({mode})[/bold cyan]")
+        resolved_platform = platform.value if platform else ("tiktok" if mode == "portrait" else "youtube")
+        console.print(f"[bold cyan]Using Remotion renderer ({mode}, platform={resolved_platform})[/bold cyan]")
         renderer = RemotionRenderer(
             job_id=job_id,
             frontend_dir=settings.project_root / "frontend",
@@ -414,6 +420,7 @@ def render(
             height=height,
             fps=settings.video_fps,
             mode=mode,
+            platform=resolved_platform,
         )
         result = renderer.run()
         output_path = result['video_path']
@@ -544,6 +551,11 @@ def run(
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
     video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
     placeholder_images: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
+    platform: Optional[RemotionPlatform] = typer.Option(
+        None,
+        "--platform",
+        help="Remotion platform preset for the render stage: youtube or tiktok.",
+    ),
 ) -> None:
     """Run the complete pipeline for a topic."""
     job_record = db.create_job(topic)
@@ -582,7 +594,7 @@ def run(
         tts(job_id=job_id, provider=provider, mock=media_stage_mock)
         images(job_id=job_id, mock=media_stage_mock, placeholder_only=placeholder_images)
         subtitles(job_id=job_id, mock=media_stage_mock)
-        render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode)
+        render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, platform=platform)
         metadata(job_id=job_id, mock=script_stage_mock)
 
         if not skip_upload:

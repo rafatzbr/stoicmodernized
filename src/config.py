@@ -40,6 +40,13 @@ class VideoMode(str, Enum):
     LONG = "long"
 
 
+class RemotionPlatform(str, Enum):
+    """Supported Remotion visual platform presets."""
+
+    YOUTUBE = "youtube"
+    TIKTOK = "tiktok"
+
+
 class Settings(BaseSettings):
     """Global application settings."""
 
