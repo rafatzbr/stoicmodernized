@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from src.config import settings
 from src.models import Scene, SubtitleSegment
 from src.utils import load_json, save_json
 
@@ -47,12 +48,13 @@ class RemotionRenderer:
         scenes_data = self._load_scenes()
         subtitles_data = self._load_subtitles()
         audio_path = self._get_audio_path()
+        background_music_path = self._get_background_music_path()
 
         if not scenes_data or not audio_path:
             raise RuntimeError("Missing scenes data or audio file")
 
         # Generate props
-        props = self._generate_props(scenes_data, subtitles_data, audio_path)
+        props = self._generate_props(scenes_data, subtitles_data, audio_path, background_music_path)
         props_path = self.frontend_dir / 'public' / 'props.json'
         save_json(props, props_path)
 
@@ -127,16 +129,28 @@ class RemotionRenderer:
         return segments
 
     def _get_audio_path(self) -> Optional[str]:
-        """Get the audio file path."""
+        """Get the narration audio path."""
         audio_dir = self.job_dir / 'audio'
         if not audio_dir.exists():
             return None
 
-        for audio_file in audio_dir.glob('*.wav'):
-            return f'audio/{audio_file.name}'
+        for filename in ('narration.wav', 'narration.mp3', 'narration.ogg', 'narration.m4a'):
+            audio_file = audio_dir / filename
+            if audio_file.exists():
+                return f'audio/{audio_file.name}'
 
-        for audio_file in audio_dir.glob('*.mp3'):
-            return f'audio/{audio_file.name}'
+        return None
+
+    def _get_background_music_path(self) -> Optional[str]:
+        """Get the relative background music path if present."""
+        audio_dir = self.job_dir / 'audio'
+        if not audio_dir.exists():
+            return None
+
+        for pattern in ('background_music.mp3', 'background_music.wav', 'background_music.ogg', 'background_music.m4a'):
+            audio_file = audio_dir / pattern
+            if audio_file.exists():
+                return f'audio/{audio_file.name}'
 
         return None
 
@@ -145,6 +159,7 @@ class RemotionRenderer:
         scenes: list[dict],
         subtitles: list[dict],
         audio_path: str,
+        background_music_path: Optional[str],
     ) -> dict:
         """Generate Remotion render props from pipeline data."""
         # Build scenes array - use relative paths for staticFile()
@@ -211,6 +226,8 @@ class RemotionRenderer:
             'fps': self.fps,
             'durationInSeconds': total_duration,
             'audioSrc': audio_relative,
+            'backgroundMusicSrc': background_music_path,
+            'backgroundMusicVolume': settings.background_music_volume,
             'logoSrc': None,  # Can be added later if logo is configured
             'scenes': remotion_scenes,
             'subtitles': remotion_subtitles,

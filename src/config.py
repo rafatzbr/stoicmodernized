@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     long_max_duration_seconds: int = 900
     video_fps: int = 30
     background_music_volume: float = 0.15
+    background_music_enabled: bool = True
+    background_music_provider: str = "pixabay"
+    background_music_query: str = "calm ambient instrumental background music"
+    background_music_min_duration: int = 30
+    background_music_max_duration: int = 600
 
     tts_provider: TTSProvider = TTSProvider.LOCAL
     tts_voice: str = Field(default="en-US-GuyNeural", validation_alias=AliasChoices("TTS_VOICE", "TS_VOICE"))

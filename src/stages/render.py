@@ -1,8 +1,13 @@
 """Video rendering stage module using ffmpeg."""
 
+import math
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Optional
+
+from PIL import Image
 
 from src.config import settings
 from src.models import VideoRenderConfig, VideoRenderResult
@@ -50,6 +55,7 @@ class VideoRenderer:
             height=config.height,
             add_short_endcard=(config.width == settings.short_video_width and config.height == settings.short_video_height),
             audio_duration=audio_duration,
+            background_music_path=Path(config.background_music_path) if config.background_music_path else None,
         )
 
         if image_paths:
@@ -148,32 +154,45 @@ class VideoRenderer:
             f"enable='gte(t,{start_time:.2f})'"
         )
 
-    def _build_scene_clip_filter(self, *, width: int, height: int, duration: float, animation_style: str) -> str:
-        target_width = int(round(width * 1.15))
-        target_height = int(round(height * 1.15))
-        frames = max(1, int(round(duration * self.fps)))
-        style = (animation_style or "zoom").lower()
-
-        if style == "zoom":
-            target_zoom = 1.10
-            frame_divisor = max(1, frames - 1)
-            return (
-                f"scale={target_width}:{target_height}:force_original_aspect_ratio=increase,"
-                f"crop={target_width}:{target_height},"
-                "zoompan="
-                f"z='1+({target_zoom - 1.0:.4f}*pow(on/{frame_divisor},1.6))':"
-                f"x='(iw-iw/zoom)/2':"
-                f"y='(ih-ih/zoom)/2':"
-                f"d={frames}:s={width}x{height}:fps={self.fps},"
-                "format=yuv420p"
-            )
-
+    def _build_scene_clip_filter(self, *, width: int, height: int) -> str:
         return (
             f"scale={width}:{height}:force_original_aspect_ratio=increase,"
             f"crop={width}:{height},"
             f"fps={self.fps},"
             "format=yuv420p"
         )
+
+    def _render_zoom_frames(
+        self,
+        *,
+        image_path: Path,
+        frames_dir: Path,
+        frames: int,
+        width: int,
+        height: int,
+        target_zoom: float = 1.25,
+    ) -> None:
+        frames_dir.mkdir(parents=True, exist_ok=True)
+        resample = getattr(Image, "Resampling", Image).LANCZOS
+
+        with Image.open(image_path) as source_img:
+            source = source_img.convert("RGB")
+            src_w, src_h = source.size
+            cover_scale = max(width / src_w, height / src_h)
+            base_w = max(width, math.ceil(src_w * cover_scale))
+            base_h = max(height, math.ceil(src_h * cover_scale))
+
+            for frame_index in range(frames):
+                progress = frame_index / max(1, frames - 1)
+                zoom = 1.0 + ((target_zoom - 1.0) * progress)
+                scaled_w = max(width, math.ceil(base_w * zoom))
+                scaled_h = max(height, math.ceil(base_h * zoom))
+                resized = source.resize((scaled_w, scaled_h), resample=resample)
+
+                left = max(0, (scaled_w - width) // 2)
+                top = max(0, (scaled_h - height) // 2)
+                frame = resized.crop((left, top, left + width, top + height))
+                frame.save(frames_dir / f"frame_{frame_index:06d}.jpg", quality=95)
 
     def _render_scene_clip(
         self,
@@ -185,15 +204,45 @@ class VideoRenderer:
         height: int,
         animation_style: str,
     ) -> None:
-        filter_text = self._build_scene_clip_filter(
-            width=width,
-            height=height,
-            duration=duration,
-            animation_style=animation_style,
-        )
+        style = (animation_style or "zoom").lower()
+        frames = max(2, int(round(duration * self.fps)))
+
+        if style == "zoom":
+            with tempfile.TemporaryDirectory(prefix="stoic-frames-") as temp_dir:
+                frames_dir = Path(temp_dir)
+                self._render_zoom_frames(
+                    image_path=image_path,
+                    frames_dir=frames_dir,
+                    frames=frames,
+                    width=width,
+                    height=height,
+                )
+                cmd = [
+                    "ffmpeg",
+                    "-y",
+                    "-framerate",
+                    str(self.fps),
+                    "-i",
+                    str(frames_dir / "frame_%06d.jpg"),
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "medium",
+                    "-crf",
+                    "23",
+                    "-pix_fmt",
+                    "yuv420p",
+                    str(output_path),
+                ]
+                subprocess.run(cmd, capture_output=True, text=True, check=True)
+            return
+
+        filter_text = self._build_scene_clip_filter(width=width, height=height)
         cmd = [
             "ffmpeg",
             "-y",
+            "-framerate",
+            str(self.fps),
             "-loop",
             "1",
             "-i",
@@ -242,6 +291,7 @@ class VideoRenderer:
         height: int = 1080,
         add_short_endcard: bool = False,
         audio_duration: Optional[float] = None,
+        background_music_path: Optional[Path] = None,
     ) -> subprocess.CompletedProcess:
         if not images:
             raise RuntimeError("No scene images found for rendering")
@@ -277,106 +327,95 @@ class VideoRenderer:
         duration_limit = self._output_duration_limit(audio_duration)
 
         logo_path = settings.watermark_logo_path
-        if logo_path.exists():
-            filter_complex = (
-                "[0:v]format=yuv420p[base];"
-                f"[2:v]scale={settings.watermark_scale_width}:-1[wm];"
-                f"[base][wm]overlay=W-w-{settings.watermark_padding}:H-h-{settings.watermark_padding}[tmp]"
-            )
-            post_logo_filters = []
-            if subtitle_path:
-                post_logo_filters.append(f"subtitles={subtitle_path.as_posix()}")
-            if add_short_endcard and audio_duration and audio_duration > 0:
-                post_logo_filters.append(self._build_endcard_drawtext(audio_duration))
-            if post_logo_filters:
-                filter_complex += f";[tmp]{','.join(post_logo_filters)}[vout]"
-            else:
-                filter_complex += ";[tmp]null[vout]"
+        has_logo = logo_path.exists()
+        has_background_music = bool(background_music_path and background_music_path.exists())
 
-            cmd = [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "concat",
-                "-safe",
-                "0",
-                "-i",
-                str(concat_file),
-                "-i",
-                str(audio_path),
-                "-i",
-                str(logo_path),
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(concat_file),
+            "-i",
+            str(audio_path),
+        ]
+
+        background_music_index: Optional[int] = None
+        logo_index: Optional[int] = None
+
+        if has_background_music and background_music_path is not None:
+            background_music_index = 2
+            cmd.extend(["-stream_loop", "-1", "-i", str(background_music_path)])
+
+        if has_logo:
+            logo_index = 3 if has_background_music else 2
+            cmd.extend(["-i", str(logo_path)])
+
+        needs_filter_complex = has_logo or has_background_music or bool(video_filter)
+
+        if needs_filter_complex:
+            filter_parts: list[str] = ["[0:v]format=yuv420p[v0]"]
+            current_video = "v0"
+
+            if has_logo and logo_index is not None:
+                filter_parts.append(f"[{logo_index}:v]scale={settings.watermark_scale_width}:-1[wm]")
+                filter_parts.append(
+                    f"[{current_video}][wm]overlay=W-w-{settings.watermark_padding}:H-h-{settings.watermark_padding}[v1]"
+                )
+                current_video = "v1"
+
+            if video_filter:
+                filter_parts.append(f"[{current_video}]{video_filter}[vout]")
+                current_video = "vout"
+
+            audio_map = "1:a:0"
+            if has_background_music and background_music_index is not None:
+                filter_parts.append(
+                    f"[{background_music_index}:a]volume={self.background_music_volume}[bgm]"
+                )
+                filter_parts.append("[1:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]")
+                audio_map = "[aout]"
+
+            cmd.extend([
                 "-filter_complex",
-                filter_complex,
+                ";".join(filter_parts),
                 "-map",
-                "[vout]",
+                f"[{current_video}]",
                 "-map",
-                "1:a:0",
-                "-r",
-                str(self.fps),
-                "-c:v",
-                "libx264",
-                "-profile:v",
-                "high",
-                "-level:v",
-                "4.1",
-                "-preset",
-                "medium",
-                "-crf",
-                "23",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-ar",
-                "48000",
-            ]
-            if duration_limit:
-                cmd.extend(["-t", duration_limit])
-            cmd.extend(["-shortest", str(output_path)])
+                audio_map,
+            ])
         else:
-            cmd = [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "concat",
-                "-safe",
-                "0",
-                "-i",
-                str(concat_file),
-                "-i",
-                str(audio_path),
-                "-vf",
-                video_filter,
-                "-r",
-                str(self.fps),
-                "-c:v",
-                "libx264",
-                "-profile:v",
-                "high",
-                "-level:v",
-                "4.1",
-                "-preset",
-                "medium",
-                "-crf",
-                "23",
-                "-pix_fmt",
-                "yuv420p",
-                "-movflags",
-                "+faststart",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-ar",
-                "48000",
-            ]
-            if duration_limit:
-                cmd.extend(["-t", duration_limit])
-            cmd.extend(["-shortest", str(output_path)])
+            cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
+
+        cmd.extend([
+            "-r",
+            str(self.fps),
+            "-c:v",
+            "libx264",
+            "-profile:v",
+            "high",
+            "-level:v",
+            "4.1",
+            "-preset",
+            "medium",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-ar",
+            "48000",
+        ])
+        if duration_limit:
+            cmd.extend(["-t", duration_limit])
+        cmd.extend(["-shortest", str(output_path)])
 
         return subprocess.run(cmd, capture_output=True, text=True, check=True)

@@ -26,6 +26,8 @@ export type RemotionRenderProps = {
   fps: number;
   durationInSeconds: number;
   audioSrc: string;
+  backgroundMusicSrc?: string | null;
+  backgroundMusicVolume?: number | null;
   logoSrc?: string | null;
   scenes: RemotionScene[];
   subtitles: RemotionSubtitle[];

@@ -145,7 +145,7 @@ def index() -> HTMLResponse:
             <option value='voxcpm'>voxcpm</option>
           </select>
           <label>Comma-separated steps</label>
-          <input name='steps' value='research,script,scene,tts,images,subtitles,render,metadata' />
+          <input name='steps' value='research,script,scene,tts,music,images,subtitles,render,metadata' />
           <button type='submit'>Run selected steps</button>
         </form>
       </div>

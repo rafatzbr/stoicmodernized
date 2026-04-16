@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 
-const DEFAULT_STEPS = ['research', 'script', 'scene', 'tts', 'images', 'subtitles', 'render', 'metadata'];
+const DEFAULT_STEPS = ['research', 'script', 'scene', 'tts', 'music', 'images', 'subtitles', 'render', 'metadata'];
 
 type Props = {
   selectedJobId: string;

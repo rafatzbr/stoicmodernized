@@ -44,7 +44,7 @@ import { RunControls } from '../components/RunControls';
 import { StepRunner } from '../components/StepRunner';
 import type { Job, JobDetail, RunState } from '../types';
 
-const DEFAULT_STEPS = ['research', 'script', 'scene', 'tts', 'images', 'subtitles', 'render', 'metadata'];
+const DEFAULT_STEPS = ['research', 'script', 'scene', 'tts', 'music', 'images', 'subtitles', 'render', 'metadata'];
 
 type Notice = {
   message: string;

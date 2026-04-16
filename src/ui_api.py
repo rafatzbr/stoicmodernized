@@ -245,6 +245,8 @@ def start_steps(request: StepsRequest) -> dict[str, str | None]:
             commands.append(["python3", "-m", "src.main", "scene", current_job_id or ""])
         elif step == "tts":
             commands.append(["python3", "-m", "src.main", "tts", current_job_id or "", "--provider", request.provider])
+        elif step == "music":
+            commands.append(["python3", "-m", "src.main", "music", current_job_id or ""])
         elif step == "images":
             commands.append(["python3", "-m", "src.main", "images", current_job_id or ""])
         elif step == "subtitles":

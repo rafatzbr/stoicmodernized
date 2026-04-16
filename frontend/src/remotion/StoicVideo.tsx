@@ -160,6 +160,8 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   subtitles,
   durationInSeconds,
   audioSrc,
+  backgroundMusicSrc,
+  backgroundMusicVolume,
   logoSrc,
   ctaText,
 }) => {
@@ -288,6 +290,13 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
   return (
     <AbsoluteFill style={{backgroundColor: '#050816'}}>
+      {backgroundMusicSrc ? (
+        <Audio
+          src={resolveAssetSrc(backgroundMusicSrc)}
+          volume={backgroundMusicVolume ?? 0.12}
+          loop
+        />
+      ) : null}
       <Audio src={resolveAssetSrc(audioSrc)} volume={0.9} />
 
       {scenes.map((scene) => {

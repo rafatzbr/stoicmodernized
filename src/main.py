@@ -17,6 +17,7 @@ from src.database import db
 from src.logging_config import JobLogger
 from src.models import Scene, VideoRenderConfig
 from src.stages.images import ImageGenerationError, ImageGenerationStage
+from src.stages.music import BackgroundMusicStage
 from src.stages.render import VideoRenderer
 from src.stages.remotion_renderer import RemotionRenderer
 from src.stages.research import ResearchStage
@@ -313,6 +314,25 @@ def tts(
 
 
 @app.command()
+def music(
+    job_id: str = typer.Argument(..., help="Job ID after TTS stage"),
+    query: Optional[str] = typer.Option(None, "--query", help="Override Pixabay search query"),
+) -> None:
+    """Download royalty-free background music for the video."""
+    print_header()
+    job_record = _load_job_record(job_id)
+
+    stage = BackgroundMusicStage(job_id=job_id)
+    music_path = asyncio.run(stage.run(topic=job_record.topic, audio_path=job_record.audio_path, query=query))
+
+    console.print()
+    console.print("[bold green]Background Music Complete![/bold green]")
+    console.print(f"[dim]Music path:[/dim] {music_path}")
+    console.print(f"[dim]Metadata path:[/dim] {stage.metadata_path}")
+    console.print(f"[dim]Next step:[/dim] python -m src.main images {job_id}")
+
+
+@app.command()
 def images(
     job_id: str = typer.Argument(..., help="Job ID from tts stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
@@ -409,6 +429,19 @@ def render(
     width = settings.short_video_width if video_mode == VideoMode.SHORT else settings.video_width
     height = settings.short_video_height if video_mode == VideoMode.SHORT else settings.video_height
 
+    background_music_path: Optional[Path] = None
+    if settings.background_music_enabled and settings.background_music_provider == "pixabay":
+        background_stage = BackgroundMusicStage(job_id=job_id)
+        try:
+            if background_stage.output_path.exists():
+                background_music_path = background_stage.output_path
+            else:
+                background_music_path = asyncio.run(
+                    background_stage.run(topic=job_record.topic, audio_path=job_record.audio_path)
+                )
+        except Exception as exc:
+            console.print(f"[yellow]Warning: Background music download skipped: {exc}[/yellow]")
+
     if renderer_type == "remotion":
         mode = "portrait" if video_mode == VideoMode.SHORT else "landscape"
         resolved_platform = platform.value if platform else ("tiktok" if mode == "portrait" else "youtube")
@@ -433,6 +466,7 @@ def render(
         config = VideoRenderConfig(
             scenes=scenes,
             audio_path=job_record.audio_path,
+            background_music_path=str(background_music_path) if background_music_path else None,
             subtitle_path=job_record.subtitle_path,
             output_path=str(output_path),
             width=width,
@@ -592,6 +626,11 @@ def run(
         script(job_id=job_id, mock=script_stage_mock, video_mode=video_mode)
         scene(job_id=job_id, mock=scene_stage_mock)
         tts(job_id=job_id, provider=provider, mock=media_stage_mock)
+        if settings.background_music_enabled and settings.background_music_provider == "pixabay":
+            try:
+                music(job_id=job_id)
+            except Exception as exc:
+                console.print(f"[yellow]Background music skipped: {exc}[/yellow]")
         images(job_id=job_id, mock=media_stage_mock, placeholder_only=placeholder_images)
         subtitles(job_id=job_id, mock=media_stage_mock)
         render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, platform=platform)
@@ -643,6 +682,7 @@ def retry(
             "script": lambda: script(job_id=job_id, mock=mock),
             "scene": lambda: scene(job_id=job_id, mock=mock),
             "tts": lambda: tts(job_id=job_id, provider=settings.tts_provider.value, mock=mock),
+            "music": lambda: music(job_id=job_id),
             "images": lambda: images(job_id=job_id, mock=mock),
             "subtitles": lambda: subtitles(job_id=job_id, mock=mock),
             "render": lambda: render(job_id=job_id, mock=mock),

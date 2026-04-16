@@ -46,6 +46,8 @@ export const sampleLandscapeProps: RemotionRenderProps = {
   fps: 30,
   durationInSeconds: 17,
   audioSrc: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_c8b0f73443.mp3?filename=inspiring-cinematic-ambient-116199.mp3',
+  backgroundMusicSrc: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c9d3f12f1f.mp3?filename=meditation-relaxing-ambient-114126.mp3',
+  backgroundMusicVolume: 0.12,
   scenes: baseScenes,
   subtitles: baseSubtitles,
   ctaText: 'Subscribe for more practical Stoicism',
