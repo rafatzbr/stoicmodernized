@@ -162,14 +162,22 @@ class RemotionRenderer:
         background_music_path: Optional[str],
     ) -> dict:
         """Generate Remotion render props from pipeline data."""
+        scene_total_duration = max((float(scene.get('end_time', 0) or 0) for scene in scenes), default=0.0)
+        subtitle_total_duration = max((float(sub.get('end_time', 0) or 0) for sub in subtitles), default=0.0)
+        timing_scale = 1.0
+        if scene_total_duration > 0 and subtitle_total_duration > scene_total_duration + 0.25:
+            timing_scale = subtitle_total_duration / scene_total_duration
+
         # Build scenes array - use relative paths for staticFile()
         remotion_scenes = []
         for idx, scene in enumerate(scenes, 1):
+            start_time = float(scene.get('start_time', 0) or 0) * timing_scale
+            end_time = float(scene.get('end_time', 0) or 0) * timing_scale
             remotion_scenes.append({
                 'sceneNumber': idx,
                 'imageSrc': f'images/scene_{idx:03d}.jpg',
-                'startTime': float(scene.get('start_time', 0)),
-                'endTime': float(scene.get('end_time', 0)),
+                'startTime': round(start_time, 3),
+                'endTime': round(end_time, 3),
                 'narrationSegment': scene.get('narration_segment', ''),
                 'textOverlay': scene.get('text_overlay'),
                 'animationStyle': scene.get('animation_style'),
@@ -200,8 +208,8 @@ class RemotionRenderer:
 
         # Calculate total duration
         total_duration = max(
-            (s.get('end_time', 0) for s in scenes),
-            default=0.0
+            max((scene.get('endTime', 0) for scene in remotion_scenes), default=0.0),
+            max((sub.get('endTime', 0) for sub in remotion_subtitles), default=0.0),
         )
 
         # Get channel name from job data if available

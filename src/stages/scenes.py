@@ -46,7 +46,7 @@ class SceneStage:
             scene_specs = self._build_scene_specs_from_lines(narration_lines, is_short=is_short)
 
         if is_short and scene_specs:
-            scene_specs = scene_specs[:4]
+            scene_specs = self._expand_short_scene_specs(scene_specs, settings.short_target_scene_count)
 
         total_words = sum(max(1, len(item["text"].split())) for item in scene_specs) or 1
         target_duration = 54.0 if is_short else None
@@ -176,7 +176,7 @@ class SceneStage:
     ) -> list[dict[str, Any]]:
         title = str(script_data.get("title") or script_data.get("topic") or settings.channel_name).strip()
         topic = str(script_data.get("topic") or title).strip()
-        is_short = len(scenes) <= 4
+        is_short = len(scenes) <= settings.short_target_scene_count
         scene_lines = []
         for scene in scenes:
             scene_lines.append(
@@ -398,12 +398,128 @@ Input scenes:
         if not is_short:
             return [{"text": line} for line in lines]
 
-        count = min(4, len(lines))
+        count = min(settings.short_target_scene_count, len(lines))
         if count == len(lines):
             return [{"text": line} for line in lines]
 
         indexes = sorted({round(i * (len(lines) - 1) / max(1, count - 1)) for i in range(count)})
         return [{"text": lines[index]} for index in indexes]
+
+    def _expand_short_scene_specs(self, scene_specs: list[dict[str, object]], target_count: int) -> list[dict[str, object]]:
+        if not scene_specs:
+            return []
+        if len(scene_specs) >= target_count:
+            return scene_specs[:target_count]
+
+        allocations = self._allocate_short_scene_counts(scene_specs, target_count)
+        expanded: list[dict[str, object]] = []
+
+        for spec, pieces in zip(scene_specs, allocations, strict=False):
+            text = str(spec.get("text") or "").strip()
+            if not text:
+                continue
+
+            beats = self._split_text_into_visual_beats(text, pieces)
+            start_time = spec.get("start_time")
+            end_time = spec.get("end_time")
+            label = spec.get("label")
+
+            if (
+                isinstance(start_time, (int, float))
+                and isinstance(end_time, (int, float))
+                and end_time > start_time
+                and beats
+            ):
+                beat_word_counts = [max(1, len(beat.split())) for beat in beats]
+                total_words = sum(beat_word_counts) or 1
+                cursor = float(start_time)
+                for index, beat in enumerate(beats):
+                    duration = (float(end_time) - float(start_time)) * (beat_word_counts[index] / total_words)
+                    beat_end = float(end_time) if index == len(beats) - 1 else cursor + duration
+                    expanded.append(
+                        {
+                            "text": beat,
+                            "start_time": round(cursor, 3),
+                            "end_time": round(beat_end, 3),
+                            "label": label if pieces == 1 else None,
+                        }
+                    )
+                    cursor = beat_end
+            else:
+                expanded.extend({"text": beat, "label": label if pieces == 1 else None} for beat in beats)
+
+        return expanded[:target_count]
+
+    def _allocate_short_scene_counts(self, scene_specs: list[dict[str, object]], target_count: int) -> list[int]:
+        allocations = [1 for _ in scene_specs]
+        extra = max(0, target_count - len(scene_specs))
+        word_counts = [max(1, len(str(spec.get("text") or "").split())) for spec in scene_specs]
+
+        for _ in range(extra):
+            best_index = max(
+                range(len(scene_specs)),
+                key=lambda i: word_counts[i] / allocations[i],
+            )
+            allocations[best_index] += 1
+
+        return allocations
+
+    def _split_text_into_visual_beats(self, text: str, pieces: int) -> list[str]:
+        cleaned = " ".join(text.split())
+        if pieces <= 1 or not cleaned:
+            return [cleaned]
+
+        units = [segment.strip() for segment in re.split(r"(?<=[.!?])\s+", cleaned) if segment.strip()]
+        if not units:
+            units = [cleaned]
+
+        while len(units) < pieces:
+            split_index = max(range(len(units)), key=lambda i: len(units[i].split()))
+            candidate = units[split_index]
+            parts = [part.strip() for part in re.split(r"(?<=[,;:])\s+|\s+(?:but|and|while|yet|instead|because)\s+", candidate, maxsplit=1) if part.strip()]
+            if len(parts) < 2:
+                words = candidate.split()
+                if len(words) < 8:
+                    break
+                midpoint = len(words) // 2
+                parts = [" ".join(words[:midpoint]), " ".join(words[midpoint:])]
+            units = units[:split_index] + parts + units[split_index + 1 :]
+
+        if len(units) <= pieces:
+            return units[:pieces]
+
+        total_words = sum(max(1, len(unit.split())) for unit in units)
+        target_words = max(1, total_words / pieces)
+        grouped: list[str] = []
+        current: list[str] = []
+        current_words = 0
+        remaining_units = len(units)
+
+        for unit in units:
+            unit_words = max(1, len(unit.split()))
+            remaining_units -= 1
+            remaining_slots = pieces - len(grouped)
+            should_flush = (
+                current
+                and current_words + unit_words > target_words
+                and remaining_units >= max(0, remaining_slots - 1)
+            )
+            if should_flush:
+                grouped.append(" ".join(current).strip())
+                current = [unit]
+                current_words = unit_words
+            else:
+                current.append(unit)
+                current_words += unit_words
+
+        if current:
+            grouped.append(" ".join(current).strip())
+
+        if len(grouped) > pieces:
+            tail = " ".join(grouped[pieces - 1 :]).strip()
+            grouped = grouped[: pieces - 1] + [tail]
+
+        return grouped
 
     def _parse_mmss(self, value: str) -> float:
         minutes, seconds = value.split(":", 1)

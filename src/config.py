@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     short_video_width: int = 1080
     short_video_height: int = 1920
     short_max_duration_seconds: int = 60
+    short_target_scene_count: int = 6
     long_max_duration_seconds: int = 900
     video_fps: int = 30
     background_music_volume: float = 0.15
