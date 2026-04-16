@@ -51,42 +51,88 @@ type CaptionChunk = {
   endTime: number;
   lines: TimedWord[][];
   words: TimedWord[];
+  hasWordTimings: boolean;
 };
 
 const getPlatform = (mode: RemotionRenderProps['mode'], platform?: RemotionPlatform) => {
   return platform ?? (mode === 'portrait' ? 'tiktok' : 'youtube');
 };
 
-const normalizeSubtitleWords = (subtitle: RemotionSubtitle): TimedWord[] => {
+const normalizeSubtitleWords = (subtitle: RemotionSubtitle) => {
   if (subtitle.words?.length) {
-    return subtitle.words.map((word) => ({
-      startTime: word.startTime,
-      endTime: word.endTime,
-      text: word.text,
-    }));
+    return {
+      words: subtitle.words.map((word) => ({
+        startTime: word.startTime,
+        endTime: word.endTime,
+        text: word.text,
+      })),
+      hasWordTimings: true,
+    };
   }
 
-  const rawWords = subtitle.text.split(/\s+/).filter(Boolean);
-  if (rawWords.length === 0) {
-    return [];
-  }
-
-  return rawWords.map((word, index) => {
-    const startTime = subtitle.startTime + ((subtitle.endTime - subtitle.startTime) * index) / rawWords.length;
-    const endTime =
-      subtitle.startTime + ((subtitle.endTime - subtitle.startTime) * (index + 1)) / rawWords.length;
-    return {startTime, endTime, text: word};
-  });
+  return {
+    words: subtitle.text.split(/\s+/).filter(Boolean).map((word) => ({
+      startTime: subtitle.startTime,
+      endTime: subtitle.endTime,
+      text: word,
+    })),
+    hasWordTimings: false,
+  };
 };
 
-const chunkWordsForCaptions = (words: TimedWord[], isTikTok: boolean): CaptionChunk[] => {
+const layoutCaptionLines = (words: TimedWord[], isTikTok: boolean): TimedWord[][] => {
   if (words.length === 0) {
     return [];
   }
 
-  const maxWordsPerChunk = isTikTok ? 4 : 7;
   const maxCharsPerLine = isTikTok ? 14 : 22;
   const maxLines = isTikTok ? 3 : 2;
+  const lines: TimedWord[][] = [];
+  let currentLine: TimedWord[] = [];
+  let currentChars = 0;
+
+  for (const word of words) {
+    const wordChars = word.text.length + (currentLine.length > 0 ? 1 : 0);
+    const wouldOverflow = currentLine.length > 0 && currentChars + wordChars > maxCharsPerLine;
+    if (wouldOverflow && lines.length < maxLines - 1) {
+      lines.push(currentLine);
+      currentLine = [word];
+      currentChars = word.text.length;
+    } else {
+      currentLine.push(word);
+      currentChars += wordChars;
+    }
+  }
+
+  if (currentLine.length > 0) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+};
+
+const chunkWordsForCaptions = (
+  words: TimedWord[],
+  isTikTok: boolean,
+  hasWordTimings: boolean,
+): CaptionChunk[] => {
+  if (words.length === 0) {
+    return [];
+  }
+
+  if (!hasWordTimings) {
+    return [
+      {
+        startTime: words[0].startTime,
+        endTime: words[0].endTime,
+        lines: layoutCaptionLines(words, isTikTok),
+        words: [...words],
+        hasWordTimings: false,
+      },
+    ];
+  }
+
+  const maxWordsPerChunk = isTikTok ? 4 : 7;
   const chunks: CaptionChunk[] = [];
   let currentChunk: TimedWord[] = [];
 
@@ -95,32 +141,12 @@ const chunkWordsForCaptions = (words: TimedWord[], isTikTok: boolean): CaptionCh
       return;
     }
 
-    const lines: TimedWord[][] = [];
-    let currentLine: TimedWord[] = [];
-    let currentChars = 0;
-
-    for (const word of currentChunk) {
-      const wordChars = word.text.length + (currentLine.length > 0 ? 1 : 0);
-      const wouldOverflow = currentLine.length > 0 && currentChars + wordChars > maxCharsPerLine;
-      if (wouldOverflow && lines.length < maxLines - 1) {
-        lines.push(currentLine);
-        currentLine = [word];
-        currentChars = word.text.length;
-      } else {
-        currentLine.push(word);
-        currentChars += wordChars;
-      }
-    }
-
-    if (currentLine.length > 0) {
-      lines.push(currentLine);
-    }
-
     chunks.push({
       startTime: currentChunk[0].startTime,
       endTime: currentChunk[currentChunk.length - 1].endTime,
-      lines,
+      lines: layoutCaptionLines(currentChunk, isTikTok),
       words: [...currentChunk],
+      hasWordTimings: true,
     });
     currentChunk = [];
   };
@@ -146,7 +172,10 @@ const chunkWordsForCaptions = (words: TimedWord[], isTikTok: boolean): CaptionCh
 };
 
 const buildCaptionChunks = (subtitles: RemotionSubtitle[], isTikTok: boolean): CaptionChunk[] => {
-  return subtitles.flatMap((subtitle) => chunkWordsForCaptions(normalizeSubtitleWords(subtitle), isTikTok));
+  return subtitles.flatMap((subtitle) => {
+    const normalized = normalizeSubtitleWords(subtitle);
+    return chunkWordsForCaptions(normalized.words, isTikTok, normalized.hasWordTimings);
+  });
 };
 
 const StoicVideo: React.FC<RemotionRenderProps> = ({
@@ -343,12 +372,16 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
           config: {damping: 200, stiffness: 180},
         });
 
-        const activeWordIndex = chunk.words.findIndex((word, wordIndex) => {
-          const wordStart = Math.round(word.startTime * fps);
-          const nextStart =
-            wordIndex === chunk.words.length - 1 ? endFrame : Math.round(chunk.words[wordIndex + 1].startTime * fps);
-          return frame >= wordStart && frame < nextStart;
-        });
+        const activeWordIndex = chunk.hasWordTimings
+          ? chunk.words.findIndex((word, wordIndex) => {
+              const wordStart = Math.round(word.startTime * fps);
+              const nextStart =
+                wordIndex === chunk.words.length - 1
+                  ? endFrame
+                  : Math.round(chunk.words[wordIndex + 1].startTime * fps);
+              return frame >= wordStart && frame < nextStart;
+            })
+          : -1;
 
         let runningWordIndex = 0;
 
