@@ -203,15 +203,16 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   const subtitleCardStyle: React.CSSProperties = useMemo(
     () => ({
       position: 'absolute',
-      left: isTikTok ? '5.5%' : '7%',
-      right: isTikTok ? '5.5%' : '7%',
-      bottom: isTikTok ? 140 : 58,
+      left: isTikTok ? '8%' : '14%',
+      right: isTikTok ? '8%' : '14%',
+      top: isTikTok ? '56%' : '68%',
+      transform: 'translateY(-50%)',
       zIndex: 30,
-      padding: isTikTok ? '22px 22px 26px' : '16px 22px 18px',
+      padding: isTikTok ? '24px 24px 28px' : '18px 24px 20px',
       borderRadius: isTikTok ? 30 : 18,
       background: isTikTok
-        ? 'linear-gradient(180deg, rgba(13,13,25,0.28), rgba(13,13,25,0.82))'
-        : 'linear-gradient(180deg, rgba(4,10,20,0.22), rgba(4,10,20,0.64))',
+        ? 'linear-gradient(180deg, rgba(13,13,25,0.24), rgba(13,13,25,0.76))'
+        : 'linear-gradient(180deg, rgba(4,10,20,0.2), rgba(4,10,20,0.58))',
       border: isTikTok ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.08)',
       boxShadow: isTikTok ? '0 24px 90px rgba(0,0,0,0.48)' : '0 16px 50px rgba(0,0,0,0.32)',
       backdropFilter: 'blur(18px)',
@@ -402,7 +403,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: isTikTok ? 'flex-start' : 'center',
+                alignItems: 'center',
                 gap: isTikTok ? 8 : 6,
                 color: TEXT_COLOR,
                 textShadow: '0 6px 26px rgba(0,0,0,0.4)',
@@ -417,13 +418,13 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
                     style={{
                       display: 'flex',
                       flexWrap: 'wrap',
-                      justifyContent: isTikTok ? 'flex-start' : 'center',
+                      justifyContent: 'center',
                       gap: isTikTok ? '8px 10px' : '8px 12px',
                       fontSize: isTikTok ? 56 : 46,
                       lineHeight: isTikTok ? 1.02 : 1.08,
                       fontWeight: 950,
                       letterSpacing: '-0.04em',
-                      textAlign: isTikTok ? 'left' : 'center',
+                      textAlign: 'center',
                     }}
                   >
                     {line.map((word, wordIndexInLine) => {
