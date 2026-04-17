@@ -14,6 +14,16 @@ from src.models import Scene, SubtitleSegment
 from src.utils import load_json, save_json
 
 
+def _clean_video_title(title: Optional[str]) -> Optional[str]:
+    if not title:
+        return None
+    cleaned = str(title).strip()
+    for suffix in (' | Stoic Modernized', ' - Stoic Modernized'):
+        if cleaned.endswith(suffix):
+            cleaned = cleaned[: -len(suffix)].strip()
+    return cleaned or None
+
+
 class RemotionRenderer:
     """Renders videos using Remotion with high-quality effects."""
 
@@ -231,10 +241,18 @@ class RemotionRenderer:
                 'Ancient logic for the high-performance digital age',
             )
 
-        # Determine video subject from first scene's text_overlay if available
-        video_subject = None
-        if scenes:
-            video_subject = scenes[0].get('text_overlay') or scenes[0].get('title')
+        # Determine actual video title from job artifacts
+        video_title = None
+        metadata_path = self.job_dir / 'metadata' / 'metadata.json'
+        script_path = self.job_dir / 'script' / 'script.json'
+        if metadata_path.exists():
+            metadata = load_json(metadata_path)
+            video_title = _clean_video_title(metadata.get('title'))
+        if not video_title and script_path.exists():
+            script_data = load_json(script_path)
+            video_title = _clean_video_title(script_data.get('title'))
+        if not video_title and scenes:
+            video_title = _clean_video_title(scenes[0].get('topic') or scenes[0].get('title'))
 
         # Get CTA text
         cta_text = 'subscribe to @stoic-modernized'
@@ -244,8 +262,8 @@ class RemotionRenderer:
         logo_relative = f'branding/{CHANNEL_LOGO_PATH.name}' if CHANNEL_LOGO_PATH.exists() else None
 
         return {
-            'title': video_subject or 'Stoic Modernized',
-            'topic': video_subject or '',
+            'title': video_title or 'Stoic Modernized',
+            'topic': scenes[0].get('topic', '') if scenes else '',
             'channelName': channel_name,
             'channelDescription': channel_description,
             'mode': self.mode,

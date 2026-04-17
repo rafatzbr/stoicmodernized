@@ -173,10 +173,12 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   const normalizedTopic = (topic || '').trim();
   const normalizedTitle = (title || '').trim();
   const headerTitle =
-    normalizedTopic ||
     (normalizedTitle && normalizedTitle.toLowerCase() !== normalizedChannelName
       ? normalizedTitle
-      : channelDescription || 'Ancient logic for the high-performance digital age');
+      : '') ||
+    normalizedTopic ||
+    channelDescription ||
+    'Ancient logic for the high-performance digital age';
 
   const subtitleCardStyle: React.CSSProperties = useMemo(
     () => ({
@@ -217,7 +219,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
   const titleStyle: React.CSSProperties = {
     position: 'absolute',
-    top: isTikTok ? 182 : 132,
+    top: isTikTok ? 166 : 120,
     left: isTikTok ? 30 : 54,
     right: isTikTok ? 52 : 54,
     zIndex: 25,
@@ -232,7 +234,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
   const kickerStyle: React.CSSProperties = {
     position: 'absolute',
-    top: isTikTok ? 286 : 214,
+    top: isTikTok ? 258 : 198,
     left: isTikTok ? 30 : 54,
     zIndex: 25,
     padding: isTikTok ? '12px 16px' : '10px 14px',
@@ -562,13 +564,7 @@ const SceneLayer: React.FC<{
   fps: number;
 }> = ({scene, durationInFrames, isTikTok, fps}) => {
   const frame = useCurrentFrame();
-  const entrance = spring({
-    fps,
-    frame,
-    config: {damping: 200, stiffness: 140},
-  });
   const transform = getSceneTransform(scene, frame, durationInFrames);
-  const overlayY = interpolate(entrance, [0, 1], [16, 0]);
   const sceneOpacity = interpolate(frame, [0, 8, durationInFrames - 8, durationInFrames], [0, 1, 1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -594,31 +590,6 @@ const SceneLayer: React.FC<{
             : 'linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.12))',
         }}
       />
-      {scene.textOverlay ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: isTikTok ? 290 : 236,
-            left: isTikTok ? 30 : 54,
-            zIndex: 12,
-            padding: isTikTok ? '14px 20px' : '12px 18px',
-            borderRadius: isTikTok ? 18 : 14,
-            background: isTikTok
-              ? 'linear-gradient(135deg, rgba(17,24,39,0.62), rgba(88,28,135,0.42))'
-              : 'linear-gradient(135deg, rgba(4,12,24,0.68), rgba(15,23,42,0.52))',
-            border: '1px solid rgba(255,255,255,0.12)',
-            color: TEXT_COLOR,
-            fontSize: isTikTok ? 28 : 24,
-            fontWeight: 800,
-            letterSpacing: '0.02em',
-            transform: `translateY(${overlayY}px)`,
-            opacity: entrance,
-            boxShadow: '0 18px 40px rgba(0,0,0,0.25)',
-          }}
-        >
-          {scene.textOverlay}
-        </div>
-      ) : null}
     </AbsoluteFill>
   );
 };
