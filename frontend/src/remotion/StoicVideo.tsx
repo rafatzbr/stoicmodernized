@@ -217,7 +217,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
   const titleStyle: React.CSSProperties = {
     position: 'absolute',
-    top: isTikTok ? 154 : 110,
+    top: isTikTok ? 182 : 132,
     left: isTikTok ? 30 : 54,
     right: isTikTok ? 52 : 54,
     zIndex: 25,
@@ -232,7 +232,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
   const kickerStyle: React.CSSProperties = {
     position: 'absolute',
-    top: isTikTok ? 250 : 188,
+    top: isTikTok ? 286 : 214,
     left: isTikTok ? 30 : 54,
     zIndex: 25,
     padding: isTikTok ? '12px 16px' : '10px 14px',
