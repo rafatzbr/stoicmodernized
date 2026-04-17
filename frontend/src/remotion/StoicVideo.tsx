@@ -85,16 +85,34 @@ const layoutCaptionLines = (words: TimedWord[], isTikTok: boolean): TimedWord[][
     return [];
   }
 
-  const maxCharsPerLine = isTikTok ? 14 : 22;
-  const maxLines = isTikTok ? 3 : 2;
+  const maxCharsPerLine = isTikTok ? 18 : 26;
+  const maxLines = isTikTok ? 2 : 2;
+
+  if (words.length <= 2) {
+    return [words];
+  }
+
+  const totalChars = words.reduce((sum, word) => sum + word.text.length, 0) + Math.max(0, words.length - 1);
+  const targetCharsPerLine = Math.max(1, Math.ceil(totalChars / maxLines));
+
   const lines: TimedWord[][] = [];
   let currentLine: TimedWord[] = [];
   let currentChars = 0;
 
-  for (const word of words) {
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
     const wordChars = word.text.length + (currentLine.length > 0 ? 1 : 0);
-    const wouldOverflow = currentLine.length > 0 && currentChars + wordChars > maxCharsPerLine;
-    if (wouldOverflow && lines.length < maxLines - 1) {
+    const remainingWords = words.length - i;
+    const remainingLines = maxLines - lines.length;
+    const shouldWrap =
+      currentLine.length > 0 &&
+      lines.length < maxLines - 1 &&
+      (
+        currentChars + wordChars > maxCharsPerLine ||
+        (currentChars >= targetCharsPerLine && remainingWords >= remainingLines)
+      );
+
+    if (shouldWrap) {
       lines.push(currentLine);
       currentLine = [word];
       currentChars = word.text.length;
@@ -108,7 +126,7 @@ const layoutCaptionLines = (words: TimedWord[], isTikTok: boolean): TimedWord[][
     lines.push(currentLine);
   }
 
-  return lines;
+  return lines.slice(0, maxLines - 1).concat(lines.length > maxLines ? [lines.slice(maxLines - 1).flat()] : lines.slice(maxLines - 1));
 };
 
 const chunkWordsForCaptions = (
@@ -203,9 +221,9 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   const subtitleCardStyle: React.CSSProperties = useMemo(
     () => ({
       position: 'absolute',
-      left: isTikTok ? '8%' : '14%',
-      right: isTikTok ? '8%' : '14%',
-      top: isTikTok ? '56%' : '68%',
+      left: isTikTok ? '10%' : '18%',
+      right: isTikTok ? '10%' : '18%',
+      top: isTikTok ? '50%' : '58%',
       transform: 'translateY(-50%)',
       zIndex: 30,
       padding: isTikTok ? '24px 24px 28px' : '18px 24px 20px',
@@ -419,9 +437,9 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
                       display: 'flex',
                       flexWrap: 'wrap',
                       justifyContent: 'center',
-                      gap: isTikTok ? '8px 10px' : '8px 12px',
-                      fontSize: isTikTok ? 56 : 46,
-                      lineHeight: isTikTok ? 1.02 : 1.08,
+                      gap: isTikTok ? '6px 8px' : '8px 10px',
+                      fontSize: isTikTok ? 58 : 46,
+                      lineHeight: isTikTok ? 1.06 : 1.08,
                       fontWeight: 950,
                       letterSpacing: '-0.04em',
                       textAlign: 'center',
