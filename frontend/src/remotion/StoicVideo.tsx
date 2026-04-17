@@ -576,7 +576,7 @@ const SceneLayer: React.FC<{
   durationInFrames: number;
   isTikTok: boolean;
   fps: number;
-}> = ({scene, durationInFrames, isTikTok, fps}) => {
+}> = ({scene, durationInFrames, isTikTok, fps: _fps}) => {
   const frame = useCurrentFrame();
   const transform = getSceneTransform(scene, frame, durationInFrames);
   const sceneOpacity = interpolate(frame, [0, 8, durationInFrames - 8, durationInFrames], [0, 1, 1, 0], {

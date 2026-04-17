@@ -1,6 +1,7 @@
 """Tests for script generation stage."""
 
 import json
+import unittest.mock
 from pathlib import Path
 
 import pytest
@@ -167,16 +168,87 @@ class TestScriptStage:
 
         stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
 
-        with pytest.raises(ScriptGenerationError, match="local_llm_section_1_too_short"):
-            await stage._real_script(
-                {"topic": "micromanagement", "title": "How Stoics Handle Micromanagement"}
-            )
+        # Mock the retry httpx call so regeneration fails to produce valid content
+        mock_resp = unittest.mock.MagicMock()
+        mock_resp.raise_for_status = unittest.mock.MagicMock()
+        mock_resp.json = unittest.mock.MagicMock(
+            return_value={"choices": [{"message": {"content": '{"section_title": "Hook", "narration": "Subscribe."}'}}]}
+        )
+        mock_client = unittest.mock.MagicMock()
+        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
+        mock_client.post = unittest.mock.AsyncMock(return_value=mock_resp)
+
+        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(ScriptGenerationError, match=r"local_llm_section_\d+_too_short"):
+                await stage._real_script(
+                    {"topic": "micromanagement", "title": "How Stoics Handle Micromanagement"}
+                )
         report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
 
         assert report["local_llm_success"] is True
         assert report["script_generation_succeeded"] is False
-        assert report["failure_reason"] == "local_llm_section_1_too_short"
         assert report["used_fallback"] is False
+        assert report["regeneration_attempts"] >= 1
+        assert report["failure_reason"] is not None
+
+    @pytest.mark.asyncio
+    async def test_real_script_retries_failing_section_and_succeeds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When initial LLM output has a too-short section, the retry regenerates it and the job succeeds."""
+        monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+        stage = ScriptStage(job_id="job-5b", mock=False, video_mode=VideoMode.SHORT)
+
+        initial_call_count = 0
+
+        async def fake_generate_with_local_llm(**_: object) -> dict:
+            nonlocal initial_call_count
+            initial_call_count += 1
+
+            # First call: return a payload where section 2 (Stoic Principle) is too short
+            parsed_payload = {
+                "title": "Micromanagement: A Stoic Approach",
+                "hook": "Micromanagement feels personal when every task is questioned. You control your response though, not their insecurity.",
+                "cta": "Follow for practical Stoic tools that hold up at work.",
+                "short_version": "[0:00-0:12] Hook Micromanagement feels personal. [0:12-0:30] Stoic Principle Epictetus taught external events. [0:30-0:50] Workplace Application Document progress. [0:50-0:58] CTA Follow for practical tools.",
+                "sections": [
+                    {"title": "Hook", "narration": "Micromanagement feels personal when every task is questioned. You control your response though, not their insecurity."},
+                    {"title": "Stoic Principle", "narration": "Too short."},
+                    {"title": "Workplace Application", "narration": "Document your progress visibly so questions become unnecessary. Send brief status updates proactively before they arise."},
+                    {"title": "CTA", "narration": "Follow for practical Stoic tools that hold up at work."},
+                ],
+            }
+            return {"success": True, "raw_response": json.dumps(parsed_payload), "parsed_payload": parsed_payload, "error": None}
+
+        stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
+
+        # Mock httpx.AsyncClient for the retry path
+        mock_resp = unittest.mock.MagicMock()
+        mock_resp.raise_for_status = unittest.mock.MagicMock()
+        mock_resp.json = unittest.mock.MagicMock(
+            return_value={"choices": [{"message": {"content": '{"section_title": "Stoic Principle", "narration": "Epictetus taught that external events cannot disturb your mind unless you let them. Your manager hovering is noise, not a verdict on your competence."}'}}]}
+        )
+        mock_client = unittest.mock.MagicMock()
+        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
+        mock_client.post = unittest.mock.AsyncMock(return_value=mock_resp)
+
+        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client):
+            script = await stage._real_script(
+                {"topic": "micromanagement", "title": "How Stoics Handle Micromanagement"}
+            )
+
+        report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
+
+        assert initial_call_count == 1  # Only one initial LLM call
+        assert script is not None
+        assert "Epictetus taught that external events cannot disturb your mind" in script.narration
+        assert report["local_llm_success"] is True
+        assert report["script_generation_succeeded"] is True
+        assert report["failure_reason"] is None
+        assert report["regeneration_attempts"] >= 1
+        assert len(report["regeneration_repairs"]) >= 1
 
 
     def test_short_cta_section_can_be_brief(self) -> None:

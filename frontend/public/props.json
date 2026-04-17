@@ -1,0 +1,133 @@
+{
+  "title": "Set Work Boundaries Without Getting Fired",
+  "topic": "",
+  "channelName": "Stoic Modernized",
+  "channelDescription": "Ancient logic for the high-performance digital age",
+  "mode": "portrait",
+  "platform": "tiktok",
+  "fps": 30,
+  "durationInSeconds": 67.68,
+  "audioSrc": "audio/narration.mp3",
+  "backgroundMusicSrc": "audio/background_music.mp3",
+  "backgroundMusicVolume": 0.15,
+  "logoSrc": "branding/logo_transparent.png",
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "imageSrc": "images/scene_001.jpg",
+      "startTime": 0.1,
+      "endTime": 16.65,
+      "narrationSegment": "Your job is demanding more than your time, it's stealing your peace. You fear that drawing a line will get you fired, but staying silent guarantees burnout. The anxiety of overcommitting is real, yet the cost of saying yes to everything is your own well-being.",
+      "textOverlay": "Pause First",
+      "animationStyle": "zoom"
+    },
+    {
+      "sceneNumber": 2,
+      "imageSrc": "images/scene_002.jpg",
+      "startTime": 16.65,
+      "endTime": 25.15,
+      "narrationSegment": "Marcus Aurelius faced constant political games and manipulation, yet he maintained his composure by focusing only on what he could control.",
+      "textOverlay": "What You Control",
+      "animationStyle": "zoom"
+    },
+    {
+      "sceneNumber": 3,
+      "imageSrc": "images/scene_003.jpg",
+      "startTime": 25.15,
+      "endTime": 39.25,
+      "narrationSegment": "This is the dichotomy of control: your effort and character are yours to manage, while others' reactions and office politics are not. By detaching your self-worth from external approval, you become harder to provoke or manipulate.",
+      "textOverlay": "Control Your Part",
+      "animationStyle": "fade"
+    },
+    {
+      "sceneNumber": 4,
+      "imageSrc": "images/scene_004.jpg",
+      "startTime": 39.25,
+      "endTime": 48.162,
+      "narrationSegment": "Translate this into a concrete routine: when a deadline is shifted or a request feels unreasonable, take a deliberate pause before responding.",
+      "textOverlay": "Translate Concrete",
+      "animationStyle": "zoom"
+    },
+    {
+      "sceneNumber": 5,
+      "imageSrc": "images/scene_005.jpg",
+      "startTime": 48.162,
+      "endTime": 63.087,
+      "narrationSegment": "Do not react with ego or immediate agreement; instead, state your current capacity clearly and professionally. Treat stressful meetings as training reps for patience, using the moment to practice calm judgment rather than emotional defense.",
+      "textOverlay": "After The Meeting",
+      "animationStyle": "zoom"
+    },
+    {
+      "sceneNumber": 6,
+      "imageSrc": "images/scene_006.jpg",
+      "startTime": 63.087,
+      "endTime": 67.68,
+      "narrationSegment": "Subscribe for more ways to protect your mind without losing your career.",
+      "textOverlay": "Use This Today",
+      "animationStyle": "fade"
+    }
+  ],
+  "subtitles": [
+    {
+      "startTime": 0.1,
+      "endTime": 4.575,
+      "text": "Your job is demanding more than your time, it's stealing your peace.",
+      "words": null
+    },
+    {
+      "startTime": 4.575,
+      "endTime": 10.2,
+      "text": "You fear that drawing a line will get you fired, but staying silent guarantees burnout.",
+      "words": null
+    },
+    {
+      "startTime": 10.2,
+      "endTime": 16.65,
+      "text": "The anxiety of overcommitting is real, yet the cost of saying yes to everything is your own well-being.",
+      "words": null
+    },
+    {
+      "startTime": 16.65,
+      "endTime": 25.15,
+      "text": "Marcus Aurelius faced constant political games and manipulation, yet he maintained his composure by focusing only on what he could control.",
+      "words": null
+    },
+    {
+      "startTime": 25.15,
+      "endTime": 33.237,
+      "text": "This is the dichotomy of control: your effort and character are yours to manage, while others reactions and office politics are not.",
+      "words": null
+    },
+    {
+      "startTime": 33.237,
+      "endTime": 39.25,
+      "text": "By detaching your self-worth from external approval, you become harder to provoke or manipulate.",
+      "words": null
+    },
+    {
+      "startTime": 39.25,
+      "endTime": 48.162,
+      "text": "Translate this into a concrete routine: when a deadline is shifted or a request feels unreasonable, take a deliberate pause before responding.",
+      "words": null
+    },
+    {
+      "startTime": 48.162,
+      "endTime": 55.462,
+      "text": "Do not react with ego or immediate agreement; instead, state your current capacity clearly and professionally.",
+      "words": null
+    },
+    {
+      "startTime": 55.462,
+      "endTime": 63.087,
+      "text": "Treat stressful meetings as training reps for patience, using the moment to practice calm judgment rather than emotional defense.",
+      "words": null
+    },
+    {
+      "startTime": 63.087,
+      "endTime": 67.68,
+      "text": "Subscribe for more ways to protect your mind without losing your career.",
+      "words": null
+    }
+  ],
+  "ctaText": "subscribe to @stoic-modernized"
+}

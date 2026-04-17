@@ -72,6 +72,17 @@ class ScriptStage:
         failure_reason = generation.get("error") or validation_error
         succeeded = bool(generation.get("success")) and not bool(validation_error)
 
+        # If validation failed, retry the local LLM to regenerate the problematic section(s)
+        regeneration_report: dict[str, Any] = {}
+        if not succeeded and not generation.get("error"):
+            repaired_payload, repair_strings, regeneration_report = await self._retry_failing_sections(
+                repaired_payload, topic, research_title, key_insights, workplace_applications, sources
+            )
+            validation_error = self._validate_generated_payload(repaired_payload, topic=topic)
+            failure_reason = validation_error
+            succeeded = not bool(validation_error)
+            repairs.extend(repair_strings)
+
         self._write_generation_artifacts(
             raw_response=generation.get("raw_response", ""),
             parsed_payload=generation.get("parsed_payload") or {},
@@ -88,6 +99,8 @@ class ScriptStage:
                 "failure_reason": failure_reason,
                 "llm_error": generation.get("error"),
                 "repairs_applied": repairs,
+                "regeneration_attempts": regeneration_report.get("regeneration_attempts", 0),
+                "regeneration_repairs": regeneration_report.get("regeneration_repairs", []),
                 "raw_response_path": "local_llm_raw.txt",
                 "parsed_payload_path": "local_llm_parsed.json",
                 "final_payload_path": "script_generation_final.json",
@@ -105,6 +118,118 @@ class ScriptStage:
             key_insights=key_insights,
             workplace_applications=workplace_applications,
         )
+
+    async def _retry_failing_sections(
+        self,
+        payload: dict[str, Any],
+        topic: str,
+        research_title: str,
+        key_insights: list[str],
+        workplace_applications: list[str],
+        sources: list[dict[str, str]],
+        max_retries: int = 3,
+    ) -> tuple[dict[str, Any], list[str], dict[str, Any]]:
+        """Retry the LLM to regenerate only the failing section(s)."""
+        repairs: list[str] = []
+        report: dict[str, Any] = {
+            "regeneration_attempts": 0,
+            "regeneration_repairs": [],
+        }
+
+        current_payload = dict(payload)
+        for attempt in range(max_retries):
+            report["regeneration_attempts"] = attempt + 1
+            validation_error = self._validate_generated_payload(current_payload, topic=topic)
+
+            if not validation_error:
+                break
+
+            # Parse which section is failing
+            section_match = re.search(r"local_llm_section_(\d+)_", validation_error)
+            if not section_match:
+                # Not a section-specific failure; skip retry
+                break
+
+            failing_index = int(section_match.group(1)) - 1  # 1-indexed → 0-indexed
+            section_title = self._section_blueprint()[failing_index] if failing_index < len(self._section_blueprint()) else f"Section {failing_index + 1}"
+
+            # Extract what the current narration looks like
+            sections = current_payload.get("sections") or []
+            current_narration = ""
+            if isinstance(sections, list) and failing_index < len(sections):
+                current_narration = self._clean_multiline_text(sections[failing_index].get("narration", ""))
+
+            # Build a focused prompt to regenerate only the failing section
+            min_words = settings.local_script_min_section_words
+            if self.video_mode == VideoMode.SHORT and section_title == "CTA":
+                min_words = min(3, min_words)
+
+            section_context = f"""Your task: Regenerate only the "{section_title}" section.
+
+Current narration (too short or has issues):
+---
+{current_narration or '(empty)'}
+---
+
+Requirements:
+- Write {min_words}-20 words of narration for the "{section_title}" section
+- Make it specific to topic: {topic}
+- Speak it naturally as if a narrator is reading it
+- Do NOT include the section title in the output
+- Return only a JSON object with this shape:
+  {{"section_title": "{section_title}", "narration": "your narration here"}}
+- No markdown fences, no commentary.
+"""
+
+            try:
+                async with httpx.AsyncClient(timeout=settings.local_llm_timeout_seconds) as client:
+                    response = await client.post(
+                        settings.local_llm_base_url,
+                        json={
+                            "model": settings.local_script_model or settings.local_llm_model,
+                            "messages": [
+                                {"role": "system", "content": "You regenerate a single YouTube script section. Respond with JSON only."},
+                                {"role": "user", "content": section_context},
+                            ],
+                            "temperature": settings.local_script_temperature,
+                            "max_tokens": 1024,
+                            "response_format": {"type": "json_object"},
+                            "chat_template_kwargs": {"enable_thinking": False},
+                        },
+                    )
+                    response.raise_for_status()
+                data = response.json()
+                content = self._extract_message_content(data)
+                regenerated = self._parse_llm_json(content)
+
+                if isinstance(regenerated, dict) and regenerated.get("narration"):
+                    new_narration = self._clean_multiline_text(regenerated["narration"])
+                    if new_narration and len(new_narration.split()) >= min_words:
+                        if not isinstance(sections, list):
+                            sections = []
+                        while len(sections) <= failing_index:
+                            sections.append({"title": "", "narration": ""})
+
+                        sections[failing_index] = {
+                            "title": section_title,
+                            "narration": new_narration,
+                        }
+                        current_payload["sections"] = sections
+                        repair_note = f"regenerated_section_{failing_index + 1}({section_title})"
+                        repairs.append(repair_note)
+                        report["regeneration_repairs"].append(
+                            {"section": failing_index + 1, "title": section_title, "attempt": attempt + 1}
+                        )
+                        # Don't break — continue re-validating to catch other issues
+                    else:
+                        repairs.append(f"regeneration_attempt_{attempt + 1}_section_{failing_index + 1}_still_too_short")
+                else:
+                    repairs.append(f"regeneration_attempt_{attempt + 1}_section_{failing_index + 1}_parse_failed")
+
+            except Exception as exc:
+                repairs.append(f"regeneration_attempt_{attempt + 1}_section_{failing_index + 1}_error: {exc}")
+
+        return current_payload, repairs, report
 
     async def _generate_with_local_llm(
         self,

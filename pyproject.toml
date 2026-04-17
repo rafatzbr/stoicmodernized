@@ -52,6 +52,10 @@ dev = [
     "black>=23.0.0",
 ]
 
+# VoxCPM.cpp TTS provider (requires external CLI build)
+# See docs/VOXCPM_TTS.md for installation instructions
+# tts-voxcpm = []  # No Python dependencies - uses CLI tool
+
 [project.scripts]
 stoic-modernized = "src.main:app"
 stoic-modernized-ui = "src.ui:app"

@@ -88,6 +88,7 @@ export function DashboardPage() {
   const [jobsError, setJobsError] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState('');
   const [jobDetail, setJobDetail] = useState<JobDetail | null>(null);
+  const [renderer, setRenderer] = useState('ffmpeg');
   const [jobDetailLoading, setJobDetailLoading] = useState(false);
   const [topic, setTopic] = useState('workplace stress');
   const [videoMode, setVideoMode] = useState('short');
@@ -218,6 +219,7 @@ export function DashboardPage() {
         provider,
         platform: platform === 'auto' ? null : platform,
         skip_upload: true,
+        renderer,
       });
       setRunId(result.run_id);
       setRunState(null);
@@ -270,6 +272,7 @@ export function DashboardPage() {
         provider,
         platform: platform === 'auto' ? null : platform,
         steps: selectedSteps,
+        renderer,
       });
       setRunId(result.run_id);
       setRunState(null);
@@ -296,6 +299,7 @@ export function DashboardPage() {
           provider,
           platform: platform === 'auto' ? null : platform,
           steps,
+          renderer,
         });
         setRunId(result.run_id);
         setRunState(null);
@@ -347,6 +351,31 @@ export function DashboardPage() {
     }
   }, [loadJobs, pendingDeleteJob, selectedJobId, showNotice]);
 
+  const onFullRerun = useCallback(async () => {
+    if (!jobDetail) {
+      return;
+    }
+
+    setRunLoading(true);
+    try {
+      const result = await startRun({
+        topic: jobDetail.topic,
+        video_mode: videoMode,
+        provider,
+        platform: platform === 'auto' ? null : platform,
+        skip_upload: true,
+        renderer,
+      });
+      setRunId(result.run_id);
+      setRunState(null);
+      showNotice(`Full rerun started: ${result.run_id}`, 'success');
+    } catch (error) {
+      showNotice(getErrorMessage(error, 'Failed to start full rerun.'), 'error');
+    } finally {
+      setRunLoading(false);
+    }
+  }, [jobDetail, platform, provider, renderer, showNotice, videoMode]);
+
   const summary = useMemo(
     () => [
       { label: 'Jobs', value: jobs.length.toString(), tone: 'default' as const },
@@ -357,8 +386,9 @@ export function DashboardPage() {
         tone: runState?.running ? ('warning' as const) : ('success' as const),
       },
       { label: 'Provider', value: provider, tone: 'default' as const },
+      { label: 'Renderer', value: renderer, tone: 'default' as const },
     ],
-    [jobs.length, provider, runId, runState?.running, selectedSteps.length],
+    [jobs.length, provider, renderer, runId, runState?.running, selectedSteps.length],
   );
 
   return (
@@ -437,12 +467,14 @@ export function DashboardPage() {
                   videoMode={videoMode}
                   provider={provider}
                   platform={platform}
+                  renderer={renderer}
                   isStarting={runLoading}
                   isSuggestingTopic={suggestingTopic}
                   onTopicChange={setTopic}
                   onVideoModeChange={setVideoMode}
                   onProviderChange={setProvider}
                   onPlatformChange={setPlatform}
+                  onRendererChange={setRenderer}
                   onSuggestTopic={onSuggestTopic}
                   onStart={onStart}
                 />
@@ -488,6 +520,7 @@ export function DashboardPage() {
                     onRerunSteps={(steps) => {
                       void onRunSpecificSteps(steps);
                     }}
+                    onFullRerun={onFullRerun}
                     rerunBusy={runLoading || Boolean(runId && runState?.running)}
                   />
                 )}

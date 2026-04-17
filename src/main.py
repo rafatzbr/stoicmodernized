@@ -584,6 +584,7 @@ def run(
     provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (local, edge, elevenlabs, or voxcpm)"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
     video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
+    renderer: str = typer.Option("ffmpeg", "--renderer", "-r", help="Renderer to use: ffmpeg, remotion, or both"),
     placeholder_images: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
     platform: Optional[RemotionPlatform] = typer.Option(
         None,
@@ -635,6 +636,15 @@ def run(
         subtitles(job_id=job_id, mock=media_stage_mock)
         render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, platform=platform)
         metadata(job_id=job_id, mock=script_stage_mock)
+
+        # Render stage - supports ffmpeg, remotion, or both
+        renderers_to_run = [renderer] if renderer != "both" else ["ffmpeg", "remotion"]
+        for r in renderers_to_run:
+            console.print(f"[bold cyan]Rendering with {r}...[/bold cyan]")
+            render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, renderer_type=r, platform=platform)
+            console.print(f"[dim]Render ({r}) complete.[/dim]")
+            # Update job to reflect the latest renderer output
+            db.update_job(job_id, status="render_complete")
 
         if not skip_upload:
             upload(job_id=job_id, mock=mock)

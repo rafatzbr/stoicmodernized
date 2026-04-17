@@ -44,6 +44,7 @@ class RunRequest(BaseModel):
     provider: str = "edge"
     platform: str | None = None
     skip_upload: bool = True
+    renderer: str = "ffmpeg"
 
 
 class StepsRequest(BaseModel):
@@ -53,6 +54,7 @@ class StepsRequest(BaseModel):
     provider: str = "edge"
     platform: str | None = None
     steps: list[str]
+    renderer: str = "ffmpeg"
 
 
 class FileUpdateRequest(BaseModel):
@@ -221,11 +223,24 @@ def start_run(request: RunRequest) -> dict[str, str]:
         "--provider",
         request.provider,
     ]
-    if request.platform:
-        cmd += ["--platform", request.platform]
-    if request.skip_upload:
-        cmd.append("--skip-upload")
-    return {"run_id": _spawn_command(cmd)}
+    if request.renderer == "both":
+        run_ids = []
+        for r in ("ffmpeg", "remotion"):
+            run_cmd = cmd + ["--renderer", r]
+            if request.platform:
+                run_cmd += ["--platform", request.platform]
+            if request.skip_upload:
+                run_cmd.append("--skip-upload")
+            run_ids.append(_spawn_command(run_cmd))
+        return {"run_id": ",".join(run_ids)}
+    else:
+        if request.renderer:
+            cmd += ["--renderer", request.renderer]
+        if request.platform:
+            cmd += ["--platform", request.platform]
+        if request.skip_upload:
+            cmd.append("--skip-upload")
+        return {"run_id": _spawn_command(cmd)}
 
 
 @app.post("/api/runs/steps")
@@ -252,10 +267,12 @@ def start_steps(request: StepsRequest) -> dict[str, str | None]:
         elif step == "subtitles":
             commands.append(["python3", "-m", "src.main", "subtitles", current_job_id or ""])
         elif step == "render":
-            cmd = ["python3", "-m", "src.main", "render", current_job_id or "", "--video-mode", request.video_mode]
-            if request.platform:
-                cmd += ["--platform", request.platform]
-            commands.append(cmd)
+            renderers = ("ffmpeg", "remotion") if request.renderer == "both" else (request.renderer or "ffmpeg",)
+            for r in renderers:
+                cmd = ["python3", "-m", "src.main", "render", current_job_id or "", "--video-mode", request.video_mode, "--renderer", r]
+                if request.platform:
+                    cmd += ["--platform", request.platform]
+                commands.append(cmd)
         elif step == "metadata":
             commands.append(["python3", "-m", "src.main", "metadata", current_job_id or ""])
         elif step == "upload":

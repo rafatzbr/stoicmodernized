@@ -27,6 +27,7 @@ export async function startRun(payload: {
   provider: string;
   platform?: string | null;
   skip_upload: boolean;
+  renderer?: string;
 }) {
   const res = await api.post<{ run_id: string }>('/api/runs', payload);
   return res.data;
@@ -39,6 +40,7 @@ export async function startSteps(payload: {
   provider: string;
   platform?: string | null;
   steps: string[];
+  renderer?: string;
 }) {
   const res = await api.post<{ run_id: string; job_id?: string | null }>('/api/runs/steps', payload);
   return res.data;

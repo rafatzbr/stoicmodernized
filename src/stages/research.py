@@ -19,7 +19,7 @@ class ResearchStage:
         self.job_dir = settings.jobs_dir / job_id
         self.research_dir = self.job_dir / "research"
         self.last_topic: Optional[str] = None
-        self.searxng_base_url = "http://192.168.0.12:8080"
+        self.searxng_base_url = "https://search.zweb"
         self.llama_base_url = "http://localhost:8080/v1/chat/completions"
 
     async def run(self, topic: str) -> ResearchResult:
@@ -108,14 +108,58 @@ class ResearchStage:
         )
 
     async def _search_searxng(self, topic: str) -> list[ResearchSource]:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.get(
-                f"{self.searxng_base_url}/search",
-                params={"q": f"stoicism {topic}", "format": "json"},
-                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+        import asyncio
+
+        query = f"stoicism {topic}"
+        max_retries = 3
+        base_delay = 2  # seconds
+
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=20.0, verify=False) as client:
+                    response = await client.get(
+                        f"{self.searxng_base_url}/search",
+                        params={"q": query, "format": "json"},
+                        headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    break  # Success - exit retry loop
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429 and attempt < max_retries - 1:
+                    # Rate limited - wait and retry with exponential backoff
+                    delay = base_delay * (2 ** attempt)
+                    print(f"Rate limited. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(delay)
+                    continue
+                raise  # Re-raise for non-retryable errors
+            except Exception as e:
+                # Network error or other issue - retry
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    print(f"Search error: {e}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(delay)
+                    continue
+                raise
+
+        sources: list[ResearchSource] = []
+        for index, item in enumerate(data.get("results", [])[:6]):
+            title = (item.get("title") or "").strip()
+            url = (item.get("url") or "").strip()
+            note = (item.get("content") or item.get("snippet") or "").strip()
+            if not title or not url:
+                continue
+            relevance = max(0.55, 0.95 - (index * 0.07))
+            sources.append(
+                ResearchSource(
+                    title=title,
+                    url=url,
+                    note=note,
+                    relevance=round(relevance, 2),
+                    source=self._infer_source(url),
+                )
             )
-            response.raise_for_status()
-            data = response.json()
+        return sources
 
         sources: list[ResearchSource] = []
         for index, item in enumerate(data.get("results", [])[:6]):

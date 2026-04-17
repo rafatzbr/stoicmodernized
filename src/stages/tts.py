@@ -19,6 +19,189 @@ class TTSAudioInterface:
         raise NotImplementedError
 
 
+class VoxCPMTTS(TTSAudioInterface):
+    """VoxCPM TTS provider - tokenizer-free multilingual speech synthesis via CLI.
+    
+    Uses VoxCPM.cpp which supports CPU, CUDA, and Vulkan backends.
+    """
+
+    name = "voxcpm"
+
+    def __init__(
+        self,
+        model_path: str = None,
+        voice: str = None,
+        speed: float = 1.0,
+        cfg_value: float = 2.0,
+        inference_timesteps: int = 10,
+        threads: int = 8,
+        backend: str = "auto",
+    ):
+        """
+        Initialize VoxCPM TTS.
+
+        Args:
+            model_path: Path to GGUF model file. If None, will look for default models.
+            voice: Optional voice description for voice design (e.g., "calm, deep male voice")
+            speed: Speech speed multiplier (0.25 to 4.0, default: 1.0)
+                   Note: Speed control is NOT supported in VoxCPM.cpp CLI.
+                   This parameter is stored but ignored. Use voice design for pace control.
+            cfg_value: Guidance scale for generation (default: 2.0)
+            inference_timesteps: Number of diffusion steps (default: 10)
+            threads: Number of CPU threads to use (default: 8)
+            backend: Backend to use: "cpu", "cuda", "vulkan", or "auto" (default: "auto")
+        """
+        self.model_path = model_path
+        self.voice = voice
+        self.speed = max(0.25, min(4.0, speed))
+        self.cfg_value = cfg_value
+        self.inference_timesteps = inference_timesteps
+        self.threads = threads
+        self.backend = backend
+        self.sample_rate = 48000  # VoxCPM outputs 48kHz
+
+        # Find the voxcpm CLI executable
+        self._find_cli()
+
+    def _find_cli(self):
+        """Find the voxcpm TTS CLI executable."""
+        import shutil
+        import subprocess
+
+        # Common locations for the voxcpm CLI
+        possible_paths = [
+            shutil.which("voxcpm_tts"),
+            "./build/examples/voxcpm_tts",
+            "./build-cuda/examples/voxcpm_tts",
+            "/home/rafatz/dev/VoxCPM.cpp/build/examples/voxcpm_tts",
+        ]
+
+        for path in possible_paths:
+            if path and Path(path).exists():
+                self.cli_path = Path(path)
+                return
+
+        # Check if it's been built in the workspace
+        voxcpm_cpp_dir = Path("/home/rafatz/dev/VoxCPM.cpp")
+        if voxcpm_cpp_dir.exists():
+            self.cli_path = voxcpm_cpp_dir / "build" / "examples" / "voxcpm_tts"
+            if self.cli_path.exists():
+                return
+
+        raise RuntimeError(
+            "VoxCPM.cpp CLI not found. Install and build VoxCPM.cpp:\n"
+            "1. Clone: git clone https://github.com/bluryar/VoxCPM.cpp\n"
+            "2. Build: cmake -B build && cmake --build build -j8\n"
+            "3. Download model from: https://huggingface.co/bluryar/VoxCPM-GGUF"
+        )
+
+    def _get_model_path(self) -> Path:
+        """Get the model path, downloading if necessary."""
+        if self.model_path:
+            model_path = Path(self.model_path)
+            if not model_path.exists():
+                raise RuntimeError(f"Model not found at: {model_path}")
+            return model_path
+
+        # Default model locations
+        default_models = [
+            Path("/home/rafatz/models/voxcpm/voxcpm1.5-q8_0-audiovae-f16.gguf"),
+            Path("/home/rafatz/models/voxcpm/voxcpm-0.5b-q4_K.gguf"),
+            Path("/data/voxcpm/voxcpm1.5-q8_0-audiovae-f16.gguf"),
+        ]
+
+        for model_path in default_models:
+            if model_path.exists():
+                print(f"Using VoxCPM model: {model_path}")
+                return model_path
+
+        # Try to find any voxcpm model
+        model_dirs = [
+            Path("/home/rafatz/models/voxcpm"),
+            Path("/data/voxcpm"),
+            Path("/home/rafatz/.cache/voxcpm"),
+        ]
+
+        for model_dir in model_dirs:
+            if model_dir.exists():
+                gguf_files = list(model_dir.glob("*.gguf"))
+                if gguf_files:
+                    model_path = gguf_files[0]
+                    print(f"Found VoxCPM model: {model_path}")
+                    return model_path
+
+        raise RuntimeError(
+            "No VoxCPM model found. Download from:\n"
+            "https://huggingface.co/bluryar/VoxCPM-GGUF\n"
+            "\nRecommended models:\n"
+            "- voxcpm1.5-q8_0-audiovae-f16.gguf (942MB, balanced)\n"
+            "- voxcpm-0.5b-q4_K.gguf (477MB, fastest)"
+        )
+
+    async def generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
+        """Generate audio using the VoxCPM CLI."""
+        import subprocess
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        model_path = self._get_model_path()
+
+        # Prepare text with voice design if specified
+        display_text = text
+        if self.voice:
+            display_text = f"({self.voice}) {text}"
+
+        # Build the CLI command
+        cmd = [
+            str(self.cli_path),
+            "--model-path",
+            str(model_path),
+            "--text",
+            display_text,
+            "--output",
+            str(output_path),
+            "--threads",
+            str(self.threads),
+            "--inference-timesteps",
+            str(self.inference_timesteps),
+            "--cfg-value",
+            str(self.cfg_value),
+        ]
+
+        # Add backend
+        if self.backend != "auto":
+            cmd.extend(["--backend", self.backend])
+
+        # Note: Speed control is NOT available in VoxCPM.cpp CLI.
+        # Voice design descriptions can affect pace (e.g., "slightly slower pace")
+
+        print(f"Generating audio with VoxCPM (backend: {self.backend})...")
+        print(f"Command: {' '.join(cmd)}")
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=600,  # 10 minutes timeout
+            )
+
+            if result.returncode != 0:
+                error_msg = result.stderr.strip() or result.stdout.strip()
+                raise RuntimeError(f"VoxCPM CLI failed: {error_msg}")
+
+            # Verify output was created
+            if not output_path.exists():
+                raise RuntimeError(f"VoxCPM CLI did not create output file: {output_path}")
+
+            file_size = output_path.stat().st_size
+            print(f"Audio generated: {output_path} ({file_size / 1024:.1f} KB)")
+            return output_path
+
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("VoxCPM generation timed out (10 minutes)")
+
+
 class LocalTTSAudio(TTSAudioInterface):
     """Local fallback TTS provider."""
 
@@ -197,11 +380,16 @@ class TTSStage:
             return ElevenLabsTTSAudio()
         if provider in {"edge", "edge-tts"}:
             return EdgeTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed)
+        if provider == "voxcpm":
+            return VoxCPMTTS()
         return LocalTTSAudio(voice=settings.tts_voice, speed=settings.tts_speed)
 
     async def run(self, scene_plan: dict) -> Path:
         self.audio_dir.mkdir(parents=True, exist_ok=True)
         extension = ".mp3" if self.provider in {"edge", "edge-tts", "elevenlabs"} and not self.mock else ".wav"
+        # VoxCPM outputs WAV (48kHz), so it uses the same extension as local
+        if self.provider == "voxcpm":
+            extension = ".wav"
         audio_path = self.audio_dir / f"narration{extension}"
         subtitles_path = self.audio_dir / "narration.vtt"
 

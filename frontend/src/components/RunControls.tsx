@@ -17,18 +17,25 @@ import {
 const providerOptions = ['edge', 'local', 'elevenlabs', 'voxcpm'];
 const videoModeOptions = ['short', 'long'];
 const platformOptions = ['auto', 'youtube', 'tiktok'];
+const rendererOptions = [
+  { value: 'ffmpeg', label: 'FFmpeg', desc: 'Standard pipeline, fastest' },
+  { value: 'remotion', label: 'Remotion', desc: 'React-based compositions' },
+  { value: 'both', label: 'Both', desc: 'Render with both engines' },
+];
 
 type Props = {
   topic: string;
   videoMode: string;
   provider: string;
   platform: string;
+  renderer: string;
   isStarting: boolean;
   isSuggestingTopic?: boolean;
   onTopicChange: (value: string) => void;
   onVideoModeChange: (value: string) => void;
   onProviderChange: (value: string) => void;
   onPlatformChange: (value: string) => void;
+  onRendererChange: (value: string) => void;
   onSuggestTopic: () => void;
   onStart: () => void;
 };
@@ -38,12 +45,14 @@ export function RunControls({
   videoMode,
   provider,
   platform,
+  renderer,
   isStarting,
   isSuggestingTopic = false,
   onTopicChange,
   onVideoModeChange,
   onProviderChange,
   onPlatformChange,
+  onRendererChange,
   onSuggestTopic,
   onStart,
 }: Props) {
@@ -130,6 +139,29 @@ export function RunControls({
                 {providerOptions.map((option) => (
                   <MenuItem key={option} value={option}>
                     {option}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <FormControl fullWidth>
+              <InputLabel id="renderer-label">Render engine</InputLabel>
+              <Select
+                labelId="renderer-label"
+                value={renderer}
+                label="Render engine"
+                onChange={(event) => onRendererChange(String(event.target.value))}
+              >
+                {rendererOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <span>{option.label}</span>
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                        {option.desc}
+                      </Typography>
+                    </Stack>
                   </MenuItem>
                 ))}
               </Select>

@@ -70,6 +70,9 @@ Each run randomly combines these, so prompts vary while maintaining the channel 
 # Install dependencies
 pip install -e ".[dev]"
 
+# For VoxCPM TTS provider (optional):
+pip install -e ".[tts-voxcpm]"
+
 # Copy environment template
 cp .env.example .env
 
@@ -103,6 +106,46 @@ python -m src.main script --job-id <job_id> --mock
 ```bash
 python -m src.main tts --job-id <job_id> --mock
 ```
+
+**VoxCPM TTS Provider**:
+
+VoxCPM is a state-of-the-art tokenizer-free multilingual TTS system. This implementation uses **VoxCPM.cpp**, a C++ CLI tool supporting CPU, CUDA, and Vulkan backends.
+
+```bash
+# Build VoxCPM.cpp
+git clone https://github.com/bluryar/VoxCPM.cpp
+cd VoxCPM.cpp
+cmake -B build
+cmake --build build -j$(nproc)
+
+# Download model
+mkdir -p ~/models/voxcpm
+wget https://huggingface.co/bluryar/VoxCPM-GGUF/resolve/main/voxcpm1.5-q8_0-audiovae-f16.gguf \
+  -O ~/models/voxcpm/voxcpm1.5-q8_0-audiovae-f16.gguf
+
+# Configure in .env
+TTS_PROVIDER=voxcpm
+TTS_VOICE="calm, deep male voice"  # Optional: voice design description
+VOXCPM_MODEL_PATH=/home/rafatz/models/voxcpm/voxcpm1.5-q8_0-audiovae-f16.gguf
+VOXCPM_BACKEND=auto  # cpu, cuda, or vulkan
+
+# Run pipeline with VoxCPM
+python -m src.main tts --job-id <job_id>
+```
+
+Features:
+- **30-language multilingual** support
+- **Voice Design**: Create voices from text descriptions
+- **Voice Cloning**: Clone from reference audio
+- **48kHz studio-quality** output
+- **Multiple backends**: CPU, CUDA (NVIDIA), or Vulkan (cross-platform GPU)
+- **Open source**: Apache-2.0 licensed
+
+See **[docs/VOXCPM_TTS.md](docs/VOXCPM_TTS.md)** for detailed setup instructions.
+- **48kHz studio-quality** output
+- **Real-time streaming** support (RTF ~0.3 on RTX 4090)
+
+See [VoxCPM documentation](https://github.com/OpenBMB/VoxCPM) for more details.
 
 #### Generate Images
 
@@ -138,12 +181,44 @@ python -m src.main run --video-mode short --mock
 
 Edit `.env` to configure:
 
-- `TTS_PROVIDER` - TTS provider (`local`, `edge`, or `elevenlabs`)
-- `TTS_VOICE` - Voice to use (for ElevenLabs)
+### TTS Configuration
+
+- `TTS_PROVIDER` - TTS provider (`local`, `edge`, `elevenlabs`, or `voxcpm`)
+- `TTS_VOICE` - Voice to use (for ElevenLabs or voice design for VoxCPM)
+- `TTS_SPEED` - Speech speed multiplier (0.25 to 4.0, default: 1.0)
+- `VOXCPM_MODEL_PATH` - VoxCPM model path (optional, for VoxCPM provider)
+
+### Image Generation Configuration
+
+The pipeline supports **two image generation methods**:
+
+1. **SD Server (Recommended)** - Connects to a local SD server (Automatic1111 or ComfyUI)
+2. **SD CLI** - Uses stable-diffusion.cpp CLI directly
+
+If SD server is available, it will be used automatically. Otherwise, SD CLI is used.
+
+**SD Server Settings:**
+- `SD_SERVER_URL` - SD server URL (default: `http://localhost:1234`)
+- `SD_SERVER_API_PATH` - API endpoint (default: `/sdapi/v1/txt2img`)
+- `SD_SERVER_TIMEOUT_SECONDS` - Request timeout (default: 300)
+
+**SD CLI Settings:**
+- `SD_CLI_PATH` - Path to sd-cli executable
+- `SD_MODEL_PATH` - Stable Diffusion model path
+- `SD_CLIP_L_PATH`, `SD_CLIP_G_PATH`, `SD_T5XXL_PATH` - CLIP and T5 model paths
+- `SD_IMAGE_WIDTH`, `SD_IMAGE_HEIGHT` - Output dimensions
+- `SD_CFG_SCALE`, `SD_STEPS`, `SD_SAMPLING_METHOD` - Generation parameters
+- `SD_NEGATIVE_PROMPT` - Negative prompt
+
+### YouTube Configuration
+
 - `YOUTUBE_API_KEY` - YouTube API key (for upload)
-- `YOUTUBE_CREDENTIALS_PATH` - Path to OAuth2 credentials JSON file (optional, defaults to `~/.stoic-modernized/client_secret.json`)
+- `YOUTUBE_CREDENTIALS_PATH` - Path to OAuth2 credentials JSON file (optional)
 - `YOUTUBE_PRIVACY_STATUS` - Upload privacy (`public`, `unlisted`, or `private`)
 - `YOUTUBE_SCHEDULE_DATETIME` - Schedule upload in ISO 8601 format (optional)
+
+### Other Settings
+
 - `MOCK_MODE` - Enable mock mode (`true` or `false`)
 - `FORCE_PLACEHOLDER_IMAGES` - Use local generated cards instead of SD (`true` or `false`)
 
@@ -179,8 +254,8 @@ src/
 ├── stages/
 │   ├── research.py      # Topic research
 │   ├── script.py        # Script generation
-│   ├── tts.py           # Text-to-speech
-│   ├── images.py        # Image generation
+│   ├── tts.py           # Text-to-speech (local, edge, elevenlabs, voxcpm)
+│   ├── images.py        # Image generation (SD CLI, SD Server, or local fallbacks)
 │   ├── subtitles.py     # Subtitle generation
 │   ├── render.py        # Video rendering
 │   └── upload.py        # YouTube upload

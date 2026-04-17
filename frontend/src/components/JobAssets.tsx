@@ -237,11 +237,13 @@ export function JobAssets({
   jobDetail,
   onRefresh,
   onRerunSteps,
+  onFullRerun,
   rerunBusy,
 }: {
   jobDetail: JobDetail | null;
   onRefresh: () => void;
   onRerunSteps: (steps: string[]) => void;
+  onFullRerun: () => void;
   rerunBusy: boolean;
 }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
@@ -323,6 +325,21 @@ export function JobAssets({
                   onClick={() => onRerunSteps(['render', 'metadata'])}
                 >
                   Rerun Render
+                </Button>
+              </Stack>
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap" alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ mt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mr: { sm: 1 } }}>
+                  Full rerun
+                </Typography>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="secondary"
+                  disabled={!jobDetail || rerunBusy}
+                  onClick={onFullRerun}
+                >
+                  Rerun entire pipeline
                 </Button>
               </Stack>
 
