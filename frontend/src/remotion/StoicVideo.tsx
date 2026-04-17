@@ -49,8 +49,8 @@ type TimedWord = {
 type CaptionChunk = {
   startTime: number;
   endTime: number;
-  lines: TimedWord[][];
   words: TimedWord[];
+  text: string;
   hasWordTimings: boolean;
 };
 
@@ -80,42 +80,6 @@ const normalizeSubtitleWords = (subtitle: RemotionSubtitle) => {
   };
 };
 
-const layoutCaptionLines = (words: TimedWord[], isTikTok: boolean): TimedWord[][] => {
-  if (words.length === 0) {
-    return [];
-  }
-
-  const maxCharsPerLine = isTikTok ? 22 : 30;
-  const maxLines = 2;
-  const lines: TimedWord[][] = [];
-  let currentLine: TimedWord[] = [];
-  let currentChars = 0;
-
-  for (const word of words) {
-    const wordChars = word.text.length + (currentLine.length > 0 ? 1 : 0);
-    const wouldOverflow = currentLine.length > 0 && currentChars + wordChars > maxCharsPerLine;
-
-    if (wouldOverflow && lines.length < maxLines - 1) {
-      lines.push(currentLine);
-      currentLine = [word];
-      currentChars = word.text.length;
-    } else {
-      currentLine.push(word);
-      currentChars += wordChars;
-    }
-  }
-
-  if (currentLine.length > 0) {
-    lines.push(currentLine);
-  }
-
-  if (lines.length <= maxLines) {
-    return lines;
-  }
-
-  return [lines[0], lines.slice(1).flat()];
-};
-
 const chunkWordsForCaptions = (
   words: TimedWord[],
   isTikTok: boolean,
@@ -130,8 +94,8 @@ const chunkWordsForCaptions = (
       {
         startTime: words[0].startTime,
         endTime: words[0].endTime,
-        lines: layoutCaptionLines(words, isTikTok),
         words: [...words],
+        text: words.map((word) => word.text).join(' '),
         hasWordTimings: false,
       },
     ];
@@ -149,8 +113,8 @@ const chunkWordsForCaptions = (
     chunks.push({
       startTime: currentChunk[0].startTime,
       endTime: currentChunk[currentChunk.length - 1].endTime,
-      lines: layoutCaptionLines(currentChunk, isTikTok),
       words: [...currentChunk],
+      text: currentChunk.map((word) => word.text).join(' '),
       hasWordTimings: true,
     });
     currentChunk = [];
@@ -389,8 +353,6 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
             })
           : -1;
 
-        let runningWordIndex = 0;
-
         return (
           <div
             key={idx}
@@ -404,60 +366,63 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
               opacity: subtitleIn,
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: isTikTok ? 8 : 6,
-                color: TEXT_COLOR,
-                textShadow: '0 6px 26px rgba(0,0,0,0.4)',
-              }}
-            >
-              {chunk.lines.map((line, lineIndex) => {
-                const lineStartIndex = runningWordIndex;
-                runningWordIndex += line.length;
-                return (
-                  <div
-                    key={`${idx}-line-${lineIndex}`}
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      justifyContent: 'center',
-                      gap: isTikTok ? '6px 8px' : '8px 10px',
-                      fontSize: isTikTok ? 58 : 46,
-                      lineHeight: isTikTok ? 1.06 : 1.08,
-                      fontWeight: 950,
-                      letterSpacing: '-0.04em',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {line.map((word, wordIndexInLine) => {
-                      const absoluteWordIndex = lineStartIndex + wordIndexInLine;
-                      const isActiveWord = absoluteWordIndex === activeWordIndex;
-                      return (
-                        <span
-                          key={`${idx}-${absoluteWordIndex}`}
-                          style={{
-                            color: isActiveWord ? '#111827' : TEXT_COLOR,
-                            background: isActiveWord
-                              ? `linear-gradient(135deg, ${HIGHLIGHT_COLOR}, ${BRAND_ACCENT})`
-                              : 'transparent',
-                            padding: isActiveWord ? '0.08em 0.18em' : 0,
-                            borderRadius: isActiveWord ? 14 : 0,
-                            boxShadow: isActiveWord ? '0 10px 30px rgba(245,158,11,0.35)' : 'none',
-                            transform: isActiveWord ? 'scale(1.04)' : 'scale(1)',
-                            transition: 'all 120ms ease-out',
-                          }}
-                        >
-                          {word.text}
-                        </span>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
+            {chunk.hasWordTimings ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  gap: isTikTok ? '6px 8px' : '8px 10px',
+                  color: TEXT_COLOR,
+                  textShadow: '0 6px 26px rgba(0,0,0,0.4)',
+                  fontSize: isTikTok ? 58 : 46,
+                  lineHeight: isTikTok ? 1.12 : 1.08,
+                  fontWeight: 950,
+                  letterSpacing: '-0.04em',
+                  textAlign: 'center',
+                }}
+              >
+                {chunk.words.map((word, absoluteWordIndex) => {
+                  const isActiveWord = absoluteWordIndex === activeWordIndex;
+                  return (
+                    <span
+                      key={`${idx}-${absoluteWordIndex}`}
+                      style={{
+                        color: isActiveWord ? '#111827' : TEXT_COLOR,
+                        background: isActiveWord
+                          ? `linear-gradient(135deg, ${HIGHLIGHT_COLOR}, ${BRAND_ACCENT})`
+                          : 'transparent',
+                        padding: isActiveWord ? '0.08em 0.18em' : 0,
+                        borderRadius: isActiveWord ? 14 : 0,
+                        boxShadow: isActiveWord ? '0 10px 30px rgba(245,158,11,0.35)' : 'none',
+                        transform: isActiveWord ? 'scale(1.04)' : 'scale(1)',
+                        transition: 'all 120ms ease-out',
+                      }}
+                    >
+                      {word.text}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <div
+                style={{
+                  color: TEXT_COLOR,
+                  textShadow: '0 6px 26px rgba(0,0,0,0.4)',
+                  fontSize: isTikTok ? 58 : 46,
+                  lineHeight: isTikTok ? 1.12 : 1.08,
+                  fontWeight: 950,
+                  letterSpacing: '-0.04em',
+                  textAlign: 'center',
+                  whiteSpace: 'normal',
+                  wordBreak: 'normal',
+                  overflowWrap: 'normal',
+                  maxWidth: '100%',
+                }}
+              >
+                {chunk.text}
+              </div>
+            )}
           </div>
         );
       })}
