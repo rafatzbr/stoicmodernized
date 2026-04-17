@@ -85,34 +85,17 @@ const layoutCaptionLines = (words: TimedWord[], isTikTok: boolean): TimedWord[][
     return [];
   }
 
-  const maxCharsPerLine = isTikTok ? 18 : 26;
-  const maxLines = isTikTok ? 2 : 2;
-
-  if (words.length <= 2) {
-    return [words];
-  }
-
-  const totalChars = words.reduce((sum, word) => sum + word.text.length, 0) + Math.max(0, words.length - 1);
-  const targetCharsPerLine = Math.max(1, Math.ceil(totalChars / maxLines));
-
+  const maxCharsPerLine = isTikTok ? 22 : 30;
+  const maxLines = 2;
   const lines: TimedWord[][] = [];
   let currentLine: TimedWord[] = [];
   let currentChars = 0;
 
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
+  for (const word of words) {
     const wordChars = word.text.length + (currentLine.length > 0 ? 1 : 0);
-    const remainingWords = words.length - i;
-    const remainingLines = maxLines - lines.length;
-    const shouldWrap =
-      currentLine.length > 0 &&
-      lines.length < maxLines - 1 &&
-      (
-        currentChars + wordChars > maxCharsPerLine ||
-        (currentChars >= targetCharsPerLine && remainingWords >= remainingLines)
-      );
+    const wouldOverflow = currentLine.length > 0 && currentChars + wordChars > maxCharsPerLine;
 
-    if (shouldWrap) {
+    if (wouldOverflow && lines.length < maxLines - 1) {
       lines.push(currentLine);
       currentLine = [word];
       currentChars = word.text.length;
@@ -126,7 +109,11 @@ const layoutCaptionLines = (words: TimedWord[], isTikTok: boolean): TimedWord[][
     lines.push(currentLine);
   }
 
-  return lines.slice(0, maxLines - 1).concat(lines.length > maxLines ? [lines.slice(maxLines - 1).flat()] : lines.slice(maxLines - 1));
+  if (lines.length <= maxLines) {
+    return lines;
+  }
+
+  return [lines[0], lines.slice(1).flat()];
 };
 
 const chunkWordsForCaptions = (
