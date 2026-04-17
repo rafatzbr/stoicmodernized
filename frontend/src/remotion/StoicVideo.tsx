@@ -258,8 +258,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
     color: isTikTok ? '#111827' : 'rgba(255,255,255,0.92)',
     fontSize: isTikTok ? 22 : 20,
     fontWeight: 900,
-    letterSpacing: isTikTok ? '0.03em' : '0.02em',
-    textTransform: 'uppercase',
+    letterSpacing: isTikTok ? '0.01em' : '0.01em',
   };
 
   const progressStyle: React.CSSProperties = {
