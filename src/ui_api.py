@@ -36,6 +36,7 @@ app.add_middleware(
 
 RUNS: dict[str, dict[str, Any]] = {}
 logger = logging.getLogger(__name__)
+PYTHON_BIN = sys.executable or "python3"
 
 
 class RunRequest(BaseModel):
@@ -233,7 +234,7 @@ def upload_job_asset(job_id: str, request: UploadAssetRequest) -> dict[str, str]
     if not job.metadata_path:
         raise HTTPException(status_code=400, detail="No metadata found. Run metadata first.")
 
-    cmd = ["python3", "-m", "src.main", "upload", job_id, "--video-path", str(asset_path)]
+    cmd = [PYTHON_BIN, "-m", "src.main", "upload", job_id, "--video-path", str(asset_path)]
     if request.mock:
         cmd.append("--mock")
     return {"run_id": _spawn_command(cmd)}
@@ -242,7 +243,7 @@ def upload_job_asset(job_id: str, request: UploadAssetRequest) -> dict[str, str]
 @app.post("/api/runs")
 def start_run(request: RunRequest) -> dict[str, str]:
     cmd = [
-        "python3",
+        PYTHON_BIN,
         "-m",
         "src.main",
         "run",
@@ -278,33 +279,33 @@ def start_steps(request: StepsRequest) -> dict[str, str | None]:
 
     for step in request.steps:
         if step == "research":
-            cmd = ["python3", "-m", "src.main", "research", request.topic]
+            cmd = [PYTHON_BIN, "-m", "src.main", "research", request.topic]
             if current_job_id:
                 cmd += ["--job-id", current_job_id]
             commands.append(cmd)
         elif step == "script":
-            commands.append(["python3", "-m", "src.main", "script", current_job_id or "", "--video-mode", request.video_mode])
+            commands.append([PYTHON_BIN, "-m", "src.main", "script", current_job_id or "", "--video-mode", request.video_mode])
         elif step == "scene":
-            commands.append(["python3", "-m", "src.main", "scene", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "scene", current_job_id or ""])
         elif step == "tts":
-            commands.append(["python3", "-m", "src.main", "tts", current_job_id or "", "--provider", request.provider])
+            commands.append([PYTHON_BIN, "-m", "src.main", "tts", current_job_id or "", "--provider", request.provider])
         elif step == "music":
-            commands.append(["python3", "-m", "src.main", "music", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "music", current_job_id or ""])
         elif step == "images":
-            commands.append(["python3", "-m", "src.main", "images", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "images", current_job_id or ""])
         elif step == "subtitles":
-            commands.append(["python3", "-m", "src.main", "subtitles", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "subtitles", current_job_id or ""])
         elif step == "render":
             renderers = ("ffmpeg", "remotion") if request.renderer == "both" else (request.renderer or "ffmpeg",)
             for r in renderers:
-                cmd = ["python3", "-m", "src.main", "render", current_job_id or "", "--video-mode", request.video_mode, "--renderer", r]
+                cmd = [PYTHON_BIN, "-m", "src.main", "render", current_job_id or "", "--video-mode", request.video_mode, "--renderer", r]
                 if request.platform:
                     cmd += ["--platform", request.platform]
                 commands.append(cmd)
         elif step == "metadata":
-            commands.append(["python3", "-m", "src.main", "metadata", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "metadata", current_job_id or ""])
         elif step == "upload":
-            commands.append(["python3", "-m", "src.main", "upload", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "upload", current_job_id or ""])
 
     shell_cmd = " && ".join(" ".join(part for part in cmd if part) for cmd in commands)
     return {"run_id": _spawn_command(["bash", "-lc", shell_cmd]), "job_id": current_job_id}
