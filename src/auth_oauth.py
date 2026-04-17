@@ -19,10 +19,10 @@ from pathlib import Path
 import webbrowser
 
 try:
-    from google.oauth2 import service_account
     from google_auth_oauthlib.flow import InstalledAppFlow
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
+    from google.auth.exceptions import RefreshError
 except ImportError:
     print("[red]Missing google-auth libraries. Install with:[/red]")
     print("   pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2")
@@ -145,17 +145,23 @@ def main():
 
     # If no valid credentials, run OAuth flow
     if not creds or not creds.valid:
+        # Check if headless mode is requested
+        headless = '--headless' in sys.argv or '-h' in sys.argv
+
         if creds and creds.expired and creds.refresh_token:
             print("\n[bold]Refreshing expired token...[/bold]")
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except RefreshError as e:
+                print(f"[yellow]⚠ Stored token refresh failed: {e}[/yellow]")
+                print("[yellow]Stored token appears expired or revoked. Starting a fresh OAuth flow...[/yellow]")
+                try:
+                    TOKEN_FILE.unlink(missing_ok=True)
+                except Exception as unlink_error:
+                    print(f"[yellow]⚠ Could not remove old token file: {unlink_error}[/yellow]")
+                creds = authenticate_headless() if headless else authenticate_browser()
         else:
-            # Check if headless mode is requested
-            headless = '--headless' in sys.argv or '-h' in sys.argv
-            
-            if headless:
-                creds = authenticate_headless()
-            else:
-                creds = authenticate_browser()
+            creds = authenticate_headless() if headless else authenticate_browser()
 
         # Save the credentials
         with open(TOKEN_FILE, "w") as token:
