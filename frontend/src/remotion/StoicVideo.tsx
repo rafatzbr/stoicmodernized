@@ -486,18 +486,20 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
                 </>
               )}
             </div>
-            <div
-              style={{
-                maxWidth: isTikTok ? '88%' : '62%',
-                textAlign: 'center',
-                color: 'rgba(255,255,255,0.92)',
-                fontSize: isTikTok ? 32 : 28,
-                lineHeight: 1.2,
-                fontWeight: 600,
-              }}
-            >
-              {ctaText}
-            </div>
+            {ctaText && ctaText.toLowerCase() !== 'subscribe to @stoic-modernized' ? (
+              <div
+                style={{
+                  maxWidth: isTikTok ? '88%' : '62%',
+                  textAlign: 'center',
+                  color: 'rgba(255,255,255,0.92)',
+                  fontSize: isTikTok ? 32 : 28,
+                  lineHeight: 1.2,
+                  fontWeight: 600,
+                }}
+              >
+                {ctaText}
+              </div>
+            ) : null}
           </AbsoluteFill>
         </Sequence>
       ) : null}
