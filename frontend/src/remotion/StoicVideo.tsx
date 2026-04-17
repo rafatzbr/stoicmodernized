@@ -200,11 +200,19 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
     [isTikTok],
   );
 
-  const channelStyle: React.CSSProperties = {
+  const headerStackStyle: React.CSSProperties = {
     position: 'absolute',
     top: isTikTok ? 88 : 42,
     left: isTikTok ? 30 : 54,
+    right: isTikTok ? 120 : 180,
     zIndex: 25,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: isTikTok ? 18 : 14,
+  };
+
+  const channelStyle: React.CSSProperties = {
     padding: isTikTok ? '10px 15px' : '10px 18px',
     borderRadius: isTikTok ? 18 : 999,
     background: isTikTok ? 'rgba(7,10,20,0.48)' : 'rgba(7,10,20,0.38)',
@@ -218,11 +226,6 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   };
 
   const titleStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: isTikTok ? 166 : 120,
-    left: isTikTok ? 30 : 54,
-    right: isTikTok ? 52 : 54,
-    zIndex: 25,
     fontSize: isTikTok ? 58 : 48,
     lineHeight: isTikTok ? 0.98 : 1.02,
     fontWeight: 950,
@@ -233,10 +236,6 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   };
 
   const kickerStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: isTikTok ? 258 : 198,
-    left: isTikTok ? 30 : 54,
-    zIndex: 25,
     padding: isTikTok ? '12px 16px' : '10px 14px',
     borderRadius: 999,
     background: isTikTok
@@ -331,9 +330,11 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
         <div style={progressFillStyle} />
       </div>
 
-      <div style={channelStyle}>{channelName}</div>
-      <div style={titleStyle}>{headerTitle}</div>
-      <div style={kickerStyle}>{isTikTok ? 'Mindset reset' : 'Practical Stoicism for modern work'}</div>
+      <div style={headerStackStyle}>
+        <div style={channelStyle}>{channelName}</div>
+        <div style={titleStyle}>{headerTitle}</div>
+        <div style={kickerStyle}>{isTikTok ? 'Mindset reset' : 'Practical Stoicism for modern work'}</div>
+      </div>
 
       {logoSrc ? <Img src={resolveAssetSrc(logoSrc)} style={logoStyle} /> : null}
 
