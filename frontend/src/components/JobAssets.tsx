@@ -242,7 +242,7 @@ export function JobAssets({
 }: {
   jobDetail: JobDetail | null;
   onRefresh: () => void;
-  onRerunSteps: (steps: string[]) => void;
+  onRerunSteps: (steps: string[], rendererOverride?: string) => void;
   onFullRerun: () => void;
   rerunBusy: boolean;
 }) {
@@ -325,6 +325,22 @@ export function JobAssets({
                   onClick={() => onRerunSteps(['render', 'metadata'])}
                 >
                   Rerun Render
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!jobDetail || rerunBusy}
+                  onClick={() => onRerunSteps(['render', 'metadata'], 'ffmpeg')}
+                >
+                  Rerender in FFmpeg
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!jobDetail || rerunBusy}
+                  onClick={() => onRerunSteps(['render', 'metadata'], 'remotion')}
+                >
+                  Rerender in Remotion
                 </Button>
               </Stack>
 

@@ -285,10 +285,12 @@ export function DashboardPage() {
   }, [platform, provider, selectedJobId, selectedSteps, showNotice, topic, videoMode]);
 
   const onRunSpecificSteps = useCallback(
-    async (steps: string[]) => {
+    async (steps: string[], rendererOverride?: string) => {
       if (!steps.length) {
         return;
       }
+
+      const nextRenderer = rendererOverride ?? renderer;
 
       setRunLoading(true);
       try {
@@ -299,7 +301,7 @@ export function DashboardPage() {
           provider,
           platform: platform === 'auto' ? null : platform,
           steps,
-          renderer,
+          renderer: nextRenderer,
         });
         setRunId(result.run_id);
         setRunState(null);
@@ -310,7 +312,7 @@ export function DashboardPage() {
         setRunLoading(false);
       }
     },
-    [platform, provider, selectedJobId, showNotice, topic, videoMode],
+    [platform, provider, renderer, selectedJobId, showNotice, topic, videoMode],
   );
 
   const onStopRun = useCallback(async () => {
@@ -517,8 +519,8 @@ export function DashboardPage() {
                         void loadJobDetail(selectedJobId);
                       }
                     }}
-                    onRerunSteps={(steps) => {
-                      void onRunSpecificSteps(steps);
+                    onRerunSteps={(steps, rendererOverride) => {
+                      void onRunSpecificSteps(steps, rendererOverride);
                     }}
                     onFullRerun={onFullRerun}
                     rerunBusy={runLoading || Boolean(runId && runState?.running)}
