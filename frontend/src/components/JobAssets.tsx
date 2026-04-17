@@ -6,6 +6,7 @@ import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
 import MovieRoundedIcon from '@mui/icons-material/MovieRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import UploadRoundedIcon from '@mui/icons-material/UploadRounded';
 import {
   Box,
   Button,
@@ -238,15 +239,18 @@ export function JobAssets({
   onRefresh,
   onRerunSteps,
   onFullRerun,
+  onUploadAsset,
   rerunBusy,
 }: {
   jobDetail: JobDetail | null;
   onRefresh: () => void;
   onRerunSteps: (steps: string[], rendererOverride?: string) => void;
   onFullRerun: () => void;
+  onUploadAsset: (assetPath: string) => void;
   rerunBusy: boolean;
 }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
   const assetSummary = useMemo(() => {
     if (!jobDetail) {
@@ -258,6 +262,21 @@ export function JobAssets({
     const audio = jobDetail.assets.filter(isAudio).length;
 
     return { images, videos, audio };
+  }, [jobDetail]);
+
+  const uploadableVideos = useMemo(() => {
+    if (!jobDetail) {
+      return [];
+    }
+
+    const score = (asset: JobAsset) => {
+      const relative = asset.relative.toLowerCase();
+      if (relative.includes('remotion')) return 0;
+      if (relative.includes('final.mp4')) return 1;
+      return 2;
+    };
+
+    return jobDetail.assets.filter(isVideo).sort((a, b) => score(a) - score(b) || a.relative.localeCompare(b.relative));
   }, [jobDetail]);
 
   const normalizedPreviewIndex = useMemo(() => {
@@ -357,6 +376,16 @@ export function JobAssets({
                 >
                   Rerun entire pipeline
                 </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  startIcon={<UploadRoundedIcon />}
+                  disabled={!jobDetail || rerunBusy || uploadableVideos.length === 0}
+                  onClick={() => setUploadDialogOpen(true)}
+                >
+                  Upload to YouTube
+                </Button>
               </Stack>
 
               {!jobDetail ? (
@@ -444,6 +473,46 @@ export function JobAssets({
         </Stack>
       </CardContent>
       </Card>
+
+      <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Choose a video to upload</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            <Typography variant="body2" color="text.secondary">
+              Pick which rendered video should be sent to YouTube.
+            </Typography>
+            {uploadableVideos.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No video files are available for this job yet.
+              </Typography>
+            ) : (
+              uploadableVideos.map((asset) => (
+                <Button
+                  key={asset.path}
+                  variant="outlined"
+                  onClick={() => {
+                    onUploadAsset(asset.relative);
+                    setUploadDialogOpen(false);
+                  }}
+                  sx={{ justifyContent: 'space-between', textTransform: 'none', py: 1.25 }}
+                >
+                  <Stack alignItems="flex-start" sx={{ textAlign: 'left' }}>
+                    <Typography variant="body2" fontWeight={700}>
+                      {asset.relative.toLowerCase().includes('remotion') ? 'Remotion render' : asset.relative.toLowerCase().includes('final.mp4') ? 'FFmpeg render' : 'Video file'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {asset.relative} • {formatBytes(asset.size)}
+                    </Typography>
+                  </Stack>
+                </Button>
+              ))
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUploadDialogOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={Boolean(previewAsset)} onClose={() => setPreviewIndex(null)} maxWidth="lg" fullWidth>
         <DialogTitle>

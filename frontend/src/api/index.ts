@@ -60,6 +60,11 @@ export async function deleteJob(jobId: string) {
   return res.data;
 }
 
+export async function uploadJobAsset(jobId: string, payload: { asset_path: string; mock?: boolean }) {
+  const res = await api.post<{ run_id: string }>(`/api/jobs/${jobId}/upload`, payload);
+  return res.data;
+}
+
 export async function fetchEnv() {
   const res = await api.get<{ content: string }>('/api/config/env');
   return res.data;

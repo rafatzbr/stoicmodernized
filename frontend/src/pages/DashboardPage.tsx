@@ -35,6 +35,7 @@ import {
   startSteps,
   stopRun,
   suggestTopic,
+  uploadJobAsset,
 } from '../api';
 import { FileEditors } from '../components/FileEditors';
 import { JobAssets } from '../components/JobAssets';
@@ -378,6 +379,24 @@ export function DashboardPage() {
     }
   }, [jobDetail, platform, provider, renderer, showNotice, videoMode]);
 
+  const onUploadAsset = useCallback(async (assetPath: string) => {
+    if (!jobDetail) {
+      return;
+    }
+
+    setRunLoading(true);
+    try {
+      const result = await uploadJobAsset(jobDetail.job_id, { asset_path: assetPath });
+      setRunId(result.run_id);
+      setRunState(null);
+      showNotice(`Upload started: ${assetPath}`, 'success');
+    } catch (error) {
+      showNotice(getErrorMessage(error, 'Failed to start upload.'), 'error');
+    } finally {
+      setRunLoading(false);
+    }
+  }, [jobDetail, showNotice]);
+
   const summary = useMemo(
     () => [
       { label: 'Jobs', value: jobs.length.toString(), tone: 'default' as const },
@@ -523,6 +542,9 @@ export function DashboardPage() {
                       void onRunSpecificSteps(steps, rendererOverride);
                     }}
                     onFullRerun={onFullRerun}
+                    onUploadAsset={(assetPath) => {
+                      void onUploadAsset(assetPath);
+                    }}
                     rerunBusy={runLoading || Boolean(runId && runState?.running)}
                   />
                 )}

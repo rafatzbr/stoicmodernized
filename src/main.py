@@ -526,13 +526,19 @@ def metadata(
 def upload(
     job_id: str = typer.Argument(..., help="Job ID from metadata stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    video_path: Optional[str] = typer.Option(None, "--video-path", help="Override the video file to upload"),
 ) -> None:
     """Upload video to YouTube."""
     print_header()
     job_record = _load_job_record(job_id)
 
-    if not job_record.video_path:
+    resolved_video_path = video_path or job_record.video_path
+
+    if not resolved_video_path:
         console.print("[red]Error: No video found. Run render stage first.[/red]")
+        raise typer.Exit(code=1)
+    if not Path(resolved_video_path).exists():
+        console.print(f"[red]Error: Video file not found:[/red] {resolved_video_path}")
         raise typer.Exit(code=1)
     if not job_record.metadata_path:
         console.print("[red]Error: No metadata found. Run metadata stage first.[/red]")
@@ -554,7 +560,7 @@ def upload(
     uploader = YouTubeUploader(mock=mock)
     result = asyncio.run(
         uploader.upload(
-            video_path=job_record.video_path,
+            video_path=resolved_video_path,
             metadata=metadata_payload,
             thumbnail_path=job_record.thumbnail_path,
         )
@@ -575,6 +581,7 @@ def upload(
             if "oauth" in result.error.lower() or "token" in result.error.lower():
                 console.print("\n[dim]Run: python -m src.auth_oauth to re-authenticate[/dim]")
     console.print(f"[dim]Job ID:[/dim] {job_id}")
+    console.print(f"[dim]Uploaded file:[/dim] {resolved_video_path}")
 
 
 @app.command()

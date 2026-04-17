@@ -65,6 +65,11 @@ class TopicSuggestionRequest(BaseModel):
     current_topic: str | None = None
 
 
+class UploadAssetRequest(BaseModel):
+    asset_path: str
+    mock: bool = False
+
+
 def _normalize_topic_line(value: str) -> str:
     cleaned = value.strip().strip(' -\"')
     cleaned = re.sub(r'^[0-9]+[.)]\s*', '', cleaned)
@@ -201,13 +206,37 @@ def delete_job(job_id: str) -> dict[str, Any]:
     return {"deleted": True, "job_id": job_id, "removed_dir": removed_dir, "removed_db": removed_db}
 
 
-@app.get("/api/jobs/{job_id}/assets/{asset_path:path}")
-def get_job_asset(job_id: str, asset_path: str):
+def _resolve_job_asset(job_id: str, asset_path: str) -> Path:
     job_dir = settings.jobs_dir / job_id
     path = (job_dir / asset_path).resolve()
-    if not path.exists() or job_dir.resolve() not in path.parents and path != job_dir.resolve():
+    if not path.exists() or (job_dir.resolve() not in path.parents and path != job_dir.resolve()):
         raise HTTPException(status_code=404, detail="Asset not found")
+    return path
+
+
+@app.get("/api/jobs/{job_id}/assets/{asset_path:path}")
+def get_job_asset(job_id: str, asset_path: str):
+    path = _resolve_job_asset(job_id, asset_path)
     return FileResponse(path)
+
+
+@app.post("/api/jobs/{job_id}/upload")
+def upload_job_asset(job_id: str, request: UploadAssetRequest) -> dict[str, str]:
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    asset_path = _resolve_job_asset(job_id, request.asset_path)
+    mime, _ = mimetypes.guess_type(asset_path.name)
+    if not ((mime or "").startswith("video/") or asset_path.suffix.lower() in {".mp4", ".mov", ".mkv", ".webm"}):
+        raise HTTPException(status_code=400, detail="Selected asset is not a video file")
+    if not job.metadata_path:
+        raise HTTPException(status_code=400, detail="No metadata found. Run metadata first.")
+
+    cmd = ["python3", "-m", "src.main", "upload", job_id, "--video-path", str(asset_path)]
+    if request.mock:
+        cmd.append("--mock")
+    return {"run_id": _spawn_command(cmd)}
 
 
 @app.post("/api/runs")
