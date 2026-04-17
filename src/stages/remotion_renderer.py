@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+CHANNEL_LOGO_PATH = Path('/home/rafatz/media/logo_transparent.png')
+
 from src.config import settings
 from src.models import Scene, SubtitleSegment
 from src.utils import load_json, save_json
@@ -105,6 +107,11 @@ class RemotionRenderer:
                 dest = frontend_public / 'subtitles' / json_file.name
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(json_file, dest)
+
+        if CHANNEL_LOGO_PATH.exists():
+            dest = frontend_public / 'branding' / CHANNEL_LOGO_PATH.name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(CHANNEL_LOGO_PATH, dest)
 
     def _load_scenes(self) -> Optional[list[dict]]:
         """Load scene plan data."""
@@ -224,6 +231,7 @@ class RemotionRenderer:
 
         # Use relative path for staticFile()
         audio_relative = audio_path if audio_path else 'audio/narration.mp3'
+        logo_relative = f'branding/{CHANNEL_LOGO_PATH.name}' if CHANNEL_LOGO_PATH.exists() else None
 
         return {
             'title': scenes[0].get('title', 'Stoic Modernized') if scenes else 'Stoic Modernized',
@@ -236,7 +244,7 @@ class RemotionRenderer:
             'audioSrc': audio_relative,
             'backgroundMusicSrc': background_music_path,
             'backgroundMusicVolume': settings.background_music_volume,
-            'logoSrc': None,  # Can be added later if logo is configured
+            'logoSrc': logo_relative,
             'scenes': remotion_scenes,
             'subtitles': remotion_subtitles,
             'ctaText': cta_text,
