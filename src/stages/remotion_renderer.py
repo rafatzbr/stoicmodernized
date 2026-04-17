@@ -231,6 +231,11 @@ class RemotionRenderer:
                 'Ancient logic for the high-performance digital age',
             )
 
+        # Determine video subject from first scene's text_overlay if available
+        video_subject = None
+        if scenes:
+            video_subject = scenes[0].get('text_overlay') or scenes[0].get('title')
+
         # Get CTA text
         cta_text = 'subscribe to @stoic-modernized'
 
@@ -239,8 +244,8 @@ class RemotionRenderer:
         logo_relative = f'branding/{CHANNEL_LOGO_PATH.name}' if CHANNEL_LOGO_PATH.exists() else None
 
         return {
-            'title': scenes[0].get('title', 'Stoic Modernized') if scenes else 'Stoic Modernized',
-            'topic': scenes[0].get('topic', '') if scenes else '',
+            'title': video_subject or 'Stoic Modernized',
+            'topic': video_subject or '',
             'channelName': channel_name,
             'channelDescription': channel_description,
             'mode': self.mode,
