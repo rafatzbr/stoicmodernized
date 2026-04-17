@@ -180,6 +180,20 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
     channelDescription ||
     'Ancient logic for the high-performance digital age';
 
+  // Find which scene is currently active
+  const activeScene = useMemo(() => {
+    for (const scene of scenes) {
+      const from = Math.round(scene.startTime * fps);
+      const to = from + Math.max(1, Math.round((scene.endTime - scene.startTime) * fps));
+      if (frame >= from && frame < to) {
+        return scene;
+      }
+    }
+    return scenes[0] || null;
+  }, [scenes, fps, frame]);
+
+  const kickerText = activeScene?.textOverlay || '';
+
   // Find the current active scene
   const activeScene = useMemo(() => {
     for (const scene of scenes) {
