@@ -227,7 +227,7 @@ class RemotionRenderer:
             channel_name = job_data.get('channel_name', 'Stoic Modernized')
 
         # Get CTA text
-        cta_text = 'Subscribe for more practical Stoicism'
+        cta_text = 'subscribe to @stoic-modernized'
 
         # Use relative path for staticFile()
         audio_relative = audio_path if audio_path else 'audio/narration.mp3'

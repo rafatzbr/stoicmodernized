@@ -503,15 +503,15 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
             >
               {isTikTok ? (
                 <>
-                  Subscribe for
+                  subscribe to
                   <br />
-                  calm ambition
+                  @stoic-modernized
                 </>
               ) : (
                 <>
-                  Watch the full lesson,
+                  subscribe to
                   <br />
-                  then subscribe
+                  @stoic-modernized
                 </>
               )}
             </div>
