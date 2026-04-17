@@ -190,14 +190,14 @@ class SubtitleStage:
         matched_starts: list[float] = []
         search_index = 0
         for scene in spoken_scenes:
-            first_phrase = self._first_phrase(scene.get("narration_segment", ""))
-            if not first_phrase:
+            scene_text = self._clean_scene_text(scene.get("narration_segment", ""))
+            if not scene_text:
                 return
-            match_index = self._find_matching_segment_index(segments, first_phrase, search_index)
+            match_index = self._find_scene_start_segment_index(segments, scene_text, search_index)
             if match_index is None:
                 return
             matched_starts.append(segments[match_index].start_time)
-            search_index = match_index
+            search_index = match_index + 1
 
         for index, scene in enumerate(spoken_scenes):
             start = matched_starts[index]
@@ -207,6 +207,33 @@ class SubtitleStage:
 
         scene_plan["total_duration"] = round(audio_duration, 3)
         save_json(scene_plan, self.scenes_dir / "scenes.json")
+
+    def _find_scene_start_segment_index(
+        self, segments: list[SubtitleSegment], scene_text: str, start_index: int
+    ) -> Optional[int]:
+        target_tokens = self._match_tokens(scene_text)
+        if not target_tokens:
+            return None
+
+        max_window = min(6, len(segments) - start_index)
+        for index in range(start_index, len(segments)):
+            for window_size in range(1, max_window + 1):
+                window = segments[index : index + window_size]
+                if not window:
+                    continue
+                combined_tokens = self._match_tokens(" ".join(segment.text for segment in window))
+                if not combined_tokens:
+                    continue
+                prefix_len = min(len(combined_tokens), len(target_tokens), 12)
+                if prefix_len < 3:
+                    continue
+                if combined_tokens[:prefix_len] == target_tokens[:prefix_len]:
+                    return index
+        return None
+
+    def _match_tokens(self, text: str) -> list[str]:
+        normalized = self._match_key(text)
+        return [token for token in normalized.split() if token]
 
     def _find_matching_segment_index(
         self, segments: list[SubtitleSegment], phrase: str, start_index: int
