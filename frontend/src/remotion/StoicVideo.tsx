@@ -151,6 +151,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   title,
   topic,
   channelName,
+  channelDescription,
   mode,
   platform,
   fps,
@@ -168,6 +169,14 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
   const isTikTok = resolvedPlatform === 'tiktok';
   const totalFrames = Math.max(1, Math.round(durationInSeconds * fps));
   const captionChunks = useMemo(() => buildCaptionChunks(subtitles, isTikTok), [subtitles, isTikTok]);
+  const normalizedChannelName = channelName.trim().toLowerCase();
+  const normalizedTopic = (topic || '').trim();
+  const normalizedTitle = (title || '').trim();
+  const headerTitle =
+    normalizedTopic ||
+    (normalizedTitle && normalizedTitle.toLowerCase() !== normalizedChannelName
+      ? normalizedTitle
+      : channelDescription || 'Ancient logic for the high-performance digital age');
 
   const subtitleCardStyle: React.CSSProperties = useMemo(
     () => ({
@@ -321,7 +330,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
       </div>
 
       <div style={channelStyle}>{channelName}</div>
-      <div style={titleStyle}>{topic || title}</div>
+      <div style={titleStyle}>{headerTitle}</div>
       <div style={kickerStyle}>{isTikTok ? 'Mindset reset' : 'Practical Stoicism for modern work'}</div>
 
       {logoSrc ? <Img src={resolveAssetSrc(logoSrc)} style={logoStyle} /> : null}

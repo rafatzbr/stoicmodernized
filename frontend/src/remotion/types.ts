@@ -21,6 +21,7 @@ export type RemotionRenderProps = {
   title: string;
   topic: string;
   channelName: string;
+  channelDescription?: string | null;
   mode: 'landscape' | 'portrait';
   platform?: RemotionPlatform;
   fps: number;

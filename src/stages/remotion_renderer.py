@@ -219,12 +219,17 @@ class RemotionRenderer:
             max((sub.get('endTime', 0) for sub in remotion_subtitles), default=0.0),
         )
 
-        # Get channel name from job data if available
+        # Get channel metadata from job data if available
         job_data_path = self.job_dir / 'job.json'
         channel_name = 'Stoic Modernized'
+        channel_description = 'Ancient logic for the high-performance digital age'
         if job_data_path.exists():
             job_data = load_json(job_data_path)
             channel_name = job_data.get('channel_name', 'Stoic Modernized')
+            channel_description = job_data.get(
+                'channel_description',
+                'Ancient logic for the high-performance digital age',
+            )
 
         # Get CTA text
         cta_text = 'subscribe to @stoic-modernized'
@@ -237,6 +242,7 @@ class RemotionRenderer:
             'title': scenes[0].get('title', 'Stoic Modernized') if scenes else 'Stoic Modernized',
             'topic': scenes[0].get('topic', '') if scenes else '',
             'channelName': channel_name,
+            'channelDescription': channel_description,
             'mode': self.mode,
             'platform': self.platform,
             'fps': self.fps,
