@@ -180,6 +180,103 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
     channelDescription ||
     'Ancient logic for the high-performance digital age';
 
+  // Find which scene is currently active
+  const activeScene = useMemo(() => {
+    for (const scene of scenes) {
+      const from = Math.round(scene.startTime * fps);
+      const to = from + Math.max(1, Math.round((scene.endTime - scene.startTime) * fps));
+      if (frame >= from && frame < to) {
+        return scene;
+      }
+    }
+    return scenes[0] || null;
+  }, [scenes, fps, frame]);
+
+  const kickerText = activeScene?.textOverlay || '';
+
+  // Find which scene is currently active
+  const activeScene = useMemo(() => {
+    for (const scene of scenes) {
+      const from = Math.round(scene.startTime * fps);
+      const to = from + Math.max(1, Math.round((scene.endTime - scene.startTime) * fps));
+      if (frame >= from && frame < to) {
+        return scene;
+      }
+    }
+    return scenes[0] || null;
+  }, [scenes, fps, frame]);
+
+  const kickerText = activeScene?.textOverlay || '';
+
+  // Find active scene based on current frame
+  const activeScene = useMemo(() => {
+    for (const scene of scenes) {
+      const from = Math.round(scene.startTime * fps);
+      const to = from + Math.max(1, Math.round((scene.endTime - scene.startTime) * fps));
+      if (frame >= from && frame < to) {
+        return scene;
+      }
+    }
+    return scenes[0] || null;
+  }, [scenes, fps, frame]);
+
+  const kickerText = activeScene?.textOverlay || '';
+
+  // Determine which scene is currently active
+  const activeScene = useMemo(() => {
+    for (const scene of scenes) {
+      const from = Math.round(scene.startTime * fps);
+      const to = from + Math.max(1, Math.round((scene.endTime - scene.startTime) * fps));
+      if (frame >= from && frame < to) {
+        return scene;
+      }
+    }
+    return scenes[0] || null;
+  }, [scenes, fps, frame]);
+
+  const kickerLabel = activeScene?.textOverlay || '';
+
+  // Determine which scene is currently active
+  const activeScene = useMemo(() => {
+    for (const scene of scenes) {
+      const start = Math.round(scene.startTime * fps);
+      const end = start + Math.max(1, Math.round((scene.endTime - scene.startTime) * fps));
+      if (frame >= start && frame < end) {
+        return scene;
+      }
+    }
+    return scenes[0] || null;
+  }, [scenes, fps, frame]);
+
+  const kickerText = activeScene?.textOverlay || '';
+
+  // Find which scene is currently active at this frame
+  const activeScene = useMemo(() => {
+    for (const scene of scenes) {
+      const from = Math.round(scene.startTime * fps);
+      const to = from + Math.max(1, Math.round((scene.endTime - scene.startTime) * fps));
+      if (frame >= from && frame < to) {
+        return scene;
+      }
+    }
+    return scenes[0] || null;
+  }, [scenes, fps, frame]);
+
+
+  // Determine which scene is currently active
+  const activeScene = useMemo(() => {
+    for (const scene of scenes) {
+      const sceneStart = Math.round(scene.startTime * fps);
+      const sceneEnd = sceneStart + Math.max(1, Math.round((scene.endTime - scene.startTime) * fps));
+      if (frame >= sceneStart && frame < sceneEnd) {
+        return scene;
+      }
+    }
+    return scenes[0] || null;
+  }, [scenes, fps, frame]);
+
+  const kickerLabel = activeScene?.textOverlay || '';
+
   const subtitleCardStyle: React.CSSProperties = useMemo(
     () => ({
       position: 'absolute',
@@ -333,7 +430,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
       <div style={headerStackStyle}>
         <div style={channelStyle}>{channelName}</div>
         <div style={titleStyle}>{headerTitle}</div>
-        <div style={kickerStyle}>{isTikTok ? 'Mindset reset' : 'Practical Stoicism for modern work'}</div>
+        <div style={kickerStyle}>{kickerText || (isTikTok ? 'Mindset reset' : 'Practical Stoicism for modern work')}</div>
       </div>
 
       {logoSrc ? <Img src={resolveAssetSrc(logoSrc)} style={logoStyle} /> : null}
