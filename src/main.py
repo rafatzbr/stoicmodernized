@@ -634,8 +634,6 @@ def run(
                 console.print(f"[yellow]Background music skipped: {exc}[/yellow]")
         images(job_id=job_id, mock=media_stage_mock, placeholder_only=placeholder_images)
         subtitles(job_id=job_id, mock=media_stage_mock)
-        render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, platform=platform)
-        metadata(job_id=job_id, mock=script_stage_mock)
 
         # Render stage - supports ffmpeg, remotion, or both
         renderers_to_run = [renderer] if renderer != "both" else ["ffmpeg", "remotion"]
@@ -643,8 +641,8 @@ def run(
             console.print(f"[bold cyan]Rendering with {r}...[/bold cyan]")
             render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, renderer_type=r, platform=platform)
             console.print(f"[dim]Render ({r}) complete.[/dim]")
-            # Update job to reflect the latest renderer output
-            db.update_job(job_id, status="render_complete")
+
+        metadata(job_id=job_id, mock=script_stage_mock)
 
         if not skip_upload:
             upload(job_id=job_id, mock=mock)
