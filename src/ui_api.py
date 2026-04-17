@@ -224,15 +224,14 @@ def start_run(request: RunRequest) -> dict[str, str]:
         request.provider,
     ]
     if request.renderer == "both":
-        run_ids = []
-        for r in ("ffmpeg", "remotion"):
-            run_cmd = cmd + ["--renderer", r]
-            if request.platform:
-                run_cmd += ["--platform", request.platform]
-            if request.skip_upload:
-                run_cmd.append("--skip-upload")
-            run_ids.append(_spawn_command(run_cmd))
-        return {"run_id": ",".join(run_ids)}
+        # Spawn a single process with --renderer both; CLI handles
+        # sequential ffmpeg→remotion render pass in one pipeline
+        run_cmd = cmd + ["--renderer", "both"]
+        if request.platform:
+            run_cmd += ["--platform", request.platform]
+        if request.skip_upload:
+            run_cmd.append("--skip-upload")
+        return {"run_id": _spawn_command(run_cmd)}
     else:
         if request.renderer:
             cmd += ["--renderer", request.renderer]
