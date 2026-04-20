@@ -342,7 +342,7 @@ class SdServerImageGeneration:
         """Return strict mode framing instruction."""
         instructions = {
             "object_only": "Show desk objects only. No person, no face, no hands unless required by the action.",
-            "hands_only": "Show hands only. No face, no full person.",
+            "hands_only": "Avoid visible hands if possible. Prefer object-focused framing or an over-the-shoulder crop instead of a hand close-up.",
             "over_shoulder": "Show one person from behind or over the shoulder. No eye contact.",
             "environment": "Show the workspace environment with minimal or no person visible.",
             "person_medium": "Show one person at a desk, upper body visible, not looking at camera.",
@@ -994,7 +994,7 @@ def build_narrative_scene_prompt(
     return _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
 
 # Scene modes for variety
-SCENE_MODES = ["object_only", "hands_only", "over_shoulder", "environment", "person_medium"]
+SCENE_MODES = ["object_only", "over_shoulder", "environment", "person_medium"]
 
 # Hard-banned abstract words in LLM output
 ABSTRACT_BAN_LIST = [
@@ -1186,7 +1186,7 @@ class ImageGenerationStage:
         """Return strict mode framing instruction."""
         instructions = {
             "object_only": "Show desk objects only. No person, no face, no hands unless required by the action.",
-            "hands_only": "Show hands only. No face, no full person.",
+            "hands_only": "Avoid visible hands if possible. Prefer object-focused framing or an over-the-shoulder crop instead of a hand close-up.",
             "over_shoulder": "Show one person from behind or over the shoulder. No eye contact.",
             "environment": "Show the workspace environment with minimal or no person visible.",
             "person_medium": "Show one person at a desk, upper body visible, not looking at camera.",
