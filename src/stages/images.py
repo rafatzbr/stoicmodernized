@@ -751,7 +751,7 @@ VISUAL_STYLE_BUCKETS = {
         "modes": {"environment", "person_medium"},
         "fragments": [
             "wide modern architecture framing",
-            "one small figure against a large interior",
+            "wide framing with negative space, large interior feeling, "
             "clean lines and negative space",
             "quiet premium commercial realism",
         ],
@@ -798,29 +798,29 @@ BOUNDARY_SCENE_TEMPLATES = {
     "pause first": {
         "object_only": "Phone face-down beside a half-open laptop and a paper notebook on a dark desk, unread notifications reflecting on a second monitor, one chair slightly pulled back, no person visible",
         "hands_only": "Hands leaving a phone face-down beside a laptop, one thumb still near the edge of the case, notebook and pen resting in the foreground, blurred notifications in the distance, no face visible",
-        "over_shoulder": "View from behind one person at a desk: a laptop screen full of unread messages glowing softly, a phone face-down beside the keyboard, a notebook and pen resting in the foreground, shallow depth of field with office lights blurred behind, no eye contact",
-        "environment": "Glass-walled desk area with a laptop left open, phone face-down, notebook aligned square to the table, empty chair and distant office lights suggesting a deliberate pause, no person visible",
+        "over_shoulder": "A laptop screen full of unread messages glowing softly, a phone face-down beside the keyboard, a notebook and pen resting in the foreground on a dark desk, shallow depth of field with office lights blurred behind, focus entirely on the workspace objects",
+        "environment": "Glass-walled desk area with a laptop left open, phone face-down, notebook aligned square to the table, empty chair, office lights softly blurred beyond the desk, no person in frame",
         "person_medium": "Lone worker at a desk turning a phone face-down beside the keyboard, shoulders squared, monitor notifications blurred behind them, notebook open but untouched, upper body visible",
     },
     "what you control": {
         "object_only": "Notebook, capped pen resting beside it, closed water glass, and phone arranged beside a laptop on a clean desk, one tidy stack of papers in the foreground, large office windows fading into blur beyond, no person visible",
         "hands_only": "Hands drawing two short columns in a notebook beside a laptop, phone shifted out of reach at the edge of the desk, close framing, no face visible",
-        "over_shoulder": "View from behind at a desk: open notebook with a few clear lines of text, laptop open to the side, shallow depth of field with office receding softly behind, focus on the page and objects, not the person",
-        "environment": "Ordered workstation with one chair, one laptop, one notebook, and almost no clutter, open floor office receding into blur behind the desk, no person visible",
+        "over_shoulder": "Open notebook with a few clear lines of text, laptop open to the side on a dark desk, shallow depth of field with office receding softly behind, focus entirely on the page and objects on the desk",
+        "environment": "Ordered workstation with one chair, one laptop, one notebook, and almost no clutter, open floor office receding into soft blur behind the desk, no person in frame",
         "person_medium": "Worker seated alone at a desk writing in a notebook while the laptop stays open to one side, posture composed, background office activity softened and far away",
     },
     "after the meeting": {
         "object_only": "Conference room table after everyone has left, open laptop, uncapped pen, water glass, and rumpled notes under warm downlights, empty chairs fading into blur",
         "hands_only": "Hands writing a few final lines beside an open laptop after a hard meeting, jacket sleeve loosened, conference room glass and abandoned chairs blurred behind",
-        "over_shoulder": "View from behind a desk in an empty conference room: open laptop, notebook and pen, reflections rippling across the glass wall behind, warm practical lighting, focus on the workspace, not the person",
-        "environment": "Large conference room after hours, one lit corner with a laptop, notebook, and water glass still on the table, chairs pushed back unevenly, no person visible",
+        "over_shoulder": "Open laptop, notebook and pen on a conference room desk, reflections rippling across the glass wall behind, warm practical lighting, focus entirely on the workspace objects",
+        "environment": "Large conference room after hours, one lit corner with a laptop, notebook, and water glass still on the table, chairs pushed back unevenly, no person in frame",
         "person_medium": "Single worker sitting alone after a meeting, writing beside an open laptop in a mostly empty conference room, body turned slightly away, overhead lights warm but sparse",
     },
     "use this today": {
         "object_only": "Closed laptop, access badge, shoulder bag, and notebook arranged at the edge of a desk, office lights dimming in the background, ready-to-leave energy, no person visible",
         "hands_only": "Hands closing a laptop and lifting a shoulder bag strap from the desk, notebook left neatly aligned beside the keyboard, end-of-day light, no face visible",
-        "over_shoulder": "View from behind at the edge of a desk: closed laptop, shoulder bag resting on the desk, notebook aligned neatly, long hallway lights stretching behind, end-of-day warmth, focus on objects not the person",
-        "environment": "Almost empty office floor with one workstation packed up to leave, chair tucked in, bag waiting on the desk, warm hallway lights fading into the distance, no person visible",
+        "over_shoulder": "Closed laptop, shoulder bag resting on a desk, notebook aligned neatly beside the keyboard, long hallway lights stretching behind, end-of-day warmth, focus entirely on the desk objects",
+        "environment": "Empty office floor with one workstation, chair tucked in, bag resting on the desk, warm hallway lights fading softly behind, no person in frame",
         "person_medium": "Worker rising from a desk with laptop closed and bag in hand, end-of-day office light, composed exit rather than overtime, upper body visible",
     },
 }
@@ -967,7 +967,7 @@ def _generic_mode_prompt(mode: str, subject: str, scene_prompt: str, narration_s
         ])
         return f"View from behind at a desk in a {location}: {action} in shallow focus, {details} in the frame, {background}, focus on objects not a face"
     if mode == "environment":
-        return f"Wide environmental shot of a {location}, with {details} anchoring the foreground, {background}, no person or only a distant implied figure"
+        return f"Wide environmental shot of a {location}, with {details} anchoring the foreground, {background}, no person in frame"
     action = rng.choice([
         "sitting alone with a laptop and notebook",
         "standing after shutting down for the day",
