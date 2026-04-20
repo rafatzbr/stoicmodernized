@@ -1,6 +1,7 @@
 """Image generation stage module using stable diffusion CLI, SD server, or local fallbacks."""
 
 import base64
+import hashlib
 import json
 import random
 import re
@@ -15,59 +16,59 @@ import httpx
 from src.config import settings
 from src.models import ImageAsset
 
-# Predefined elements for random combination in prompt generation
+# Richer prompt fragments for scene variation and local-LLM bootstrapping
 PROFESSIONS = [
-    "office professional",
-    "knowledge worker",
-    "creative professional",
+    "office worker",
+    "product designer",
+    "operations lead",
     "software engineer",
-    "project manager",
-    "team lead",
-    "consultant",
+    "startup founder",
+    "project coordinator",
+    "freelance strategist",
 ]
 
 ACTIONS = [
-    "seated at a tidy desk writing",
-    "pausing with hands resting on keyboard",
-    "reviewing handwritten notes",
-    "organizing workspace",
-    "focusing on a physical notebook",
-    "taking a mindful break",
-    "reflecting while looking at a journal",
+    "sliding a phone face-down beside a notebook",
+    "closing a laptop and reaching for a bag",
+    "writing a few lines in a worn paper journal",
+    "standing alone after a tense meeting",
+    "looking out a rain-streaked window on the commute home",
+    "tying running shoes before sunrise",
+    "sorting scattered notes into one clean stack",
 ]
 
 LOCATIONS = [
-    "in a modern workplace",
-    "at their home office desk",
-    "in a quiet co-working space",
-    "at a minimalist desk setup",
-    "in a calm office environment",
+    "in a dim glass-walled conference room",
+    "at a kitchen table before sunrise",
+    "inside a late-night office floor",
+    "on a commuter train with city reflections in the window",
+    "in a quiet apartment entryway",
+    "beneath fluorescent lights in a modern workspace",
 ]
 
 CONCRETE_OBJECTS = [
-    "notebook, pen, keyboard, and coffee mug visible",
-    "phone placed face-down beside laptop",
-    "physical journal with handwritten notes",
-    "small succulent plant on desk corner",
-    "water bottle and minimal items",
-    "stress ball in hand",
-    "cup of tea with steam rising",
+    "closed laptop, shoulder bag, and access badge",
+    "phone face-down beside a half-filled notebook",
+    "coffee cup, pen, and rumpled meeting notes",
+    "train pole, dark coat sleeve, and blurred city lights",
+    "running shoes, folded socks, and a doorway mat",
+    "stack of sticky notes, water glass, and uncapped pen",
 ]
 
 BACKGROUNDS = [
-    "blurred office activity",
-    "soft focus window view",
-    "subtle blurred figures in distance",
-    "minimal office background",
-    "calm neutral office wall",
+    "empty chairs and reflections in glass",
+    "rainy street lights beyond the window",
+    "soft city glow and blurred traffic",
+    "quiet hallway with warm practical lamps",
+    "abandoned office desks fading into darkness",
 ]
 
 FOREGROUNDS = [
-    "organized workspace with controlled details",
-    "clear focus on subject and notebook",
-    "calm centered expression",
-    "relaxed shoulders and posture",
-    "mindful attention to task",
+    "restrained posture and controlled movement",
+    "one clear action with no clutter",
+    "editorial stillness and subtle tension",
+    "premium documentary realism",
+    "crisp foreground objects with shallow depth of field",
 ]
 
 
@@ -225,14 +226,23 @@ class SdServerImageGeneration:
             # Set random seed for this scene to ensure variety
             self._set_random_seed()
 
+            narration_segment = scene.get("narration_segment", "")
+            overlay = scene.get("text_overlay")
             scene_line = build_narrative_scene_prompt(
                 subject=subject,
                 scene_prompt=scene_prompt,
-                narration_segment=scene.get("narration_segment", ""),
-                overlay=scene.get("text_overlay"),
+                narration_segment=narration_segment,
+                overlay=overlay,
                 mode=mode,
             )
-            full_prompt = f"{scene_line}, {STYLE_SUFFIX}"
+            style_suffix = build_scene_style_suffix(
+                subject=subject,
+                scene_prompt=scene_prompt,
+                narration_segment=narration_segment,
+                overlay=overlay,
+                mode=mode,
+            )
+            full_prompt = f"{scene_line}, {style_suffix}"
 
             seed = self._resolve_seed(-1)
             try:
@@ -724,37 +734,94 @@ GOOD examples (DO this):
 
 
 
-# Fixed style suffix: appended AFTER LLM generates scene line
-STYLE_SUFFIX = "natural office photography, candid editorial realism, soft window light, realistic skin, vertical 9:16"
+# Base style suffix, with richer per-scene style chosen separately.
+STYLE_SUFFIX = "premium cinematic editorial still, realistic photography, vertical 9:16"
+
+VISUAL_STYLE_BUCKETS = {
+    "cinematic_realism": {
+        "modes": {"person_medium", "over_shoulder"},
+        "fragments": [
+            "moody film-still lighting",
+            "35mm lens look",
+            "restrained expression",
+            "soft falloff in the background",
+        ],
+    },
+    "architectural_solitude": {
+        "modes": {"environment", "person_medium"},
+        "fragments": [
+            "wide modern architecture framing",
+            "one small figure against a large interior",
+            "clean lines and negative space",
+            "quiet premium commercial realism",
+        ],
+    },
+    "symbolic_insert": {
+        "modes": {"object_only", "hands_only"},
+        "fragments": [
+            "symbolic insert shot",
+            "tight composition around a few meaningful objects",
+            "editorial still-life clarity",
+            "high-end documentary texture",
+        ],
+    },
+    "commuter_reflection": {
+        "modes": {"over_shoulder", "environment", "person_medium"},
+        "fragments": [
+            "city reflections on glass",
+            "muted evening palette",
+            "subtle motion beyond the focal plane",
+            "urban solitude",
+        ],
+    },
+    "ritual_closeup": {
+        "modes": {"hands_only", "object_only", "person_medium"},
+        "fragments": [
+            "close tactile detail",
+            "hands and objects carry the emotion",
+            "morning-routine realism",
+            "shallow depth of field",
+        ],
+    },
+    "night_tension": {
+        "modes": {"environment", "over_shoulder", "person_medium"},
+        "fragments": [
+            "late-night office glow",
+            "mixed warm practicals and cold monitor light",
+            "restrained pressure without melodrama",
+            "premium streaming-drama aesthetic",
+        ],
+    },
+}
 
 BOUNDARY_SCENE_TEMPLATES = {
     "pause first": {
-        "object_only": "Smartphone already lying face-down on a tidy work desk beside an open laptop and a small notebook, screen hidden, unread email and chat notifications glowing on a second monitor in the background, deliberate pause before replying, natural office details, no person visible",
-        "hands_only": "Close view of hands at a work desk just after placing a smartphone face-down beside an open laptop, fingers leaving the phone on the desk instead of holding it, the other hand resting near an open notebook and pen, unread email and chat notifications softly glowing on a background monitor, calm pause before replying, no face visible",
-        "over_shoulder": "Over-the-shoulder view of a worker at a desk, phone turned face-down beside laptop before replying, inbox and chat notifications softly blurred on the monitor, notebook and pen ready beside the keyboard",
-        "environment": "Modern office workspace with a chair pulled in toward a desk, phone face-down beside laptop, notebook and pen arranged neatly, Slack or email notifications glowing softly on a distant monitor, subtle office movement blurred behind",
-        "person_medium": "Office worker seated at a desk, looking at a laptop while setting a smartphone face-down beside the keyboard, notebook and pen visible, unread notifications softly blurred on a second monitor, upper body visible, slightly off-center",
+        "object_only": "Phone face-down beside a half-open laptop and a paper notebook on a dark desk, unread notifications reflecting on a second monitor, one chair slightly pulled back, no person visible",
+        "hands_only": "Hands leaving a phone face-down beside a laptop, one thumb still near the edge of the case, notebook and pen resting in the foreground, blurred notifications in the distance, no face visible",
+        "over_shoulder": "Over-the-shoulder view of a worker setting a phone face-down before replying, laptop glow on the desk, second monitor full of unread messages falling out of focus behind them",
+        "environment": "Glass-walled desk area with a laptop left open, phone face-down, notebook aligned square to the table, empty chair and distant office lights suggesting a deliberate pause, no person visible",
+        "person_medium": "Lone worker at a desk turning a phone face-down beside the keyboard, shoulders squared, monitor notifications blurred behind them, notebook open but untouched, upper body visible",
     },
     "what you control": {
-        "object_only": "Open laptop beside a notebook divided into two simple columns, pen laid across the page, phone set aside at the edge of the desk, blurred office activity in the background, clean modern workspace",
-        "hands_only": "Hands writing in a notebook beside an open laptop, one short column of personal tasks visible, phone face-down at the edge of the desk, blurred office movement in the distance",
-        "over_shoulder": "Over-the-shoulder view of a worker writing in a notebook beside an open laptop, one page showing a short personal task list while office activity stays blurred in the background, phone set aside near the keyboard",
-        "environment": "Organized desk in a modern office with an open laptop, notebook, pen, and phone set aside, background coworkers and movement softly blurred to contrast with the ordered foreground",
-        "person_medium": "Worker at a desk writing in a notebook beside an open laptop, phone set aside, foreground organized and still while office movement stays softly blurred behind, upper body visible, not looking at camera",
+        "object_only": "Notebook, pen, closed water glass, and phone arranged beside a laptop on a clean desk, one tidy stack of papers in the foreground, large office windows fading into blur beyond",
+        "hands_only": "Hands drawing two short columns in a notebook beside a laptop, phone shifted out of reach at the edge of the desk, close framing, no face visible",
+        "over_shoulder": "Over-the-shoulder view of a worker writing in a notebook beside a laptop, only a few clear bullet lines on the page, the rest of the office soft and distant behind them",
+        "environment": "Ordered workstation with one chair, one laptop, one notebook, and almost no clutter, open floor office receding into blur behind the desk, no person visible",
+        "person_medium": "Worker seated alone at a desk writing in a notebook while the laptop stays open to one side, posture composed, background office activity softened and far away",
     },
     "after the meeting": {
-        "object_only": "Laptop open on a quiet desk after a meeting, notebook with a few bullet points, pen resting across the page, empty conference chairs blurred in the background, warm office light",
-        "hands_only": "Hands writing a few bullet points in a notebook beside an open laptop after a meeting, coffee cup and conference room glass wall blurred in the background",
-        "over_shoulder": "Over-the-shoulder view of a worker alone at a desk after a meeting, writing notes beside an open laptop while empty conference chairs and a glass wall sit softly blurred behind",
-        "environment": "Quiet office desk after a tense meeting, laptop still open beside a notebook with fresh bullet notes and an uncapped pen, half-finished water glass and pushed-back conference chairs visible through a glass wall in the background, coworkers gone, warm late-day office light, realistic aftermath of a difficult meeting, no person visible",
-        "person_medium": "Worker alone at a desk after a meeting, writing in a notebook beside an open laptop, empty conference room chairs softly blurred behind, tired office atmosphere but composed posture, upper body visible",
+        "object_only": "Conference room table after everyone has left, open laptop, uncapped pen, water glass, and rumpled notes under warm downlights, empty chairs fading into blur",
+        "hands_only": "Hands writing a few final lines beside an open laptop after a hard meeting, jacket sleeve loosened, conference room glass and abandoned chairs blurred behind",
+        "over_shoulder": "Over-the-shoulder view of one worker alone after a meeting, writing beside an open laptop while reflections ripple across the glass wall behind them",
+        "environment": "Large conference room after hours, one lit corner with a laptop, notebook, and water glass still on the table, chairs pushed back unevenly, no person visible",
+        "person_medium": "Single worker sitting alone after a meeting, writing beside an open laptop in a mostly empty conference room, body turned slightly away, overhead lights warm but sparse",
     },
     "use this today": {
-        "object_only": "Closed laptop, notebook, badge, and shoulder bag arranged on a tidy desk near the end of the workday, office lights warm in the background, modern workplace details",
-        "hands_only": "Hands closing a laptop and reaching for a shoulder bag beside a notebook on a tidy work desk, end-of-day office light, no face visible",
-        "over_shoulder": "Over-the-shoulder view of a worker closing a laptop and standing up from a desk, notebook and bag visible, office lights warm in the background, no eye contact",
-        "environment": "Modern office workspace at the end of the day, laptop closed, notebook and bag ready to leave, hallway lights warm and slightly blurred in the background, no person visible",
-        "person_medium": "Office worker standing from a desk after closing a laptop, notebook and bag visible, end-of-day office light, upper body visible, slightly off-center, leaving on time rather than staying late",
+        "object_only": "Closed laptop, access badge, shoulder bag, and notebook arranged at the edge of a desk, office lights dimming in the background, ready-to-leave energy, no person visible",
+        "hands_only": "Hands closing a laptop and lifting a shoulder bag strap from the desk, notebook left neatly aligned beside the keyboard, end-of-day light, no face visible",
+        "over_shoulder": "Over-the-shoulder view of a worker shutting down for the day, laptop closing, bag strap in hand, long hallway lights stretching behind them",
+        "environment": "Almost empty office floor with one workstation packed up to leave, chair tucked in, bag waiting on the desk, warm hallway lights fading into the distance, no person visible",
+        "person_medium": "Worker rising from a desk with laptop closed and bag in hand, end-of-day office light, composed exit rather than overtime, upper body visible",
     },
 }
 
@@ -769,28 +836,145 @@ def _normalize_scene_key(overlay: object, scene_prompt: str, narration_segment: 
     return None
 
 
-def _generic_mode_prompt(mode: str, subject: str, narration_segment: str) -> str:
-    lowered = f"{subject} {narration_segment}".lower()
-    if any(word in lowered for word in ["boundary", "boundaries", "fired", "burnout", "overcommit", "overcommitting"]):
-        if mode == "object_only":
-            return "Open laptop, notebook, and phone face-down on a tidy office desk, unread chat notifications softly blurred in the background, modern workplace details, no person visible"
-        if mode == "hands_only":
-            return "Hands at a work desk, one hand moving a phone away from the keyboard while the other rests near an open notebook and laptop, close framing, no face visible"
-        if mode == "over_shoulder":
-            return "Over-the-shoulder view of a worker at a desk, notebook open beside a laptop, phone set aside, blurred chat notifications and office activity in the background"
-        if mode == "environment":
-            return "Organized office workspace with laptop, notebook, and phone set aside in the foreground, office movement softly blurred behind, modern workplace lighting, no person visible"
-        return "Worker at a desk with notebook open beside a laptop, phone set aside instead of in hand, upper body visible, slightly off-center, office activity softly blurred in the background"
+def _scene_text(subject: str, scene_prompt: str, narration_segment: str, overlay: object) -> str:
+    return " ".join(
+        part.strip().lower()
+        for part in [subject, scene_prompt, narration_segment, str(overlay or "")]
+        if str(part).strip()
+    )
+
+
+def _scene_rng(*parts: object) -> random.Random:
+    seed_input = "||".join(str(part or "") for part in parts)
+    seed = int(hashlib.sha256(seed_input.encode("utf-8")).hexdigest()[:16], 16)
+    return random.Random(seed)
+
+
+def _scene_tags(text: str) -> set[str]:
+    tags: set[str] = set()
+    if any(word in text for word in ["phone", "reply", "scroll", "notification", "slack", "email", "message", "inbox"]):
+        tags.add("digital_overload")
+    if any(word in text for word in ["meeting", "conference", "manager", "team", "feedback"]):
+        tags.add("meeting")
+    if any(word in text for word in ["leave", "late", "boundary", "boundaries", "overtime", "home", "bag"]):
+        tags.add("departure")
+    if any(word in text for word in ["train", "commute", "subway", "bus", "street", "city"]):
+        tags.add("commute")
+    if any(word in text for word in ["morning", "sunrise", "wake", "ritual", "journal", "run", "shoes"]):
+        tags.add("ritual")
+    if any(word in text for word in ["night", "late", "deadline", "pressure", "chaos", "burnout", "urgent"]):
+        tags.add("night_pressure")
+    if any(word in text for word in ["notebook", "journal", "write", "pen", "list"]):
+        tags.add("writing")
+    return tags
+
+
+def _context_fragments(text: str, rng: random.Random) -> tuple[str, str, str]:
+    if "commute" in _scene_tags(text):
+        return (
+            rng.choice(["commuter train window", "subway platform edge", "back seat of a rideshare"]),
+            rng.choice(["city lights reflected in glass", "wet street glow outside", "blurred station signage in the distance"]),
+            rng.choice(["dark coat sleeve and transit pole", "phone screen dimmed in one hand", "briefcase strap and window condensation"]),
+        )
+    if "meeting" in _scene_tags(text):
+        return (
+            rng.choice(["glass-walled conference room", "quiet breakout table", "long meeting table under downlights"]),
+            rng.choice(["pushed-back chairs and reflections", "abandoned coffee cups and blurred city skyline", "soft reflections on the glass wall"]),
+            rng.choice(["rumpled notes and uncapped pen", "half-full water glass and laptop glow", "badge, notebook, and loosened cuff"]),
+        )
+    if "departure" in _scene_tags(text):
+        return (
+            rng.choice(["dim office floor near the elevators", "apartment entryway at dusk", "desk packed up at end of day"]),
+            rng.choice(["warm hallway lights stretching away", "blue evening light through windows", "empty workstations falling into blur"]),
+            rng.choice(["shoulder bag and access badge", "closed laptop and folded notebook", "doorway mat and shoes by the wall"]),
+        )
+    if "ritual" in _scene_tags(text):
+        return (
+            rng.choice(["kitchen table before sunrise", "apartment doorway in early blue light", "quiet desk with first light on the wall"]),
+            rng.choice(["cool dawn light through a window", "soft apartment shadows", "empty room behind the subject"]),
+            rng.choice(["running shoes and folded socks", "journal, pen, and cooling coffee", "keys, wallet, and neatly stacked notes"]),
+        )
+    return (
+        rng.choice(["modern office desk", "quiet co-working corner", "home workspace near a window"]),
+        rng.choice(["soft city blur beyond the glass", "warm practical lamps in the background", "empty desks receding into darkness"]),
+        rng.choice(["notebook, pen, and laptop", "phone face-down beside a journal", "water glass and stacked papers"]),
+    )
+
+
+def _pick_style_bucket(mode: str, tags: set[str], rng: random.Random) -> str:
+    preferred: list[str] = []
+    if "commute" in tags:
+        preferred.append("commuter_reflection")
+    if "night_pressure" in tags:
+        preferred.append("night_tension")
+    if "ritual" in tags:
+        preferred.append("ritual_closeup")
+    if mode == "environment":
+        preferred.append("architectural_solitude")
+    if mode in {"object_only", "hands_only"}:
+        preferred.append("symbolic_insert")
+    if mode in {"over_shoulder", "person_medium"}:
+        preferred.append("cinematic_realism")
+
+    candidates = [name for name, bucket in VISUAL_STYLE_BUCKETS.items() if mode in bucket["modes"]]
+    for name in preferred:
+        if name in candidates:
+            return name
+    return rng.choice(candidates)
+
+
+def build_scene_style_suffix(
+    *,
+    subject: str,
+    scene_prompt: str,
+    narration_segment: str,
+    overlay: object,
+    mode: str,
+) -> str:
+    text = _scene_text(subject, scene_prompt, narration_segment, overlay)
+    rng = _scene_rng(subject, scene_prompt, narration_segment, overlay, mode, "style")
+    tags = _scene_tags(text)
+    bucket_name = _pick_style_bucket(mode, tags, rng)
+    bucket = VISUAL_STYLE_BUCKETS[bucket_name]
+    fragments = rng.sample(bucket["fragments"], k=min(3, len(bucket["fragments"])))
+    return ", ".join([*fragments, STYLE_SUFFIX, "no stock-photo smiles, no corporate team pose"])
+
+
+def _generic_mode_prompt(mode: str, subject: str, scene_prompt: str, narration_segment: str, overlay: object) -> str:
+    text = _scene_text(subject, scene_prompt, narration_segment, overlay)
+    rng = _scene_rng(subject, scene_prompt, narration_segment, overlay, mode, "scene")
+    location, background, details = _context_fragments(text, rng)
 
     if mode == "object_only":
-        return "Open laptop, notebook, pen, and coffee mug on a tidy modern desk, realistic workplace details, no person visible"
+        return (
+            f"Symbolic object shot in a {location}, featuring {details} in the foreground, "
+            f"{background}, no person visible"
+        )
     if mode == "hands_only":
-        return "Hands writing in a notebook beside an open laptop on a modern desk, close framing, no face visible"
+        action = rng.choice([
+            "hands sliding a phone face-down out of reach",
+            "hands writing a few lines in a notebook",
+            "hands closing a laptop and gathering a bag strap",
+            "hands straightening a messy stack of notes",
+        ])
+        return f"Close framing of {action} in a {location}, with {details} nearby, {background}, no face visible"
     if mode == "over_shoulder":
-        return "Over-the-shoulder view of a worker at a desk with laptop and notebook visible, realistic office details, no eye contact"
+        action = rng.choice([
+            "one worker looking down at a laptop",
+            "one worker writing beside an open notebook",
+            "one worker standing still at the edge of a desk",
+            "one worker facing a window or monitor glow",
+        ])
+        return f"Over-the-shoulder view of {action} in a {location}, {details} in the frame, {background}"
     if mode == "environment":
-        return "Modern office workspace with organized desk in the foreground and softly blurred background activity, no person visible"
-    return "Office worker seated at a desk with laptop and notebook visible, upper body framed slightly off-center, realistic workplace details"
+        return f"Wide environmental shot of a {location}, with {details} anchoring the foreground, {background}, no person or only a distant implied figure"
+    action = rng.choice([
+        "sitting alone with a laptop and notebook",
+        "standing after shutting down for the day",
+        "watching city reflections gather in a window",
+        "collecting themselves beside a desk after a hard meeting",
+    ])
+    return f"Single worker {action} in a {location}, {details} visible, {background}, upper body framed slightly off-center"
 
 
 def build_narrative_scene_prompt(
@@ -807,7 +991,7 @@ def build_narrative_scene_prompt(
         if scene_key == "pause first" and mode == "hands_only":
             effective_mode = "object_only"
         return BOUNDARY_SCENE_TEMPLATES[scene_key].get(effective_mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
-    return _generic_mode_prompt(mode, subject, narration_segment)
+    return _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
 
 # Scene modes for variety
 SCENE_MODES = ["object_only", "hands_only", "over_shoulder", "environment", "person_medium"]
@@ -868,19 +1052,19 @@ TAKEAWAY_MAP = {
 
 # Topic-specific fallback templates (preferred prompts for recurring topics)
 TOPIC_FALLBACKS = {
-    "doomscroll": "Close-up of a hand sliding a smartphone face-down away from an open laptop on a tidy office desk, with a notebook nearby",
-    "doomscrolling": "Close-up of a hand sliding a smartphone face-down away from an open laptop on a tidy office desk, with a notebook nearby",
-    "pause before responding": "Close-up of a hand setting a smartphone face-down beside an open laptop on a tidy office desk",
-    "pause": "Close-up of a hand setting a smartphone face-down beside an open laptop on a tidy office desk",
-    "focus on what you control": "Open laptop and notebook on a tidy office desk, smartphone set aside nearby",
-    "control": "Open laptop and notebook on a tidy office desk, smartphone set aside nearby",
-    "boundaries": "Smartphone placed face-down at the edge of a tidy office desk beside an open laptop",
-    "protect attention": "Smartphone placed face-down at the edge of a tidy office desk beside an open laptop",
-    "one task at a time": "Close-up of a hand near an open laptop and notebook on a clean office desk",
+    "doomscroll": "Hand sliding a smartphone face-down beside a notebook and half-open laptop, rainy city light in the window, tight editorial close-up",
+    "doomscrolling": "Hand sliding a smartphone face-down beside a notebook and half-open laptop, rainy city light in the window, tight editorial close-up",
+    "pause before responding": "Phone face-down beside a glowing laptop and paper notebook, unread notifications reflecting on a dark monitor behind the desk",
+    "pause": "Phone face-down beside a glowing laptop and paper notebook, unread notifications reflecting on a dark monitor behind the desk",
+    "focus on what you control": "Notebook, pen, and laptop arranged in one clean pool of light on a desk, background office fading into blur",
+    "control": "Notebook, pen, and laptop arranged in one clean pool of light on a desk, background office fading into blur",
+    "boundaries": "Closed laptop, shoulder bag, and access badge waiting at the edge of a desk near the elevators, warm office lights behind",
+    "protect attention": "Phone face-down beside a journal and switched-off notifications, one clean desk in the foreground, the rest of the office softened behind",
+    "one task at a time": "Hands writing a few lines in a paper notebook beside a laptop, everything else out of focus and pushed away",
 }
 
 # Ultra-safe final fallback (fallback for fallbacks)
-ULTRA_SAFE_FALLBACK = "A smartphone face-down beside an open laptop on a tidy office desk, realistic office, soft daylight"
+ULTRA_SAFE_FALLBACK = "Phone face-down beside a notebook and laptop on a dark desk, cinematic editorial realism, soft city light in the background"
 
 
 class ImageGenerationStage:
@@ -1071,14 +1255,23 @@ class ImageGenerationStage:
             # Set random seed for this scene to ensure variety
             self._set_random_seed()
 
+            narration_segment = scene.get("narration_segment", "")
+            overlay = scene.get("text_overlay")
             scene_line = build_narrative_scene_prompt(
                 subject=subject,
                 scene_prompt=scene_prompt,
-                narration_segment=scene.get("narration_segment", ""),
-                overlay=scene.get("text_overlay"),
+                narration_segment=narration_segment,
+                overlay=overlay,
                 mode=mode,
             )
-            full_prompt = f"{scene_line}, {STYLE_SUFFIX}"
+            style_suffix = build_scene_style_suffix(
+                subject=subject,
+                scene_prompt=scene_prompt,
+                narration_segment=narration_segment,
+                overlay=overlay,
+                mode=mode,
+            )
+            full_prompt = f"{scene_line}, {style_suffix}"
 
             seed = self._resolve_seed(-1)
             try:
