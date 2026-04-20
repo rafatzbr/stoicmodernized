@@ -341,7 +341,7 @@ class SdServerImageGeneration:
     def _mode_instruction(self, mode: str) -> str:
         """Return strict mode framing instruction."""
         instructions = {
-            "object_only": "Show desk objects only. No person, no face, no hands unless required by the action.",
+            "object_only": "Show desk objects only. No person, no face, no hands, no arms, no human body parts visible under any circumstance.",
             "hands_only": "Avoid visible hands if possible. Prefer object-focused framing or an over-the-shoulder crop instead of a hand close-up.",
             "over_shoulder": "Show one person from behind or over the shoulder. No eye contact.",
             "environment": "Show the workspace environment with minimal or no person visible.",
@@ -948,7 +948,7 @@ def _generic_mode_prompt(mode: str, subject: str, scene_prompt: str, narration_s
     if mode == "object_only":
         return (
             f"Symbolic object shot in a {location}, featuring {details} in the foreground, "
-            f"{background}, no person visible"
+            f"{background}, no person visible, no hands, no arms, no human body parts in frame"
         )
     if mode == "hands_only":
         action = rng.choice([
@@ -994,7 +994,7 @@ def build_narrative_scene_prompt(
     return _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
 
 # Scene modes for variety
-SCENE_MODES = ["object_only", "over_shoulder", "environment", "person_medium"]
+SCENE_MODES = ["object_only", "over_shoulder", "environment", "object_only"]
 
 # Hard-banned abstract words in LLM output
 ABSTRACT_BAN_LIST = [
@@ -1031,7 +1031,7 @@ STYLE_FRAGMENT_FRAGMENTS = [
 # Desk-scene specific negative prompt
 DESK_NEGATIVE_PROMPT = (
     "blurry, low quality, deformed, cluttered desk, text, logo, watermark, "
-    "overexposed, bad hands, awkward hand pose, extra hands, extra fingers, "
+    "overexposed, bad hands, awkward hand pose, extra hands, extra fingers, visible hand, partial hand, cropped hand, arm in frame, human limb, "
     "missing fingers, duplicate objects, distorted phone, malformed laptop, "
     "illegible writing, plastic texture, oversmoothed surfaces"
 )
@@ -1185,7 +1185,7 @@ class ImageGenerationStage:
     def _mode_instruction(self, mode: str) -> str:
         """Return strict mode framing instruction."""
         instructions = {
-            "object_only": "Show desk objects only. No person, no face, no hands unless required by the action.",
+            "object_only": "Show desk objects only. No person, no face, no hands, no arms, no human body parts visible under any circumstance.",
             "hands_only": "Avoid visible hands if possible. Prefer object-focused framing or an over-the-shoulder crop instead of a hand close-up.",
             "over_shoulder": "Show one person from behind or over the shoulder. No eye contact.",
             "environment": "Show the workspace environment with minimal or no person visible.",
