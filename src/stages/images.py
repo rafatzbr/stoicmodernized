@@ -803,7 +803,7 @@ BOUNDARY_SCENE_TEMPLATES = {
         "person_medium": "Lone worker at a desk turning a phone face-down beside the keyboard, shoulders squared, monitor notifications blurred behind them, notebook open but untouched, upper body visible",
     },
     "what you control": {
-        "object_only": "Notebook, pen, closed water glass, and phone arranged beside a laptop on a clean desk, one tidy stack of papers in the foreground, large office windows fading into blur beyond",
+        "object_only": "Notebook, capped pen resting beside it, closed water glass, and phone arranged beside a laptop on a clean desk, one tidy stack of papers in the foreground, large office windows fading into blur beyond, no person visible",
         "hands_only": "Hands drawing two short columns in a notebook beside a laptop, phone shifted out of reach at the edge of the desk, close framing, no face visible",
         "over_shoulder": "Over-the-shoulder view of a worker writing in a notebook beside a laptop, only a few clear bullet lines on the page, the rest of the office soft and distant behind them",
         "environment": "Ordered workstation with one chair, one laptop, one notebook, and almost no clutter, open floor office receding into blur behind the desk, no person visible",
@@ -947,8 +947,8 @@ def _generic_mode_prompt(mode: str, subject: str, scene_prompt: str, narration_s
 
     if mode == "object_only":
         return (
-            f"Symbolic object shot in a {location}, featuring {details} in the foreground, "
-            f"{background}, no person visible, no hands, no arms, no human body parts in frame"
+            f"Still-life object shot in a {location}, featuring {details} in the foreground, "
+            f"{background}, no person visible, no hands, no arms, no human body parts in frame, no one using the objects"
         )
     if mode == "hands_only":
         action = rng.choice([
@@ -1031,20 +1031,22 @@ STYLE_FRAGMENT_FRAGMENTS = [
 # Desk-scene specific negative prompt
 DESK_NEGATIVE_PROMPT = (
     "blurry, low quality, deformed, cluttered desk, text, logo, watermark, "
+    "blurry, low quality, deformed, cluttered desk, text, logo, watermark, "
     "overexposed, bad hands, awkward hand pose, extra hands, extra fingers, visible hand, partial hand, cropped hand, arm in frame, human limb, "
+    "person, human, face, head, torso, body, upper body, worker, writer, someone holding pen, "
     "missing fingers, duplicate objects, distorted phone, malformed laptop, "
     "illegible writing, plastic texture, oversmoothed surfaces"
 )
 
 # Translate abstract takeaways into concrete physical actions/objects
 TAKEAWAY_MAP = {
-    "pause before responding": "hand placing phone face-down beside keyboard",
+    "pause before responding": "phone placed face-down beside keyboard",
     "focus on what you control": "notebook beside open laptop",
     "stop doomscrolling": "smartphone placed face-down and moved away from workspace",
     "discipline over mood": "pen beside notebook at tidy desk",
-    "respond intentionally": "hand placing phone face-down beside keyboard",
+    "respond intentionally": "phone placed face-down beside keyboard",
     "one next task": "notebook beside open laptop",
-    "breathe before acting": "hand above keyboard",
+    "breathe before acting": "keyboard, notebook, and still coffee cup",
     "control the impulse": "laptop closed, notebook open",
     "silence the noise": "smartphone face-down",
     "return to the work": "notebook open, phone face-down",
@@ -1052,8 +1054,8 @@ TAKEAWAY_MAP = {
 
 # Topic-specific fallback templates (preferred prompts for recurring topics)
 TOPIC_FALLBACKS = {
-    "doomscroll": "Hand sliding a smartphone face-down beside a notebook and half-open laptop, rainy city light in the window, tight editorial close-up",
-    "doomscrolling": "Hand sliding a smartphone face-down beside a notebook and half-open laptop, rainy city light in the window, tight editorial close-up",
+    "doomscroll": "Smartphone face-down beside a notebook and half-open laptop, rainy city light in the window, tight editorial close-up, no person visible",
+    "doomscrolling": "Smartphone face-down beside a notebook and half-open laptop, rainy city light in the window, tight editorial close-up, no person visible",
     "pause before responding": "Phone face-down beside a glowing laptop and paper notebook, unread notifications reflecting on a dark monitor behind the desk",
     "pause": "Phone face-down beside a glowing laptop and paper notebook, unread notifications reflecting on a dark monitor behind the desk",
     "focus on what you control": "Notebook, pen, and laptop arranged in one clean pool of light on a desk, background office fading into blur",
