@@ -217,11 +217,8 @@ class SdServerImageGeneration:
             scene_prompt = scene.get("visual_prompt", "")
             mode = self._choose_scene_mode(scene_num)
 
-            # Use desk-scene specific negative prompt for object/hands/desk modes
-            if mode in ["object_only", "hands_only", "over_shoulder"]:
-                scene_negative_prompt = DESK_NEGATIVE_PROMPT
-            else:
-                scene_negative_prompt = negative_prompt
+            # Use desk-scene specific negative prompt for ALL modes - people keep sneaking in
+            scene_negative_prompt = DESK_NEGATIVE_PROMPT
 
             # Set random seed for this scene to ensure variety
             self._set_random_seed()
@@ -994,7 +991,7 @@ def build_narrative_scene_prompt(
     return _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
 
 # Scene modes for variety
-SCENE_MODES = ["object_only", "over_shoulder", "environment", "object_only"]
+SCENE_MODES = ["object_only", "object_only", "object_only", "object_only"]
 
 # Hard-banned abstract words in LLM output
 ABSTRACT_BAN_LIST = [
@@ -1030,10 +1027,13 @@ STYLE_FRAGMENT_FRAGMENTS = [
 
 # Desk-scene specific negative prompt
 DESK_NEGATIVE_PROMPT = (
-    "blurry, low quality, deformed, cluttered desk, text, logo, watermark, "
+    "person, human, face, head, torso, body, upper body, lower body, arm, hand, "
+    "finger, nail, silhouette, shadow of person, silhouette of person, "
+    "man, woman, girl, boy, teenager, adult, person, human being, "
+    "worker, employee, person, worker, writer, someone, anyone, anybody, "
+    "someone holding, someone sitting, someone standing, "
     "blurry, low quality, deformed, cluttered desk, text, logo, watermark, "
     "overexposed, bad hands, awkward hand pose, extra hands, extra fingers, visible hand, partial hand, cropped hand, arm in frame, human limb, "
-    "person, human, face, head, torso, body, upper body, worker, writer, someone holding pen, "
     "missing fingers, duplicate objects, distorted phone, malformed laptop, "
     "illegible writing, plastic texture, oversmoothed surfaces"
 )
@@ -1248,11 +1248,8 @@ class ImageGenerationStage:
             scene_prompt = scene.get("visual_prompt", "")
             mode = self._choose_scene_mode(scene_num)
 
-            # Use desk-scene specific negative prompt for object/hands/desk modes
-            if mode in ["object_only", "hands_only", "over_shoulder"]:
-                scene_negative_prompt = DESK_NEGATIVE_PROMPT
-            else:
-                scene_negative_prompt = negative_prompt
+            # Use desk-scene specific negative prompt for ALL modes - people keep sneaking in
+            scene_negative_prompt = DESK_NEGATIVE_PROMPT
 
             # Set random seed for this scene to ensure variety
             self._set_random_seed()
