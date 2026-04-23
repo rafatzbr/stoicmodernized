@@ -1,12 +1,12 @@
 {
-  "title": "Set Work Boundaries Without Getting Fired",
+  "title": "Stay Calm During Layoff Anxiety",
   "topic": "",
   "channelName": "Stoic Modernized",
   "channelDescription": "Ancient logic for the high-performance digital age",
   "mode": "portrait",
   "platform": "tiktok",
   "fps": 30,
-  "durationInSeconds": 67.68,
+  "durationInSeconds": 60.792,
   "audioSrc": "audio/narration.mp3",
   "backgroundMusicSrc": "audio/background_music.mp3",
   "backgroundMusicVolume": 0.15,
@@ -16,116 +16,128 @@
       "sceneNumber": 1,
       "imageSrc": "images/scene_001.jpg",
       "startTime": 0.1,
-      "endTime": 16.65,
-      "narrationSegment": "Your job is demanding more than your time, it's stealing your peace. You fear that drawing a line will get you fired, but staying silent guarantees burnout. The anxiety of overcommitting is real, yet the cost of saying yes to everything is your own well-being.",
-      "textOverlay": "Pause First",
+      "endTime": 14.887,
+      "narrationSegment": "The fear of losing your job can paralyze your best work. Stop trying to control the outcome of layoffs and start controlling your response. Uncertainty breeds anxiety, but you can choose to meet it with clarity instead of panic.",
+      "textOverlay": "What You Control",
       "animationStyle": "zoom"
     },
     {
       "sceneNumber": 2,
       "imageSrc": "images/scene_002.jpg",
-      "startTime": 16.65,
-      "endTime": 25.15,
-      "narrationSegment": "Marcus Aurelius faced constant political games and manipulation, yet he maintained his composure by focusing only on what he could control.",
-      "textOverlay": "What You Control",
+      "startTime": 14.887,
+      "endTime": 24.537,
+      "narrationSegment": "Marcus Aurelius taught that external events are beyond our command, but our judgments and actions remain ours. This is the dichotomy of control.",
+      "textOverlay": "Control Your Part",
       "animationStyle": "zoom"
     },
     {
       "sceneNumber": 3,
       "imageSrc": "images/scene_003.jpg",
-      "startTime": 25.15,
-      "endTime": 39.25,
-      "narrationSegment": "This is the dichotomy of control: your effort and character are yours to manage, while others' reactions and office politics are not. By detaching your self-worth from external approval, you become harder to provoke or manipulate.",
-      "textOverlay": "Control Your Part",
-      "animationStyle": "fade"
+      "startTime": 24.537,
+      "endTime": 34.925,
+      "narrationSegment": "When you worry about a layoff, you are fighting a battle you cannot win. Redirect that energy toward what you can actually influence: your preparation and your composure.",
+      "textOverlay": "Worry Layoff",
+      "animationStyle": "zoom"
     },
     {
       "sceneNumber": 4,
       "imageSrc": "images/scene_004.jpg",
-      "startTime": 39.25,
-      "endTime": 48.162,
-      "narrationSegment": "Translate this into a concrete routine: when a deadline is shifted or a request feels unreasonable, take a deliberate pause before responding.",
-      "textOverlay": "Translate Concrete",
-      "animationStyle": "zoom"
+      "startTime": 34.925,
+      "endTime": 43.225,
+      "narrationSegment": "Turn this philosophy into a daily routine. Update your resume and reach out to your network as concrete acts of agency.",
+      "textOverlay": "Turn Philosophy",
+      "animationStyle": "fade"
     },
     {
       "sceneNumber": 5,
       "imageSrc": "images/scene_005.jpg",
-      "startTime": 48.162,
-      "endTime": 63.087,
-      "narrationSegment": "Do not react with ego or immediate agreement; instead, state your current capacity clearly and professionally. Treat stressful meetings as training reps for patience, using the moment to practice calm judgment rather than emotional defense.",
+      "startTime": 43.225,
+      "endTime": 56.337,
+      "narrationSegment": "In stressful meetings, practice the pause-before-response technique to maintain professional judgment. Treat every task as an opportunity to demonstrate resilience and keep your mind sharp regardless of external noise.",
       "textOverlay": "After The Meeting",
       "animationStyle": "zoom"
     },
     {
       "sceneNumber": 6,
       "imageSrc": "images/scene_006.jpg",
-      "startTime": 63.087,
-      "endTime": 67.68,
-      "narrationSegment": "Subscribe for more ways to protect your mind without losing your career.",
+      "startTime": 56.337,
+      "endTime": 60.792,
+      "narrationSegment": "Subscribe for more practical Stoic tools for modern stress.",
       "textOverlay": "Use This Today",
-      "animationStyle": "fade"
+      "animationStyle": "zoom"
     }
   ],
   "subtitles": [
     {
       "startTime": 0.1,
-      "endTime": 4.575,
-      "text": "Your job is demanding more than your time, it's stealing your peace.",
+      "endTime": 4.087,
+      "text": "The fear of losing your job can paralyze your best work.",
       "words": null
     },
     {
-      "startTime": 4.575,
-      "endTime": 10.2,
-      "text": "You fear that drawing a line will get you fired, but staying silent guarantees burnout.",
+      "startTime": 4.087,
+      "endTime": 9.212,
+      "text": "Stop trying to control the outcome of layoffs and start controlling your response.",
       "words": null
     },
     {
-      "startTime": 10.2,
-      "endTime": 16.65,
-      "text": "The anxiety of overcommitting is real, yet the cost of saying yes to everything is your own well-being.",
+      "startTime": 9.212,
+      "endTime": 14.887,
+      "text": "Uncertainty breeds anxiety, but you can choose to meet it with clarity instead of panic.",
       "words": null
     },
     {
-      "startTime": 16.65,
-      "endTime": 25.15,
-      "text": "Marcus Aurelius faced constant political games and manipulation, yet he maintained his composure by focusing only on what he could control.",
+      "startTime": 14.887,
+      "endTime": 21.787,
+      "text": "Marcus Aurelius taught that external events are beyond our command, but our judgments and actions remain ours.",
       "words": null
     },
     {
-      "startTime": 25.15,
-      "endTime": 33.237,
-      "text": "This is the dichotomy of control: your effort and character are yours to manage, while others reactions and office politics are not.",
+      "startTime": 21.787,
+      "endTime": 24.537,
+      "text": "This is the dichotomy of control.",
       "words": null
     },
     {
-      "startTime": 33.237,
-      "endTime": 39.25,
-      "text": "By detaching your self-worth from external approval, you become harder to provoke or manipulate.",
+      "startTime": 24.537,
+      "endTime": 28.987,
+      "text": "When you worry about a layoff, you are fighting a battle you cannot win.",
       "words": null
     },
     {
-      "startTime": 39.25,
-      "endTime": 48.162,
-      "text": "Translate this into a concrete routine: when a deadline is shifted or a request feels unreasonable, take a deliberate pause before responding.",
+      "startTime": 28.987,
+      "endTime": 34.925,
+      "text": "Redirect that energy toward what you can actually influence: your preparation and your composure.",
       "words": null
     },
     {
-      "startTime": 48.162,
-      "endTime": 55.462,
-      "text": "Do not react with ego or immediate agreement; instead, state your current capacity clearly and professionally.",
+      "startTime": 34.925,
+      "endTime": 38.237,
+      "text": "Turn this philosophy into a daily routine.",
       "words": null
     },
     {
-      "startTime": 55.462,
-      "endTime": 63.087,
-      "text": "Treat stressful meetings as training reps for patience, using the moment to practice calm judgment rather than emotional defense.",
+      "startTime": 38.237,
+      "endTime": 43.225,
+      "text": "Update your resume and reach out to your network as concrete acts of agency.",
       "words": null
     },
     {
-      "startTime": 63.087,
-      "endTime": 67.68,
-      "text": "Subscribe for more ways to protect your mind without losing your career.",
+      "startTime": 43.225,
+      "endTime": 49.412,
+      "text": "In stressful meetings, practice the pause-before-response technique to maintain professional judgment.",
+      "words": null
+    },
+    {
+      "startTime": 49.412,
+      "endTime": 56.337,
+      "text": "Treat every task as an opportunity to demonstrate resilience and keep your mind sharp regardless of external noise.",
+      "words": null
+    },
+    {
+      "startTime": 56.337,
+      "endTime": 60.792,
+      "text": "Subscribe for more practical Stoic tools for modern stress.",
       "words": null
     }
   ],

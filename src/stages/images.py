@@ -1202,7 +1202,7 @@ class ImageGenerationStage:
 
         scenes = scene_plan.get("scenes", []) if isinstance(scene_plan, dict) else []
         for scene in scenes:
-            if not isinstance.scene(scene, dict):
+            if not isinstance(scene, dict):
                 continue
             for key in ("text_overlay", "narration_segment", "visual_prompt"):
                 value = scene.get(key)

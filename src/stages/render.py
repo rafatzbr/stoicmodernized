@@ -59,21 +59,13 @@ class VideoRenderer:
         )
 
         if image_paths:
-            subprocess.run(
-                [
-                    "ffmpeg",
-                    "-y",
-                    "-i",
-                    str(image_paths[0]),
-                    "-vf",
-                    f"scale={config.width}:{config.height}:force_original_aspect_ratio=increase,crop={config.width}:{config.height}",
-                    "-frames:v",
-                    "1",
-                    str(thumbnail_path),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
+            # Generate a proper thumbnail with title overlay and branding
+            thumbnail = self._generate_thumbnail(
+                source_image=image_paths[0],
+                title=job_record.title if hasattr(job_record, "title") and job_record.title else "Stoic Modernized",
+                output_path=thumbnail_path,
+                width=config.width,
+                height=config.height,
             )
 
         duration = audio_duration or sum(durations)
@@ -82,6 +74,116 @@ class VideoRenderer:
             duration=duration,
             thumbnail_path=str(thumbnail_path),
         )
+
+    def _generate_thumbnail(
+        self,
+        *,
+        source_image: Path,
+        title: str,
+        output_path: Path,
+        width: int,
+        height: int,
+    ) -> Path:
+        """Generate a proper thumbnail with title overlay, branding, and contrast.
+
+        Creates a YouTube-ready thumbnail (1280x720) with:
+        - The source image as background with a dark overlay for readability
+        - Bold title text with shadow
+        - Channel branding at the bottom
+        """
+        from PIL import Image, ImageDraw, ImageFont
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        thumb_width = 1280
+        thumb_height = 720
+
+        # Load source image and use it as background
+        with Image.open(source_image) as src:
+            src = src.convert("RGB")
+            # Resize to fit thumbnail dimensions while preserving aspect ratio
+            src.thumbnail((thumb_width, thumb_height), Image.Resampling.LANCZOS)
+            thumb_bg = Image.new("RGB", (thumb_width, thumb_height), (0, 0, 0))
+            # Center the source image
+            thumb_bg.paste(src, ((thumb_width - src.width) // 2, (thumb_height - src.height) // 2))
+
+        # Apply a dark gradient overlay for text readability
+        overlay = Image.new("RGBA", (thumb_width, thumb_height), (0, 0, 0, 0))
+        draw_overlay = ImageDraw.Draw(overlay)
+        for y in range(thumb_height):
+            alpha = min(int(140 * (y / thumb_height)), 160)
+            draw_overlay.line([(0, y), (thumb_width, y)], fill=(0, 0, 0, alpha))
+
+        thumb_bg = thumb_bg.convert("RGBA")
+        thumb_bg = Image.alpha_composite(thumb_bg, overlay)
+
+        # Draw text
+        draw = ImageDraw.Draw(thumb_bg)
+
+        # Try to load a bold font, fall back to default
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        ]
+        font_size = 48
+        font = None
+        for fp in font_paths:
+            try:
+                font = ImageFont.truetype(fp, font_size)
+                break
+            except Exception:
+                continue
+        if font is None:
+            font = ImageFont.load_default()
+
+        # Wrap title to fit
+        lines = []
+        words = title.split()
+        line = ""
+        max_width = thumb_width - 80
+        for word in words:
+            test = f"{line} {word}".strip() if line else word
+            bbox = draw.textbbox((0, 0), test, font=font)
+            text_w = bbox[2] - bbox[0]
+            if text_w <= max_width:
+                line = test
+            else:
+                lines.append(line)
+                line = word
+        if line:
+            lines.append(line)
+
+        # Draw each title line with shadow for readability
+        for i, text_line in enumerate(lines):
+            bbox = draw.textbbox((0, 0), text_line, font=font)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            x = (thumb_width - text_w) // 2
+            y = 60 + i * (font_size + 12)
+            # Shadow
+            draw.text((x + 2, y + 2), text_line, font=font, fill=(0, 0, 0, 200))
+            # Main text in white with gold accent
+            draw.text((x, y), text_line, font=font, fill=(255, 255, 255))
+
+        # Channel branding at bottom
+        brand_font_size = 28
+        try:
+            brand_font = ImageFont.truetype(font_paths[0], brand_font_size)
+        except Exception:
+            brand_font = font
+
+        brand_text = "Stoic Modernized"
+        brand_bbox = draw.textbbox((0, 0), brand_text, font=brand_font)
+        brand_w = brand_bbox[2] - brand_bbox[0]
+        brand_x = (thumb_width - brand_w) // 2
+        brand_y = thumb_height - 80
+        draw.text((brand_x + 2, brand_y + 2), brand_text, font=brand_font, fill=(0, 0, 0, 180))
+        draw.text((brand_x, brand_y), brand_text, font=brand_font, fill=(212, 175, 55))  # Gold
+
+        # Save as JPEG
+        thumb_bg = thumb_bg.convert("RGB")
+        thumb_bg.save(str(output_path), "JPEG", quality=90)
+        return output_path
 
     async def _get_audio_duration(self, audio_path: Path) -> Optional[float]:
         try:

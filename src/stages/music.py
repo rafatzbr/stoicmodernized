@@ -205,10 +205,17 @@ class BackgroundMusicStage:
         self.downloader = PixabayMusicDownloader()
 
     def build_query(self, topic: str, query: Optional[str] = None) -> str:
-        if query:
+        # Defensive: query may be a Typer OptionInfo or other non-string type
+        if query is not None and isinstance(query, str):
             return query.strip()
 
-        base_query = settings.background_music_query.strip()
+        base_query = settings.background_music_query
+        # Defensive: config value may unexpectedly be a Typer OptionInfo
+        if not isinstance(base_query, str):
+            base_query = str(base_query).strip() if base_query else "calm ambient instrumental background music"
+        else:
+            base_query = base_query.strip()
+
         topic_keywords = " ".join(re.findall(r"[A-Za-z]+", topic)[:4]).strip().lower()
         if topic_keywords and topic_keywords not in base_query.lower():
             return f"{base_query} {topic_keywords}".strip()

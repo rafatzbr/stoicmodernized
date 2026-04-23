@@ -646,7 +646,7 @@ def run(
         renderers_to_run = [renderer] if renderer != "both" else ["ffmpeg", "remotion"]
         for r in renderers_to_run:
             console.print(f"[bold cyan]Rendering with {r}...[/bold cyan]")
-            render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, renderer_type=r, platform=platform)
+            render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, renderer_type=r)
             console.print(f"[dim]Render ({r}) complete.[/dim]")
 
         metadata(job_id=job_id, mock=script_stage_mock)
