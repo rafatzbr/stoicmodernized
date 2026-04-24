@@ -403,8 +403,8 @@ def render(
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
     video_mode: VideoMode = typer.Option(VideoMode.SHORT, "--video-mode", help="Video mode: short or long"),
     renderer_type: str = typer.Option(
-        "ffmpeg", "--renderer", "-r",
-        help="Renderer to use: ffmpeg or remotion"
+        "remotion", "--renderer", "-r",
+        help="Renderer to use: remotion or ffmpeg"
     ),
     platform: Optional[RemotionPlatform] = typer.Option(
         None,
@@ -473,6 +473,19 @@ def render(
             height=height,
         )
         result = asyncio.run(renderer.run(config))
+
+    render_manifest_path = get_job_dir(job_id) / "render_manifest.json"
+    save_json(
+        {
+            "renderer": renderer_type,
+            "video_mode": video_mode.value,
+            "video_path": result['video_path'] if isinstance(result, dict) else result.video_path,
+            "background_music_included": bool(background_music_path),
+            "background_music_path": str(background_music_path) if background_music_path else None,
+            "rendered_at": datetime.now(UTC).isoformat(),
+        },
+        render_manifest_path,
+    )
 
     db.update_job(
         job_id,
@@ -563,6 +576,7 @@ def upload(
             video_path=resolved_video_path,
             metadata=metadata_payload,
             thumbnail_path=job_record.thumbnail_path,
+            job_dir=str(settings.jobs_dir / job_id),
         )
     )
 
@@ -591,7 +605,7 @@ def run(
     provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (local, edge, elevenlabs, or voxcpm)"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
     video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
-    renderer: str = typer.Option("ffmpeg", "--renderer", "-r", help="Renderer to use: ffmpeg, remotion, or both"),
+    renderer: str = typer.Option("remotion", "--renderer", "-r", help="Renderer to use: remotion, ffmpeg, or both"),
     placeholder_images: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
     platform: Optional[RemotionPlatform] = typer.Option(
         None,
@@ -643,7 +657,7 @@ def run(
         subtitles(job_id=job_id, mock=media_stage_mock)
 
         # Render stage - supports ffmpeg, remotion, or both
-        renderers_to_run = [renderer] if renderer != "both" else ["ffmpeg", "remotion"]
+        renderers_to_run = [renderer] if renderer != "both" else ["remotion", "ffmpeg"]
         for r in renderers_to_run:
             console.print(f"[bold cyan]Rendering with {r}...[/bold cyan]")
             render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, renderer_type=r)

@@ -1,6 +1,7 @@
 """YouTube upload stage module."""
 
 import asyncio
+import json
 import os
 import re
 from pathlib import Path
@@ -30,6 +31,7 @@ class YouTubeUploader:
         video_path: str,
         metadata: dict,
         thumbnail_path: Optional[str] = None,
+        job_dir: Optional[str] = None,
     ) -> UploadResult:
         """Upload video to YouTube.
 
@@ -41,10 +43,68 @@ class YouTubeUploader:
         Returns:
             UploadResult with upload status and video URL
         """
+        guardrail_error = self._background_music_guardrail(job_dir)
+        if guardrail_error:
+            return UploadResult(
+                video_id=None,
+                video_url=None,
+                upload_status="blocked",
+                error=guardrail_error,
+            )
+
         if self.mock:
             return await self._mock_upload(video_path, metadata)
         else:
             return await self._real_upload(video_path, metadata, thumbnail_path)
+
+    def _background_music_guardrail(self, job_dir: Optional[str]) -> Optional[str]:
+        if settings.youtube_allow_background_music_uploads:
+            return None
+        if not job_dir:
+            return None
+
+        job_dir_path = Path(job_dir)
+        render_manifest_path = job_dir_path / "render_manifest.json"
+        if render_manifest_path.exists():
+            try:
+                render_manifest = json.loads(render_manifest_path.read_text())
+                if not render_manifest.get("background_music_included"):
+                    return None
+            except Exception:
+                pass
+
+        audio_dir = job_dir_path / "audio"
+        if not audio_dir.exists():
+            return None
+
+        music_files = [
+            audio_dir / "background_music.mp3",
+            audio_dir / "background_music.wav",
+            audio_dir / "background_music.ogg",
+            audio_dir / "background_music.m4a",
+        ]
+        has_background_music = any(path.exists() for path in music_files)
+        if not has_background_music:
+            return None
+
+        details = ""
+        metadata_path = audio_dir / "background_music.json"
+        if metadata_path.exists():
+            try:
+                payload = json.loads(metadata_path.read_text())
+                track = payload.get("track") or {}
+                title = track.get("title") or "unknown"
+                artist = track.get("artist") or "unknown"
+                provider = payload.get("provider") or "unknown"
+                details = f" Detected track: {title} by {artist} ({provider})."
+            except Exception:
+                pass
+
+        return (
+            "Upload blocked by music safety guardrail: background music is present and "
+            "youtube_allow_background_music_uploads is disabled." + details +
+            " Remove the background track or explicitly override the config after manual review."
+        )
 
     async def _mock_upload(
         self, video_path: str, metadata: dict
