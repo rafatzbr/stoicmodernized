@@ -430,17 +430,23 @@ def render(
     height = settings.short_video_height if video_mode == VideoMode.SHORT else settings.video_height
 
     background_music_path: Optional[Path] = None
-    if settings.background_music_enabled and settings.background_music_provider == "pixabay":
+    if settings.background_music_enabled:
         background_stage = BackgroundMusicStage(job_id=job_id)
         try:
-            if background_stage.output_path.exists():
-                background_music_path = background_stage.output_path
+            existing_track = None
+            for pattern in ("background_music.mp3", "background_music.wav", "background_music.ogg", "background_music.m4a"):
+                candidate = background_stage.audio_dir / pattern
+                if candidate.exists():
+                    existing_track = candidate
+                    break
+            if existing_track is not None:
+                background_music_path = existing_track
             else:
                 background_music_path = asyncio.run(
                     background_stage.run(topic=job_record.topic, audio_path=job_record.audio_path)
                 )
         except Exception as exc:
-            console.print(f"[yellow]Warning: Background music download skipped: {exc}[/yellow]")
+            console.print(f"[yellow]Warning: Background music skipped: {exc}[/yellow]")
 
     if renderer_type == "remotion":
         mode = "portrait" if video_mode == VideoMode.SHORT else "landscape"
@@ -648,7 +654,7 @@ def run(
         script(job_id=job_id, mock=script_stage_mock, video_mode=video_mode)
         scene(job_id=job_id, mock=scene_stage_mock)
         tts(job_id=job_id, provider=provider, mock=media_stage_mock)
-        if settings.background_music_enabled and settings.background_music_provider == "pixabay":
+        if settings.background_music_enabled:
             try:
                 music(job_id=job_id)
             except Exception as exc:

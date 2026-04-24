@@ -72,9 +72,9 @@ class Settings(BaseSettings):
     short_target_scene_count: int = 6
     long_max_duration_seconds: int = 900
     video_fps: int = 30
-    background_music_volume: float = 0.15
-    background_music_enabled: bool = False
-    background_music_provider: str = "pixabay"
+    background_music_volume: float = 0.08
+    background_music_enabled: bool = True
+    background_music_provider: str = "curated"
     background_music_query: str = "calm ambient instrumental background music"
     background_music_min_duration: int = 30
     background_music_max_duration: int = 600

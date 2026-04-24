@@ -1,9 +1,12 @@
-"""Background music download stage using Pixabay Music scraping."""
+"""Background music stage with curated-library support and legacy Pixabay scraping."""
 
 from __future__ import annotations
 
 import json
+import random
 import re
+import shutil
+import subprocess
 import time
 import urllib.parse
 import urllib.request
@@ -193,8 +196,99 @@ class PixabayMusicDownloader:
         return output_path
 
 
+class CuratedMusicLibrary:
+    """Select only manually approved local tracks."""
+
+    def __init__(self) -> None:
+        self.library_root = settings.project_root / "music"
+        self.tracklist_path = self.library_root / "tracklist.json"
+
+    def load_tracks(self) -> list[dict[str, Any]]:
+        if not self.tracklist_path.exists():
+            return []
+        payload = json.loads(self.tracklist_path.read_text())
+        return payload.get("tracks", [])
+
+    def _duration_seconds(self, path: Path) -> Optional[float]:
+        try:
+            probe = subprocess.run(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    str(path),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return float(probe.stdout.strip())
+        except Exception:
+            return None
+
+    def eligible_tracks(self) -> list[dict[str, Any]]:
+        tracks = []
+        for track in self.load_tracks():
+            if not track.get("approved_for_youtube"):
+                continue
+            if not track.get("instrumental"):
+                continue
+            if not track.get("low_background"):
+                continue
+            track_path = self.library_root / track.get("path", "")
+            if not track_path.exists():
+                continue
+            copy = dict(track)
+            copy["absolute_path"] = str(track_path)
+            copy["duration"] = track.get("duration") or self._duration_seconds(track_path)
+            tracks.append(copy)
+        return tracks
+
+    def choose_track(
+        self,
+        *,
+        min_duration: int,
+        max_duration: int,
+        target_duration: Optional[float],
+    ) -> dict[str, Any]:
+        tracks = self.eligible_tracks()
+        if not tracks:
+            raise RuntimeError(
+                "No approved curated background music tracks were found. Add tracks to music/tracklist.json first."
+            )
+
+        duration_filtered = [
+            track
+            for track in tracks
+            if track.get("duration") is not None and min_duration <= float(track["duration"]) <= max_duration
+        ]
+        candidates = duration_filtered or tracks
+
+        def score(track: dict[str, Any]) -> tuple[float, float, float]:
+            duration = float(track.get("duration") or target_duration or min_duration)
+            distance_anchor = target_duration or duration or float(min_duration)
+            distance = abs(duration - distance_anchor)
+            moods = track.get("moods") or []
+            calm_bonus = -1.0 if any(m in {"calm", "ambient", "minimal", "meditative"} for m in moods) else 0.0
+            rand = random.random() * 0.01
+            return (distance, calm_bonus, rand)
+
+        return sorted(candidates, key=score)[0]
+
+    def copy_track(self, track: dict[str, Any], output_path: Path) -> Path:
+        src = Path(track["absolute_path"])
+        resolved_output = output_path.with_suffix(src.suffix.lower() or ".mp3")
+        resolved_output.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, resolved_output)
+        return resolved_output
+
+
 class BackgroundMusicStage:
-    """Download royalty-free background music for a job."""
+    """Prepare background music for a job."""
 
     def __init__(self, job_id: str):
         self.job_id = job_id
@@ -203,14 +297,13 @@ class BackgroundMusicStage:
         self.output_path = self.audio_dir / "background_music.mp3"
         self.metadata_path = self.audio_dir / "background_music.json"
         self.downloader = PixabayMusicDownloader()
+        self.curated_library = CuratedMusicLibrary()
 
     def build_query(self, topic: str, query: Optional[str] = None) -> str:
-        # Defensive: query may be a Typer OptionInfo or other non-string type
         if query is not None and isinstance(query, str):
             return query.strip()
 
         base_query = settings.background_music_query
-        # Defensive: config value may unexpectedly be a Typer OptionInfo
         if not isinstance(base_query, str):
             base_query = str(base_query).strip() if base_query else "calm ambient instrumental background music"
         else:
@@ -224,8 +317,6 @@ class BackgroundMusicStage:
     def _get_audio_duration(self, audio_path: Optional[str]) -> Optional[float]:
         if not audio_path:
             return None
-
-        import subprocess
 
         try:
             probe = subprocess.run(
@@ -257,8 +348,39 @@ class BackgroundMusicStage:
             min_duration = max(min_duration, int(max(15, target_duration * 0.6)))
             max_duration = min(max_duration, int(max(min_duration, target_duration * 1.75)))
 
-        search_query = self.build_query(topic, query=query)
         started_at = time.time()
+        provider = (settings.background_music_provider or "curated").lower().strip()
+
+        if provider == "curated":
+            track = self.curated_library.choose_track(
+                min_duration=min_duration,
+                max_duration=max_duration,
+                target_duration=target_duration,
+            )
+            output_path = self.curated_library.copy_track(track, self.output_path)
+            save_json(
+                {
+                    "provider": "curated",
+                    "topic": topic,
+                    "downloaded_at": time.time(),
+                    "target_duration": target_duration,
+                    "min_duration": min_duration,
+                    "max_duration": max_duration,
+                    "track": track,
+                    "output": str(output_path),
+                    "license": track.get("license"),
+                    "approved_for_youtube": track.get("approved_for_youtube", False),
+                    "instrumental": track.get("instrumental", False),
+                    "low_background": track.get("low_background", False),
+                    "attribution_required": track.get("attribution_required", False),
+                    "attribution_text": track.get("attribution_text"),
+                    "elapsed_seconds": round(time.time() - started_at, 2),
+                },
+                self.metadata_path,
+            )
+            return output_path
+
+        search_query = self.build_query(topic, query=query)
         tracks = self.downloader.search(search_query)
         track = self.downloader.choose_track(
             tracks,
@@ -279,6 +401,9 @@ class BackgroundMusicStage:
                 "track": track,
                 "output": str(output_path),
                 "license": "Pixabay Content License",
+                "approved_for_youtube": False,
+                "instrumental": True,
+                "low_background": True,
                 "elapsed_seconds": round(time.time() - started_at, 2),
             },
             self.metadata_path,

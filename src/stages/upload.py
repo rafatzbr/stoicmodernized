@@ -96,14 +96,18 @@ class YouTubeUploader:
                 title = track.get("title") or "unknown"
                 artist = track.get("artist") or "unknown"
                 provider = payload.get("provider") or "unknown"
+                approved = bool(payload.get("approved_for_youtube"))
+                instrumental = bool(payload.get("instrumental"))
+                low_background = bool(payload.get("low_background"))
+                if provider == "curated" and approved and instrumental and low_background:
+                    return None
                 details = f" Detected track: {title} by {artist} ({provider})."
             except Exception:
                 pass
 
         return (
-            "Upload blocked by music safety guardrail: background music is present and "
-            "youtube_allow_background_music_uploads is disabled." + details +
-            " Remove the background track or explicitly override the config after manual review."
+            "Upload blocked by music safety guardrail: background music is present but not from the approved curated library." + details +
+            " Remove the background track or replace it with a curated approved instrumental track."
         )
 
     async def _mock_upload(
