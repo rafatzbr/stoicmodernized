@@ -17,7 +17,7 @@ The configuration module (`src/config.py`) provides all application settings via
 │  └────────────────────────────────────────────┘  │
 │                                                  │
 │  Enums:                                          │
-│  ├── TTSProvider (local, edge, elevenlabs, ...)  │  │
+│  ├── TTSProvider (edge)                          │  │
 │  ├── ImageProvider (sd_cli, sd_server, ...)      │  │
 │  ├── YouTubePrivacy (public, unlisted, private)  │  │
 │  ├── VideoMode (short, long)                     │  │
@@ -36,7 +36,7 @@ The configuration module (`src/config.py`) provides all application settings via
 ### Settings (`src/config.py`)
 
 The `Settings` class inherits from `pydantic_settings.BaseSettings` with the following model config:
-- `env_file=".env"` — loads from `.env` in project root
+- `env_file=str(PROJECT_ROOT / ".env")` — loads from the project-root `.env` regardless of current working directory
 - `env_file_encoding="utf-8"`
 - `case_sensitive=False` — env vars are case-insensitive
 - `extra="ignore"` — unknown env vars are silently ignored
@@ -48,7 +48,7 @@ Key properties:
 
 | Enum | Values | Usage |
 |------|--------|-------|
-| `TTSProvider` | `local`, `edge`, `elevenlabs`, `voxcpm` | TTS provider selection |
+| `TTSProvider` | `edge` | TTS provider selection |
 | `ImageProvider` | `sd_cli`, `sd_server`, `dall_e` | Image generation provider |
 | `YouTubePrivacy` | `public`, `unlisted`, `private` | YouTube video privacy |
 | `VideoMode` | `short`, `long` | Output video mode |
@@ -67,6 +67,7 @@ Key properties:
 - **Channel switching**: `default_channel` selects between `"Stoic Modernized"` and `"AI Signal"` templates. Each has its own:
   - `channel_name` / `ai_signal_channel_name`
   - `channel_voice` / `ai_signal_channel_voice`
+  - `tts_voice` / `ai_signal_tts_voice`
   - `ai_signal_channel_handle`
 - **Video mode**: `default_video_mode` controls whether short or long videos are produced by default.
 - **TTS voice**: `tts_voice` has an alias: `TTS_VOICE` or `TS_VOICE` env vars both map to it.
@@ -100,7 +101,7 @@ Key properties:
 | `settings.background_music_volume` | float | `0.08` | Music volume (8%) |
 | `settings.background_music_enabled` | bool | `True` | Music gate |
 | `settings.subtitle_asr_enabled` | bool | `True` | Subtitle gate |
-| `settings.force_placeholder_images` | bool | `False` | Image skip |
+| `settings.force_placeholder_images` | bool | `False` | Development-only image skip; real Stoic runs still require explicit override |
 
 ## Integration Points
 

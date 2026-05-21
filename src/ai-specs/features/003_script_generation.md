@@ -55,16 +55,19 @@ The script generation stage transforms research results into a structured video 
 ## Data Flow
 
 1. **Input**: `ResearchResult` from research stage (loaded from `research.json`)
-2. **LLM Prompt**: Research data + topic + niche → LLM generates structured script
-3. **Fallback**: If local LLM fails, falls back to mock data
-4. **Validation**: Script is validated against the `Script` Pydantic model
-5. **Output**: `script.json` saved to `output/jobs/{job_id}/script/`
-6. **DB update**: `db.update_job(job_id, status="script_complete", script_path=..., error_message=None)`
+2. **Council workflow**: Research data first becomes a Whiskers brief, then a Ledger strategy pass can inject recent channel analytics guidance into packaging and script planning
+3. **LLM Prompt**: Research data + council guidance → LLM generates structured script
+4. **Fallback**: If local LLM fails, falls back to mock data
+5. **Validation**: Script is validated against the `Script` Pydantic model
+6. **Output**: `script.json` saved to `output/jobs/{job_id}/script/`
+7. **DB update**: `db.update_job(job_id, status="script_complete", script_path=..., error_message=None)`
 
 ## Business Rules
 
 - **Script generation error**: If LLM call fails, `ScriptGenerationError` is raised. The stage does NOT fail silently — it saves a `script_generation_report.json` with details.
 - **Error reporting**: Failed runs produce `script_generation_report.json` in the script directory with fields: `local_llm_success`, `script_generation_succeeded`, `failure_reason`.
+- **Council analytics guidance**: For Stoic Modernized council runs, the script stage may read the latest saved workspace analytics artifacts and feed them into a Ledger strategy pass before drafting/title packaging.
+- **Graceful degradation**: If no analytics artifacts exist, Ledger receives an explicit "no saved analytics artifacts" context and the rest of the council workflow still runs.
 - **Two output modes**: 
   - `VideoMode.LONG`: Full narration with detailed chapters
   - `VideoMode.SHORT`: Condensed narration for vertical/shorts format

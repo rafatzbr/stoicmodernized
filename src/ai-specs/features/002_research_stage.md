@@ -56,15 +56,19 @@ The research stage gathers relevant source material for a given topic. It search
 ## Data Flow
 
 1. **Input**: `topic` string (e.g., "Stoic approaches to workplace conflict")
-2. **Search**: Web search for relevant sources
-3. **Score**: Each source scored for relevance (0.0–1.0)
-4. **Synthesize**: Generate key insights and workplace applications
-5. **Output**: `ResearchResult` saved as JSON to `output/jobs/{job_id}/research/research.json`
-6. **DB update**: `db.update_job(job_id, status="research_complete", research_path=...)`
+2. **Validate topic early**: Reject topics that are too close to recent uploads before expensive stages continue
+3. **Retry with new candidate**: If the topic fails validation, rotate to the next ledger-generated topic and retry within research
+4. **Search**: Web search for relevant sources
+5. **Score**: Each source scored for relevance (0.0–1.0)
+6. **Synthesize**: Generate key insights and workplace applications
+7. **Output**: `ResearchResult` saved as JSON to `output/jobs/{job_id}/research/research.json`
+8. **DB update**: `db.update_job(job_id, status="research_complete", research_path=...)`
 
 ## Business Rules
 
 - **Mock mode**: In mock mode, returns deterministic mock data with predefined sources.
+- **Topic guardrail**: Research validates the requested topic against recent uploads before doing expensive downstream work. If the topic is rejected, research must choose a new candidate topic before proceeding.
+- **Research-stage retries**: Topic duplication and cooldown decisions are handled inside research, not deferred to upload.
 - **Relevance scoring**: Sources must have a relevance score between 0.0 and 1.0 (enforced by Pydantic `Field(ge=0.0, le=1.0)`).
 - **Output format**: Always JSON, always under `output/jobs/{job_id}/research/`.
 - **Source attribution**: Each source must include a `note` explaining its relevance.

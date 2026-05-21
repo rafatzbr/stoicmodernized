@@ -9,7 +9,7 @@ from typing import Optional
 
 CHANNEL_LOGO_PATH = Path('/home/rafatz/media/logo_transparent.png')
 
-from src.config import settings
+from src.config import Channel, settings
 from src.models import Scene, SubtitleSegment
 from src.utils import load_json, save_json
 
@@ -18,10 +18,20 @@ def _clean_video_title(title: Optional[str]) -> Optional[str]:
     if not title:
         return None
     cleaned = str(title).strip()
-    for suffix in (' | Stoic Modernized', ' - Stoic Modernized'):
+    for suffix in (' | Stoic Modernized', ' - Stoic Modernized', ' | The AI Signal', ' - The AI Signal'):
         if cleaned.endswith(suffix):
             cleaned = cleaned[: -len(suffix)].strip()
     return cleaned or None
+
+
+def _default_platform(mode: str, channel: Channel) -> str:
+    if mode != 'portrait':
+        return 'youtube'
+
+    if channel == Channel.STOIC_MODERNIZED:
+        return 'youtube'
+
+    return 'tiktok'
 
 
 class RemotionRenderer:
@@ -36,6 +46,7 @@ class RemotionRenderer:
         fps: int = 30,
         mode: str = 'landscape',  # 'landscape' or 'portrait'
         platform: Optional[str] = None,
+        channel: Channel = settings.default_channel,
     ):
         self.job_id = job_id
         self.frontend_dir = frontend_dir
@@ -43,7 +54,8 @@ class RemotionRenderer:
         self.height = height
         self.fps = fps
         self.mode = mode
-        self.platform = platform or ('tiktok' if mode == 'portrait' else 'youtube')
+        self.platform = platform or _default_platform(mode, channel)
+        self.channel = channel
         self.job_dir = Path('/home/rafatz/projects/stoic-modernized/output/jobs') / job_id
         self.public_dir = self.job_dir / 'public'
         self.output_path = self.job_dir / 'remotion_output.mp4'
@@ -118,6 +130,7 @@ class RemotionRenderer:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(json_file, dest)
 
+        # Always copy branding for Stoic Modernized
         if CHANNEL_LOGO_PATH.exists():
             dest = frontend_public / 'branding' / CHANNEL_LOGO_PATH.name
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -187,17 +200,20 @@ class RemotionRenderer:
 
         # Build scenes array - use relative paths for staticFile()
         remotion_scenes = []
-        for idx, scene in enumerate(scenes, 1):
+        for scene in scenes:
+            scene_num = int(scene.get('scene_number', 0))
             start_time = float(scene.get('start_time', 0) or 0) * timing_scale
             end_time = float(scene.get('end_time', 0) or 0) * timing_scale
             remotion_scenes.append({
-                'sceneNumber': idx,
-                'imageSrc': f'images/scene_{idx:03d}.jpg',
+                'sceneNumber': scene_num,
+                'imageSrc': f'images/scene_{scene_num:03d}.jpg',
                 'startTime': round(start_time, 3),
                 'endTime': round(end_time, 3),
                 'narrationSegment': scene.get('narration_segment', ''),
                 'textOverlay': scene.get('text_overlay'),
                 'animationStyle': scene.get('animation_style'),
+                'sceneType': scene.get('scene_type'),
+                'titleText': scene.get('title_text'),
             })
 
         # Build subtitles array
@@ -231,14 +247,19 @@ class RemotionRenderer:
 
         # Get channel metadata from job data if available
         job_data_path = self.job_dir / 'job.json'
-        channel_name = 'Stoic Modernized'
-        channel_description = 'Ancient logic for the high-performance digital age'
+        channel_name = settings.get_channel_name(self.channel)
+        channel_description = settings.get_channel_description(self.channel)
+        channel = self.channel
         if job_data_path.exists():
             job_data = load_json(job_data_path)
-            channel_name = job_data.get('channel_name', 'Stoic Modernized')
+            try:
+                channel = Channel(job_data.get('channel', channel.value))
+            except Exception:
+                channel = self.channel
+            channel_name = job_data.get('channel_name', settings.get_channel_name(channel))
             channel_description = job_data.get(
                 'channel_description',
-                'Ancient logic for the high-performance digital age',
+                settings.get_channel_description(channel),
             )
 
         # Determine actual video title from job artifacts
@@ -255,11 +276,15 @@ class RemotionRenderer:
             video_title = _clean_video_title(scenes[0].get('topic') or scenes[0].get('title'))
 
         # Get CTA text
-        cta_text = 'subscribe to @stoic-modernized'
+        cta_text = settings.get_channel_cta(channel)
 
         # Use relative path for staticFile()
         audio_relative = audio_path if audio_path else 'audio/narration.mp3'
-        logo_relative = f'branding/{CHANNEL_LOGO_PATH.name}' if CHANNEL_LOGO_PATH.exists() else None
+        logo_relative = (
+            f'branding/{CHANNEL_LOGO_PATH.name}'
+            if CHANNEL_LOGO_PATH.exists()
+            else None
+        )
 
         return {
             'title': video_title or 'Stoic Modernized',

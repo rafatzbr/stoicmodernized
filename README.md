@@ -70,13 +70,10 @@ Each run randomly combines these, so prompts vary while maintaining the channel 
 # Install dependencies
 pip install -e ".[dev]"
 
-# For VoxCPM TTS provider (optional):
-pip install -e ".[tts-voxcpm]"
-
 # Copy environment template
 cp .env.example .env
 
-# Edit .env and add your API keys (optional - mock mode works without)
+# Edit .env and configure Edge TTS voice / API keys as needed
 ```
 
 ### Running the Pipeline
@@ -104,39 +101,10 @@ python -m src.main script --job-id <job_id> --mock
 #### Generate Audio
 
 ```bash
-python -m src.main tts --job-id <job_id> --mock
-```
-
-**VoxCPM TTS Provider**:
-
-VoxCPM is a state-of-the-art tokenizer-free multilingual TTS system. This implementation uses **VoxCPM.cpp**, a C++ CLI tool supporting CPU, CUDA, and Vulkan backends.
-
-```bash
-# Build VoxCPM.cpp
-git clone https://github.com/bluryar/VoxCPM.cpp
-cd VoxCPM.cpp
-cmake -B build
-cmake --build build -j$(nproc)
-
-# Download model
-mkdir -p ~/models/voxcpm
-wget https://huggingface.co/bluryar/VoxCPM-GGUF/resolve/main/voxcpm1.5-q8_0-audiovae-f16.gguf \
-  -O ~/models/voxcpm/voxcpm1.5-q8_0-audiovae-f16.gguf
-
-# Configure in .env
-TTS_PROVIDER=voxcpm
-TTS_VOICE="calm, deep male voice"  # Optional: voice design description
-VOXCPM_MODEL_PATH=/home/rafatz/models/voxcpm/voxcpm1.5-q8_0-audiovae-f16.gguf
-VOXCPM_BACKEND=auto  # cpu, cuda, or vulkan
-
-# Run pipeline with VoxCPM
 python -m src.main tts --job-id <job_id>
 ```
 
-Features:
-- **30-language multilingual** support
-- **Voice Design**: Create voices from text descriptions
-- **Voice Cloning**: Clone from reference audio
+Narration currently uses **Edge TTS only**.
 - **48kHz studio-quality** output
 - **Multiple backends**: CPU, CUDA (NVIDIA), or Vulkan (cross-platform GPU)
 - **Open source**: Apache-2.0 licensed
@@ -181,12 +149,28 @@ python -m src.main run --video-mode short --mock
 
 Edit `.env` to configure:
 
+## UI Development
+
+For hot reload while working on the control UI:
+
+```bash
+./scripts/ui-dev.sh
+```
+
+This activates the repo `.venv`, then runs the FastAPI backend with `--reload` and the Vite frontend dev server with HMR, so frontend edits no longer require rebuilding `frontend/dist` or restarting the app.
+
+You can still pass options through to the launcher:
+
+```bash
+./scripts/ui-dev.sh --host 127.0.0.1 --api-port 8000 --frontend-port 5173
+```
+
+
 ### TTS Configuration
 
-- `TTS_PROVIDER` - TTS provider (`local`, `edge`, `elevenlabs`, or `voxcpm`)
-- `TTS_VOICE` - Voice to use (for ElevenLabs or voice design for VoxCPM)
+- `TTS_PROVIDER` - TTS provider (`edge` only)
+- `TTS_VOICE` - Edge TTS voice name
 - `TTS_SPEED` - Speech speed multiplier (0.25 to 4.0, default: 1.0)
-- `VOXCPM_MODEL_PATH` - VoxCPM model path (optional, for VoxCPM provider)
 
 ### Image Generation Configuration
 
@@ -254,7 +238,7 @@ src/
 ├── stages/
 │   ├── research.py      # Topic research
 │   ├── script.py        # Script generation
-│   ├── tts.py           # Text-to-speech (local, edge, elevenlabs, voxcpm)
+│   ├── tts.py           # Text-to-speech (Edge TTS)
 │   ├── images.py        # Image generation (SD CLI, SD Server, or local fallbacks)
 │   ├── subtitles.py     # Subtitle generation
 │   ├── render.py        # Video rendering

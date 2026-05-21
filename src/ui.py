@@ -106,9 +106,6 @@ def index() -> HTMLResponse:
           <label>TTS provider</label>
           <select name='provider'>
             <option value='edge'>edge</option>
-            <option value='local'>local</option>
-            <option value='elevenlabs'>elevenlabs</option>
-            <option value='voxcpm'>voxcpm</option>
           </select>
           <label>Skip upload</label>
           <select name='skip_upload'>
@@ -140,9 +137,6 @@ def index() -> HTMLResponse:
           <label>TTS provider</label>
           <select name='provider'>
             <option value='edge'>edge</option>
-            <option value='local'>local</option>
-            <option value='elevenlabs'>elevenlabs</option>
-            <option value='voxcpm'>voxcpm</option>
           </select>
           <label>Comma-separated steps</label>
           <input name='steps' value='research,script,scene,tts,music,images,subtitles,render,metadata' />

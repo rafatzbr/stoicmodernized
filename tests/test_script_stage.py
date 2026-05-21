@@ -2,268 +2,309 @@
 
 import json
 import unittest.mock
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from src.config import VideoMode
+from src.models import Script
 from src.stages.script import ScriptGenerationError, ScriptStage
 
 
 class TestScriptStage:
-    """Tests for real script stage helpers."""
+    """Tests for current Stoic Modernized script helpers."""
 
-    def test_parse_llm_json_strips_thinking_and_fences(self) -> None:
-        stage = ScriptStage(job_id="job-1", mock=False, video_mode=VideoMode.SHORT)
+    def test_load_ledger_context_prefers_latest_artifacts(self, tmp_path: Path) -> None:
+        stage = ScriptStage(job_id="job-ledger-1", mock=False, video_mode=VideoMode.SHORT)
+        stage.workspace_artifacts_dir = tmp_path
+        stage.strategy_manager.artifacts_dir = tmp_path
+        stage.strategy_manager.global_strategy_path = tmp_path / "state" / "ledger_strategy.json"
+        stage.strategy_manager.global_strategy_path.parent.mkdir(parents=True, exist_ok=True)
 
-        parsed = stage._parse_llm_json(
-            """<think>hidden reasoning</think>
-```json
-{"title":"Specific Title","hook":"Specific hook","cta":"Specific cta","short_version":"Short text","sections":[{"title":"Hook","narration":"Topic-specific narration."}]}
-```"""
+        council = tmp_path / "stoic-modernized-council-plan-2026-05-10.md"
+        analytics = tmp_path / "stoic-modernized-youtube-analytics-2026-05-10.md"
+        metrics = tmp_path / "stoic-modernized-youtube-metrics-2026-05-09.md"
+        council.write_text("# Plan\n- 4 discovery videos\n- 3 conversion videos\n", encoding="utf-8")
+        analytics.write_text("# Analytics\n- Shorts feed dominates\n- Anxiety converts\n", encoding="utf-8")
+        metrics.write_text("# Metrics\n- Concrete work framing wins\n", encoding="utf-8")
+
+        result = stage._load_ledger_context()
+
+        assert result["available"] is True
+        assert str(council) in result["files"]
+        assert "4 discovery videos" in result["summary"]
+        assert "Shorts feed dominates" in result["summary"]
+        assert result["global_strategy"]["distribution"]["primary_surface"] == "shorts_feed"
+
+    def test_load_ledger_context_skips_global_fallback_when_job_packet_is_strong(self, tmp_path: Path) -> None:
+        stage = ScriptStage(job_id="job-ledger-strong", mock=False, video_mode=VideoMode.SHORT)
+        stage.workspace_artifacts_dir = tmp_path
+        stage.strategy_manager.artifacts_dir = tmp_path
+        stage.strategy_manager.global_strategy_path = tmp_path / "state" / "ledger_strategy.json"
+        stage.strategy_manager.global_strategy_path.parent.mkdir(parents=True, exist_ok=True)
+
+        council = tmp_path / "stoic-modernized-council-plan-2026-05-10.md"
+        council.write_text("# Plan\n- global fallback that should not be used\n", encoding="utf-8")
+
+        strategy_dir = stage.strategy_manager.project_root / "output" / "jobs" / stage.job_id / "strategy"
+        strategy_dir.mkdir(parents=True, exist_ok=True)
+        (strategy_dir / "ledger_packet.json").write_text(
+            json.dumps({"objective": "conversion", "packaging_angle": "identity-level anxiety", "script_goal": "convert workplace anxiety viewers"}),
+            encoding="utf-8",
         )
 
-        assert parsed["title"] == "Specific Title"
-        assert parsed["sections"][0]["narration"] == "Topic-specific narration."
+        result = stage._load_ledger_context()
 
-    def test_payload_to_script_builds_timed_short_narration(self) -> None:
+        assert result["job_packet"]["objective"] == "conversion"
+        assert result["global_strategy"] == {}
+        assert result["files"] == []
+        assert "Per-job steering packet is present" in result["summary"]
+
+    def test_build_scratch_prompt_includes_ledger_strategy(self) -> None:
+        stage = ScriptStage(job_id="job-ledger-2", mock=False, video_mode=VideoMode.SHORT)
+        prompt = stage._build_scratch_prompt(
+            research_packet={"topic": "work anxiety"},
+            whiskers_brief={"viewer_problem": "spiraling before meetings"},
+            ledger_strategy={"audience_job": "conversion", "packaging_angle": "identity-level anxiety"},
+        )
+
+        assert "Ledger strategy:" in prompt
+        assert "identity-level anxiety" in prompt
+        assert "conversion" in prompt
+
+    @pytest.mark.asyncio
+    async def test_call_local_llm_strips_fences(self) -> None:
+        stage = ScriptStage(job_id="job-1", mock=False, video_mode=VideoMode.SHORT)
+
+        mock_resp = unittest.mock.MagicMock()
+        mock_resp.raise_for_status = unittest.mock.MagicMock()
+        mock_resp.json = unittest.mock.MagicMock(
+            return_value={
+                "choices": [
+                    {
+                        "message": {
+                            "content": "```json\n{\"title\":\"Specific Title\",\"hook\":\"Specific hook\",\"narration\":\"Narration\",\"chapters\":[{\"title\":\"Hook\",\"timestamp\":0}],\"cta\":\"Specific cta\"}\n```"
+                        }
+                    }
+                ]
+            }
+        )
+        mock_client = unittest.mock.MagicMock()
+        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
+        mock_client.post = unittest.mock.AsyncMock(return_value=mock_resp)
+
+        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client):
+            parsed = await stage._call_local_llm("system", "user", 200)
+
+        assert parsed["title"] == "Specific Title"
+        assert parsed["chapters"][0]["title"] == "Hook"
+
+    @pytest.mark.asyncio
+    async def test_call_local_llm_salvages_partial_json(self) -> None:
         stage = ScriptStage(job_id="job-2", mock=False, video_mode=VideoMode.SHORT)
+
+        broken = '{"title":"Specific Title","hook":"Specific hook","narration":"Narration text","chapters":[{"title":"Hook","timestamp":0}],"cta":"Specific cta"'
+        mock_resp = unittest.mock.MagicMock()
+        mock_resp.raise_for_status = unittest.mock.MagicMock()
+        mock_resp.json = unittest.mock.MagicMock(return_value={"choices": [{"message": {"content": broken}}]})
+        mock_client = unittest.mock.MagicMock()
+        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
+        mock_client.post = unittest.mock.AsyncMock(return_value=mock_resp)
+
+        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client):
+            parsed = await stage._call_local_llm("system", "user", 200)
+
+        assert parsed["title"] == "Specific Title"
+        assert parsed["cta"] == "Specific cta"
+
+    def test_normalize_council_script_payload_builds_timed_short_narration(self) -> None:
+        stage = ScriptStage(job_id="job-3", mock=False, video_mode=VideoMode.SHORT)
         payload = {
             "title": "Handling Micromanagement Without Losing Your Mind: A Stoic Perspective",
             "hook": "Micromanagement becomes unbearable when you let it colonize your attention.",
-            "cta": "Subscribe for more.",
-            "short_version": "A short version.",
-            "sections": [
-                {"title": "Hook", "narration": "Micromanagement feels personal fast and it spreads through the whole day."},
-                {"title": "Stoic Principle", "narration": "Control your judgment, not your manager's mood, and protect your focus under pressure."},
-                {"title": "Workplace Application", "narration": "Answer with clarity, document decisions, and keep your composure when the notes keep coming."},
-                {"title": "CTA", "narration": "Follow for more practical Stoicism that actually helps you at work"},
-            ],
+            "narration": "Micromanagement feels personal fast and it spreads through the whole day.\n\nControl your judgment, not your manager's mood, and protect your focus under pressure.\n\nAnswer with clarity, document decisions, and keep your composure when the notes keep coming.",
+            "cta": "Follow for more practical Stoicism that actually helps you at work",
+            "chapters": [{"title": "x", "timestamp": 1}],
         }
 
-        script = stage._payload_to_script(
-            payload=payload,
-            topic="micromanagement",
-            research_title="Micromanagement: A Stoic Perspective",
-            key_insights=["You control your response."],
-            workplace_applications=["Pause before replying."],
-        )
+        normalized = stage._normalize_council_script_payload(payload)
 
-        assert script.title == "Handling Micromanagement Without Losing Your Mind"
-        assert len(script.chapters) == 4
-        assert "[0:00-0:12] Hook" in script.narration
-        assert "[0:50-0:58] CTA" in script.narration
-        assert "Micromanagement feels personal fast" in script.narration
-        assert script.cta == "Subscribe for more."
+        assert normalized["chapters"][0]["title"] == "Hook"
+        assert "[0:00-0:12] Hook" in normalized["narration"]
+        assert "[0:50-0:58] CTA" in normalized["narration"]
+        assert "@stoic-modernized" in normalized["narration"]
 
-    def test_repair_generated_payload_normalizes_short_title_and_syncs_cta(self) -> None:
-        stage = ScriptStage(job_id="job-6", mock=False, video_mode=VideoMode.SHORT)
-
-        repaired, repairs = stage._repair_generated_payload(
+    def test_parse_script_response_trims_short_title_and_keeps_cta_handle(self) -> None:
+        stage = ScriptStage(job_id="job-4", mock=False, video_mode=VideoMode.SHORT)
+        script = stage._parse_script_response(
             {
-                "title": "How To Stop Overthinking Work Problems Using Stoic Control: A Stoic Perspective",
-                "hook": "You are losing hours of mental energy rehashing a meeting that ended an hour ago. That anxiety isn't solving the deadline; it's just stealing your focus from what actually matters.",
-                "cta": "A different CTA.",
-                "short_version": "Short version.",
-                "sections": [
-                    {"title": "Hook", "narration": "Hook narration with enough words to pass validation cleanly."},
-                    {"title": "Stoic Principle", "narration": "Principle narration with enough topic specific words to pass validation."},
-                    {"title": "Workplace Application", "narration": "Application narration with enough concrete workplace guidance to pass validation."},
-                    {"title": "CTA", "narration": "Follow for more practical Stoic tools at work"},
-                ],
+                "title": "How to Stop Overthinking Work Problems: A Stoic Perspective",
+                "hook": "You keep replaying the meeting after it ended.",
+                "narration": "You keep replaying the meeting after it ended and your body acts like the conversation is still happening.\n\nName what is in your control before you react, slow the story you are telling yourself, and return to the next useful action.\n\nUse that pause on the next message you send so you answer with clarity instead of feeding the spiral for the rest of the day.",
+                "chapters": [],
+                "cta": "Follow for practical Stoic tools at work.",
+            },
+            topic="overthinking work problems",
+        )
+
+        assert ":" not in script.title
+        assert 4 <= len(script.title.split()) <= 9
+        assert "@stoic-modernized" in script.cta
+
+    def test_parse_script_response_does_not_prepend_hook_to_timed_short_script(self) -> None:
+        stage = ScriptStage(job_id="job-4b", mock=False, video_mode=VideoMode.SHORT)
+        script = stage._parse_script_response(
+            {
+                "title": "Stop Replaying Bad Meetings",
+                "hook": "You keep replaying the meeting after it ended.",
+                "narration": "[0:00-0:12] Hook\nYou keep replaying the meeting after it ended and your body still thinks it is happening.\n\n[0:12-0:30] Stoic Principle\nSeparate the event from the story you add to it so you stop feeding the spiral.\n\n[0:30-0:50] Workplace Application\nBefore your next reply, name what is in your control and answer the actual problem in front of you.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                "chapters": [],
+                "cta": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            },
+            topic="bad meetings",
+        )
+
+        assert script.narration.count("[0:00-0:12] Hook") == 1
+        assert not script.narration.startswith("You keep replaying the meeting after it ended.\n\n[0:00-0:12] Hook")
+
+    @pytest.mark.asyncio
+    async def test_real_script_passes_whiskers_handoff_to_workflow(self) -> None:
+        stage = ScriptStage(job_id="job-whiskers-1", mock=False, video_mode=VideoMode.SHORT)
+        captured = {}
+
+        async def fake_workflow(**kwargs):
+            captured.update(kwargs)
+            return Script(
+                title="Handled Well Here",
+                hook="Hook long enough",
+                narration="Narration long enough to validate with you in the text and enough words to pass the gate.",
+                chapters=[],
+                cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                short_version="Short",
+                generated_at=datetime.now(UTC),
+            )
+
+        stage._run_council_workflow = fake_workflow  # type: ignore[method-assign]
+
+        await stage._real_script(
+            {
+                "topic": "work anxiety",
+                "title": "Work Anxiety",
+                "ledger_packet": {"objective": "conversion"},
+                "whiskers_handoff": {"viewer_problem": "spiraling before meetings"},
             }
         )
 
-        assert repaired["title"] == "How to Stop Overthinking Work Problems with Stoic Control"
-        assert repaired["cta"] == "Follow for more practical Stoic tools at work."
-        assert repaired["sections"][-1]["narration"] == repaired["cta"]
-        assert repaired["hook"] == "losing hours of mental energy rehashing a meeting that ended an hour ago. It won't solve the deadline; it's stealing your focus from what actually matters."
-        assert "normalized_title" in repairs
-        assert "normalized_hook" in repairs
-
-    def test_short_cta_normalization_reduces_boilerplate(self) -> None:
-        stage = ScriptStage(job_id="job-7", mock=False, video_mode=VideoMode.SHORT)
-
-        result = stage._normalize_cta_text(
-            "Subscribe to Stoic Modernized for more weekly videos on applying ancient wisdom to modern life"
-        )
-
-        assert result == "Follow for practical Stoic tools that hold up at work."
+        assert captured["ledger_packet"]["objective"] == "conversion"
+        assert captured["whiskers_handoff"]["viewer_problem"] == "spiraling before meetings"
 
     @pytest.mark.asyncio
-    async def test_real_script_raises_when_llm_empty(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
-        stage = ScriptStage(job_id="job-3", mock=False, video_mode=VideoMode.LONG)
+    async def test_real_script_retries_after_blocked_topic_drift(self) -> None:
+        stage = ScriptStage(job_id="job-retry-1", mock=False, video_mode=VideoMode.SHORT)
+        attempts: list[dict[str, object]] = []
 
-        async def fake_generate_with_local_llm(**_: object) -> dict:
-            return {"success": False, "raw_response": "", "parsed_payload": {}, "error": "local_llm_returned_empty_content"}
-
-        stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
-
-        with pytest.raises(ScriptGenerationError, match="local_llm_returned_empty_content"):
-            await stage._real_script(
-                {
-                    "topic": "micromanagement",
-                    "title": "How Stoics Handle Micromanagement",
-                    "key_insights": [
-                        "Micromanagement hurts most when you treat every correction as a verdict on your worth.",
-                        "Stoicism separates your effort from another person's need for control.",
-                    ],
-                    "workplace_applications": [
-                        "Clarify expectations in writing after meetings.",
-                        "Use a short pause before answering nitpicky messages.",
-                        "Treat recurring friction as practice for steadiness.",
-                    ],
-                }
+        async def fake_workflow(**kwargs):
+            attempts.append(kwargs)
+            if len(attempts) == 1:
+                raise ScriptGenerationError(
+                    "Generated script rejected: script introduced blocked topic drift (slack) that was not present in the approved research topic 'strategic patience'."
+                )
+            return Script(
+                title="Strategic Patience Wins",
+                hook="You keep forcing decisions before the facts are ready.",
+                narration="You keep forcing decisions before the facts are ready and that pressure makes weak choices look urgent. Separate urgency from importance, hold your pace, and finish the next useful step before you react. Use that pause the next time a thread starts pushing you into speed for its own sake. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                chapters=[],
+                cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                short_version="Short",
+                generated_at=datetime.now(UTC),
             )
 
-        report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
-        parsed = json.loads((stage.script_dir / "local_llm_parsed.json").read_text(encoding="utf-8"))
-        final_payload = json.loads((stage.script_dir / "script_generation_final.json").read_text(encoding="utf-8"))
+        stage._run_council_workflow = fake_workflow  # type: ignore[method-assign]
 
-        assert report["script_generation_succeeded"] is False
-        assert report["failure_reason"] == "local_llm_returned_empty_content"
-        assert report["used_fallback"] is False
-        assert parsed == {}
-        assert final_payload == {}
-        assert not (stage.script_dir / "script.json").exists()
+        result = await stage._real_script(
+            {
+                "topic": "strategic patience",
+                "title": "Strategic Patience",
+                "ledger_packet": {"objective": "conversion"},
+            }
+        )
 
-    def test_validate_generated_payload_rejects_generic_known_template(self) -> None:
-        stage = ScriptStage(job_id="job-4", mock=False, video_mode=VideoMode.LONG)
-        payload = {
-            "title": "Stress at Work",
-            "hook": "What if I told you that 2000 years of wisdom could help you handle stress at work better?",
-            "cta": "Subscribe for more.",
-            "short_version": "Stress at work feels bad, but Stoicism helps you stay calm and do better every day.",
-            "sections": [
-                {"title": title, "narration": "Welcome to Stoic Modernized. Today we're exploring how ancient Stoic philosophy can transform the way you handle workplace stress in your modern work life."}
-                for title in stage._section_blueprint()
-            ],
+        assert result.title == "Strategic Patience Wins"
+        assert len(attempts) == 2
+        assert attempts[0]["retry_feedback"] is None
+        assert "slack" in str(attempts[1]["retry_feedback"]).lower()
+
+    def test_save_script_persists_steering_chain(self, tmp_path: Path) -> None:
+        stage = ScriptStage(job_id="job-steering-save", mock=False, video_mode=VideoMode.SHORT)
+        stage.script_dir = tmp_path / "script"
+        stage.script_dir.mkdir(parents=True, exist_ok=True)
+        stage.last_steering_chain = {
+            "ledger_packet": {"objective": "conversion"},
+            "whiskers_handoff": {"viewer_problem": "spiraling before meetings"},
+            "whiskers_brief": {"topic_angle": "identity-level anxiety"},
+            "ledger_strategy": {"packaging_angle": "identity first"},
         }
 
-        assert stage._validate_generated_payload(payload, topic="workplace stress") == "local_llm_payload_too_generic"
-
-    @pytest.mark.asyncio
-    async def test_real_script_records_rejected_payload_reason_and_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
-        stage = ScriptStage(job_id="job-5", mock=False, video_mode=VideoMode.SHORT)
-
-        async def fake_generate_with_local_llm(**_: object) -> dict:
-            parsed_payload = {
-                "title": "Micromanagement",
-                "hook": "Micromanagement is hard.",
-                "cta": "Subscribe.",
-                "short_version": "Micromanagement is hard but Stoicism helps.",
-                "sections": [
-                    {"title": title, "narration": "Too short."}
-                    for title in stage._section_blueprint()
-                ],
-            }
-            return {
-                "success": True,
-                "raw_response": json.dumps(parsed_payload),
-                "parsed_payload": parsed_payload,
-                "error": None,
-            }
-
-        stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
-
-        # Mock the retry httpx call so regeneration fails to produce valid content
-        mock_resp = unittest.mock.MagicMock()
-        mock_resp.raise_for_status = unittest.mock.MagicMock()
-        mock_resp.json = unittest.mock.MagicMock(
-            return_value={"choices": [{"message": {"content": '{"section_title": "Hook", "narration": "Subscribe."}'}}]}
-        )
-        mock_client = unittest.mock.MagicMock()
-        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
-        mock_client.post = unittest.mock.AsyncMock(return_value=mock_resp)
-
-        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client):
-            with pytest.raises(ScriptGenerationError, match=r"local_llm_section_\d+_too_short"):
-                await stage._real_script(
-                    {"topic": "micromanagement", "title": "How Stoics Handle Micromanagement"}
-                )
-        report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
-
-        assert report["local_llm_success"] is True
-        assert report["script_generation_succeeded"] is False
-        assert report["used_fallback"] is False
-        assert report["regeneration_attempts"] >= 1
-        assert report["failure_reason"] is not None
-
-    @pytest.mark.asyncio
-    async def test_real_script_retries_failing_section_and_succeeds(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """When initial LLM output has a too-short section, the retry regenerates it and the job succeeds."""
-        monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
-        stage = ScriptStage(job_id="job-5b", mock=False, video_mode=VideoMode.SHORT)
-
-        initial_call_count = 0
-
-        async def fake_generate_with_local_llm(**_: object) -> dict:
-            nonlocal initial_call_count
-            initial_call_count += 1
-
-            # First call: return a payload where section 2 (Stoic Principle) is too short
-            parsed_payload = {
-                "title": "Micromanagement: A Stoic Approach",
-                "hook": "Micromanagement feels personal when every task is questioned. You control your response though, not their insecurity.",
-                "cta": "Follow for practical Stoic tools that hold up at work.",
-                "short_version": "[0:00-0:12] Hook Micromanagement feels personal. [0:12-0:30] Stoic Principle Epictetus taught external events. [0:30-0:50] Workplace Application Document progress. [0:50-0:58] CTA Follow for practical tools.",
-                "sections": [
-                    {"title": "Hook", "narration": "Micromanagement feels personal when every task is questioned. You control your response though, not their insecurity."},
-                    {"title": "Stoic Principle", "narration": "Too short."},
-                    {"title": "Workplace Application", "narration": "Document your progress visibly so questions become unnecessary. Send brief status updates proactively before they arise."},
-                    {"title": "CTA", "narration": "Follow for practical Stoic tools that hold up at work."},
-                ],
-            }
-            return {"success": True, "raw_response": json.dumps(parsed_payload), "parsed_payload": parsed_payload, "error": None}
-
-        stage._generate_with_local_llm = fake_generate_with_local_llm  # type: ignore[method-assign]
-
-        # Mock httpx.AsyncClient for the retry path
-        mock_resp = unittest.mock.MagicMock()
-        mock_resp.raise_for_status = unittest.mock.MagicMock()
-        mock_resp.json = unittest.mock.MagicMock(
-            return_value={"choices": [{"message": {"content": '{"section_title": "Stoic Principle", "narration": "Epictetus taught that external events cannot disturb your mind unless you let them. Your manager hovering is noise, not a verdict on your competence."}'}}]}
-        )
-        mock_client = unittest.mock.MagicMock()
-        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
-        mock_client.post = unittest.mock.AsyncMock(return_value=mock_resp)
-
-        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client):
-            script = await stage._real_script(
-                {"topic": "micromanagement", "title": "How Stoics Handle Micromanagement"}
+        path = stage.save_script(
+            Script(
+                title="Handled Well Here",
+                hook="Hook long enough",
+                narration="Narration long enough to be valid for persistence and includes you so it stays audience-directed.",
+                chapters=[],
+                cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                short_version="Short",
+                generated_at=datetime.now(UTC),
             )
+        )
 
-        report = json.loads((stage.script_dir / "script_generation_report.json").read_text(encoding="utf-8"))
-
-        assert initial_call_count == 1  # Only one initial LLM call
-        assert script is not None
-        assert "Epictetus taught that external events cannot disturb your mind" in script.narration
-        assert report["local_llm_success"] is True
-        assert report["script_generation_succeeded"] is True
-        assert report["failure_reason"] is None
-        assert report["regeneration_attempts"] >= 1
-        assert len(report["regeneration_repairs"]) >= 1
-
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        assert payload["steering_chain"]["ledger_packet"]["objective"] == "conversion"
+        assert payload["whiskers_handoff"]["viewer_problem"] == "spiraling before meetings"
+        assert payload["ledger_strategy"]["packaging_angle"] == "identity first"
 
     def test_short_cta_section_can_be_brief(self) -> None:
         stage = ScriptStage(job_id="job-6", mock=False, video_mode=VideoMode.SHORT)
-        payload = {
-            "title": "Toxic Workplace Survival",
-            "hook": "A toxic office can drain you faster than the workload itself.",
-            "cta": "Protect your energy.",
-            "short_version": "Short version.",
-            "sections": [
-                {"title": "Hook", "narration": "A toxic office can drain you faster than the workload itself if you keep reacting to every jab as if it deserves your whole nervous system."},
-                {"title": "Stoic Principle", "narration": "Stoicism starts by separating what belongs to your judgment from what belongs to the chaos around you so your mind stops volunteering for extra damage."},
-                {"title": "Workplace Application", "narration": "Document what matters, reduce unnecessary exposure, and make your next calm move based on strategy instead of proving a point to people who feed on reaction."},
-                {"title": "CTA", "narration": "Protect your energy."},
-            ],
-        }
+        normalized = stage._normalize_council_script_payload(
+            {
+                "title": "Toxic Workplace Survival",
+                "hook": "A toxic office can drain you faster than the workload itself.",
+                "narration": "A toxic office can drain you faster than the workload itself if you keep reacting to every jab as if it deserves your whole nervous system.\n\nStoicism starts by separating what belongs to your judgment from what belongs to the chaos around you so your mind stops volunteering for extra damage.\n\nDocument what matters, reduce unnecessary exposure, and make your next calm move based on strategy instead of proving a point.",
+                "cta": "Protect your energy.",
+                "chapters": [],
+            }
+        )
 
-        assert stage._validate_generated_payload(payload, topic="toxic workplaces") is None
+        assert "Protect your energy." in normalized["narration"]
+        assert "@stoic-modernized" in normalized["narration"]
+
+    def test_short_quality_uses_spoken_words_not_timing_labels(self) -> None:
+        stage = ScriptStage(job_id="job-7", mock=False, video_mode=VideoMode.SHORT)
+        script = Script(
+            title="Stop Replaying Bad Meetings",
+            hook="You keep replaying the meeting after it ended.",
+            narration="[0:00-0:12] Hook\nYou keep replaying the meeting after it ended and your body still thinks it is happening.\n\n[0:12-0:30] Stoic Principle\nSeparate the event from the story you add to it so you stop feeding the spiral and get your judgment back.\n\n[0:30-0:50] Workplace Application\nBefore your next reply, name what is in your control, slow down, and answer the actual problem in front of you instead of the one in your head.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            chapters=[],
+            cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            short_version="short",
+            generated_at=datetime.now(UTC),
+        )
+
+        stage._enforce_generated_script_quality(script)
+
+    def test_parse_script_response_rejects_blocked_topic_drift_not_in_research_topic(self) -> None:
+        stage = ScriptStage(job_id="job-8", mock=False, video_mode=VideoMode.SHORT)
+
+        with pytest.raises(ScriptGenerationError, match="blocked topic drift"):
+            stage._parse_script_response(
+                {
+                    "title": "Stop the Slack Loop",
+                    "hook": "You keep checking Slack even when nothing important changed.",
+                    "narration": "[0:00-0:12] Hook\nYou keep checking Slack even when nothing important changed, and your attention keeps splintering every time the window lights up.\n\n[0:12-0:30] Stoic Principle\nSeparate the event from the urge so you stop rehearsing every ping in your head and let the notification decide what kind of mind you bring to work.\n\n[0:30-0:50] Workplace Application\nBefore your next reply, pause, name what matters, finish the task already in front of you, and answer only the part that truly needs a response right now.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                    "chapters": [],
+                    "cta": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                },
+                topic="strategic patience",
+            )

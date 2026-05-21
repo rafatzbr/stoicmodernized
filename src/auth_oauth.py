@@ -11,6 +11,10 @@ Usage:
     
     # Headless (no browser required)
     python -m src.auth_oauth --headless
+    
+    # Channel-specific
+    python -m src.auth_oauth --channel stoic-modernized
+    python -m src.auth_oauth --channel stoic-modernized --headless
 """
 
 import os
@@ -28,10 +32,12 @@ except ImportError:
     print("   pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2")
     sys.exit(1)
 
-# OAuth2 scope - YouTube upload and read permissions
+# OAuth2 scopes - YouTube upload/manage, channel read, and analytics read permissions
 SCOPES = [
+    "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.upload",
-    "https://www.googleapis.com/auth/youtube.readonly"
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
 
 # Paths
@@ -44,8 +50,6 @@ try:
     CREDENTIALS_FILE = Path(settings.youtube_credentials_path) if settings.youtube_credentials_path else STOIC_DIR / "client_secret.json"
 except ImportError:
     CREDENTIALS_FILE = STOIC_DIR / "client_secret.json"
-
-TOKEN_FILE = STOIC_DIR / "oauth2_token.json"  # Generated token
 
 
 def authenticate_headless() -> Credentials:
@@ -114,8 +118,22 @@ def main():
     """Run OAuth2 authentication flow."""
     print("[bold]Stoic Modernized - YouTube OAuth2 Authentication[/bold]\n")
 
+    # Parse channel argument
+    channel_str = None
+    headless = '--headless' in sys.argv or '-h' in sys.argv
+    
+    if '--channel' in sys.argv:
+        idx = sys.argv.index('--channel')
+        if idx + 1 < len(sys.argv):
+            channel_str = sys.argv[idx + 1]
+    
+    # Use Stoic Modernized channel only
+    channel_dir = STOIC_DIR / "stoic-modernized"
+    token_file = channel_dir / "oauth2_token.json"
+    channel_label = "stoic-modernized"
+    
     # Create directory for credentials
-    STOIC_DIR.mkdir(parents=True, exist_ok=True)
+    channel_dir.mkdir(parents=True, exist_ok=True)
 
     # Check if credentials file exists
     if not CREDENTIALS_FILE.exists():
@@ -132,22 +150,21 @@ def main():
         sys.exit(1)
 
     print(f"✓ Credentials file found: {CREDENTIALS_FILE}")
+    print(f"✓ Channel: {channel_label}")
+    print(f"✓ Token will be saved to: {token_file}")
 
     # Load existing credentials if available
     creds = None
-    if TOKEN_FILE.exists():
+    if token_file.exists():
         try:
-            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), scopes=SCOPES)
-            print(f"✓ Existing token found: {TOKEN_FILE}")
+            creds = Credentials.from_authorized_user_file(str(token_file), scopes=SCOPES)
+            print(f"✓ Existing token found: {token_file}")
         except Exception as e:
             print(f"[yellow]⚠ Existing token invalid: {e}[/yellow]")
             print("[yellow]Re-authenticating...[/yellow]")
 
     # If no valid credentials, run OAuth flow
     if not creds or not creds.valid:
-        # Check if headless mode is requested
-        headless = '--headless' in sys.argv or '-h' in sys.argv
-
         if creds and creds.expired and creds.refresh_token:
             print("\n[bold]Refreshing expired token...[/bold]")
             try:
@@ -156,7 +173,7 @@ def main():
                 print(f"[yellow]⚠ Stored token refresh failed: {e}[/yellow]")
                 print("[yellow]Stored token appears expired or revoked. Starting a fresh OAuth flow...[/yellow]")
                 try:
-                    TOKEN_FILE.unlink(missing_ok=True)
+                    token_file.unlink(missing_ok=True)
                 except Exception as unlink_error:
                     print(f"[yellow]⚠ Could not remove old token file: {unlink_error}[/yellow]")
                 creds = authenticate_headless() if headless else authenticate_browser()
@@ -164,10 +181,10 @@ def main():
             creds = authenticate_headless() if headless else authenticate_browser()
 
         # Save the credentials
-        with open(TOKEN_FILE, "w") as token:
+        with open(token_file, "w") as token:
             token.write(creds.to_json())
 
-        print(f"\n[green]✓ Token saved to: {TOKEN_FILE}[/green]")
+        print(f"\n[green]✓ Token saved to: {token_file}[/green]")
 
     # Verify the token works
     print("\n[bold]Testing YouTube API connection...[/bold]")
@@ -179,19 +196,19 @@ def main():
         # Try multiple approaches to get channel info
         try:
             # Method 1: Try 'mine' first
-            channel = youtube.channels().list(part="snippet,contentDetails", id="mine").execute()
+            channel = youtube.channels().list(part="snippet,contentDetails", mine=True).execute()
         except Exception:
             # Method 2: Try getting user info from a different endpoint
             from googleapiclient.errors import HttpError
             try:
                 # Try listing channels without specific ID
-                channel = youtube.channels().list(part="snippet", id="mine").execute()
+                channel = youtube.channels().list(part="snippet", mine=True).execute()
             except HttpError as e:
                 # Method 3: Just verify token is valid by getting user info
                 print("[dim]Verifying token validity with a simpler request...[/dim]")
                 # Try a different approach - get channel by forUsername or just test token
                 print(f"[green]✓ OAuth2 token is valid![/green]")
-                print(f"   You can now upload videos using: python -m src.main upload <job_id>\n")
+                print(f"   You can now upload videos using: python -m src.main upload --channel {channel_label} <job_id>\n")
                 return
         
         if channel and channel.get("items"):
@@ -200,11 +217,11 @@ def main():
             print(f"\n[green]✓ Successfully authenticated![/green]")
             print(f"   Channel: {channel_name}")
             print(f"   Channel ID: {channel_id}")
-            print(f"\n[green]You can now upload videos using: python -m src.main upload <job_id>[/green]\n")
+            print(f"\n[green]You can now upload videos using: python -m src.main upload --channel {channel_label} <job_id>[/green]\n")
         else:
             # Token is valid but we couldn't get channel details
             print(f"[green]✓ OAuth2 token is valid![/green]")
-            print(f"   You can now upload videos using: python -m src.main upload <job_id>\n")
+            print(f"   You can now upload videos using: python -m src.main upload --channel {channel_label} <job_id>\n")
 
     except Exception as e:
         print(f"[red]✗ Authentication test failed: {e}[/red]")

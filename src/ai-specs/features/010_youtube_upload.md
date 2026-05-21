@@ -67,7 +67,10 @@ The YouTube upload stage uploads rendered videos to YouTube using the YouTube Da
 - **Privacy**: Default is `unlisted`. Configurable via `youtube_privacy_status`.
 - **Scheduling**: `youtube_schedule_datetime` allows future scheduled publishing.
 - **Mock mode**: In mock mode, skips actual upload and returns mock result.
-- **Background music flag**: If `youtube_allow_background_music_uploads` is False, the upload may be skipped or a warning is issued (content policy risk).
+- **Background music flag**: If `youtube_allow_background_music_uploads` is False, the upload is blocked when unapproved background music is detected.
+- **Duplicate guardrails at research and upload**: Topic duplication is checked before research so the pipeline can choose another candidate, and again immediately before upload as a final safety gate.
+- **Same-month subject guardrail**: A video is blocked when its subject family shares at least two trigger-level concepts with another same-channel video artifact from the current UTC calendar month (for example `deadline` + `anxiety`). This prevents sending repeated subjects in the same month even if the older video is outside the short rolling cooldown window.
+- **Rolling recent cooldown**: Recent near-duplicates and concept-family repeats remain blocked using title/script similarity plus trigger-token overlap.
 - **Channel branding**: Video description includes channel name and handle.
 
 ## Cross-Package References

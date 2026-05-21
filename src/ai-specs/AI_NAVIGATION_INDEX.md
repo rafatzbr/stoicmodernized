@@ -33,6 +33,7 @@ None. All documented features are implemented in the codebase.
 | 011 | Configuration & Channel Selection | `src/ai-specs/features/011_configuration.md` |
 | 012 | Persistence Layer | `src/ai-specs/features/012_persistence.md` |
 | 013 | Cross-Cutting Concerns | `src/ai-specs/features/013_cross_cutting.md` |
+| 014 | Control UI | `src/ai-specs/features/014_control_ui.md` |
 
 ## Feature Quick Lookup
 
@@ -42,7 +43,7 @@ None. All documented features are implemented in the codebase.
 | 002 Research | `src/stages/research.py` | `research`, `sources`, `insights` |
 | 003 Script | `src/stages/script.py` | `script`, `narration`, `chapters`, `hook` |
 | 004 Scenes | `src/stages/scenes.py` | `scenes`, `scene_plan`, `visual_prompt` |
-| 005 TTS | `src/stages/tts.py` | `tts`, `voxcpm`, `edge`, `elevenlabs` |
+| 005 TTS | `src/stages/tts.py` | `tts`, `edge`, `edge-tts` |
 | 006 Images | `src/stages/images.py` | `images`, `sd_cli`, `stable diffusion`, `dall_e` |
 | 007 Music | `src/stages/music.py` | `music`, `background`, `youtube` |
 | 008 Subtitles | `src/stages/subtitles.py` | `subtitles`, `whisper`, `asr` |
@@ -51,6 +52,7 @@ None. All documented features are implemented in the codebase.
 | 011 Config | `src/config.py` | `settings`, `channel`, `video_mode`, `provider` |
 | 012 Persistence | `src/database.py`, `src/models.py` | `job`, `db`, `SQLAlchemy`, `sqlite` |
 | 013 Cross-cutting | `src/utils.py`, `src/logging_config.py` | `utils`, `mock_mode`, `logging`, `TeeTextIO` |
+| 014 Control UI | `frontend/src/`, `src/ui_api.py` | `dashboard`, `ui`, `jobs`, `runs`, `config editor` |
 
 ## Code Location Map
 
@@ -72,3 +74,5 @@ None. All documented features are implemented in the codebase.
 | `src/models.py` | → 012 |
 | `src/utils.py` | → 013 |
 | `src/logging_config.py` | → 013 |
+| `src/ui_api.py` | → 014 |
+| `frontend/src/` | → 014 |

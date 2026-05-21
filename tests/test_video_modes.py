@@ -74,7 +74,12 @@ async def test_placeholder_only_images_skip_sd_cli(tmp_path: Path, monkeypatch: 
     monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
 
-    stage = ImageGenerationStage(job_id="img-job", mock=False, placeholder_only=True)
+    stage = ImageGenerationStage(
+        job_id="img-job",
+        mock=False,
+        placeholder_only=True,
+        allow_placeholder_override=True,
+    )
     stage.job_dir = tmp_path / "jobs" / "img-job"
     stage.images_dir = stage.job_dir / "images"
     stage._sd_cli_available = lambda: True  # type: ignore[method-assign]

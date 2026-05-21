@@ -65,7 +65,7 @@ The image generation stage creates visual assets for each video scene. It suppor
 - **Scene mode cycling**: `_get_scene_mode()` cycles through different scene modes (e.g., professional, outdoor, abstract) to create visual variety.
 - **Seed persistence**: Seeds are stored per scene for reproducibility — `_get_prompt_seed()` checks for existing seeds before generating new ones.
 - **Mode instructions**: `_mode_instruction()` injects mode-specific guidance into prompts.
-- **Placeholder mode**: If `force_placeholder_images` is True, skips actual generation and creates placeholder images.
+- **Placeholder mode**: Mock runs may use placeholders. Real Stoic Modernized runs must fail instead of silently using placeholder cards unless a human explicitly reruns with a dedicated override.
 - **Error handling**: `ImageGenerationError` is raised for provider failures.
 
 ## Cross-Package References

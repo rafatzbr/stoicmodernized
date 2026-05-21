@@ -20,7 +20,7 @@ class SubtitleStage:
         re.DOTALL | re.MULTILINE,
     )
     SIMPLE_SRT_RE = re.compile(
-        r"(?P<index>\d+)\s+\n?(?P<start>\d{2}:\d{2}:\d{2},\d{3})\s+-->\s+(?P<end>\d{2}:\d{2}:\d{2},\d{3})\s+\n?(?P<text>.*?)(?=\n\s*\n|\Z)",
+        r"(?:WEBVTT\s+)?(?:\d+\s+)?(?P<start>\d{2}:\d{2}:\d{2}[\.,]\d{3})\s+-->\s+(?P<end>\d{2}:\d{2}:\d{2}[\.,]\d{3})\s+\n?(?P<text>.*?)(?=\n\s*\n|\Z)",
         re.DOTALL,
     )
 
@@ -178,32 +178,83 @@ class SubtitleStage:
         if not isinstance(scenes, list) or not scenes:
             return
 
-        spoken_scenes = [
-            scene
-            for scene in scenes
+        spoken_scene_entries = [
+            (index, scene)
+            for index, scene in enumerate(scenes)
             if isinstance(scene, dict)
+            and self._clean_scene_text(scene.get("narration_segment", ""))
             and str(scene.get("narration_segment", "")).lower() not in {"intro branding", "outro branding"}
         ]
-        if not spoken_scenes:
+        if not spoken_scene_entries:
             return
 
-        matched_starts: list[float] = []
+        matched_spans: list[tuple[float, float]] = []
         search_index = 0
-        for scene in spoken_scenes:
+        for _, scene in spoken_scene_entries:
             scene_text = self._clean_scene_text(scene.get("narration_segment", ""))
-            if not scene_text:
+            match_span = self._find_scene_segment_span(segments, scene_text, search_index)
+            if match_span is None:
                 return
-            match_index = self._find_scene_start_segment_index(segments, scene_text, search_index)
-            if match_index is None:
-                return
-            matched_starts.append(segments[match_index].start_time)
-            search_index = match_index + 1
+            start_index, end_index = match_span
+            matched_spans.append((segments[start_index].start_time, segments[end_index].end_time))
+            search_index = end_index + 1
 
-        for index, scene in enumerate(spoken_scenes):
-            start = matched_starts[index]
-            end = matched_starts[index + 1] if index + 1 < len(matched_starts) else audio_duration
+        first_spoken_scene_index = spoken_scene_entries[0][0]
+        if first_spoken_scene_index > 0:
+            first_spoken_start = matched_spans[0][0]
+            for prior_scene in scenes[:first_spoken_scene_index]:
+                if not isinstance(prior_scene, dict):
+                    continue
+                prior_scene["end_time"] = round(max(float(prior_scene.get("start_time") or 0.0), first_spoken_start), 3)
+
+        for index, (_, scene) in enumerate(spoken_scene_entries):
+            start, end = matched_spans[index]
+            if index + 1 < len(matched_spans):
+                next_start = matched_spans[index + 1][0]
+                end = min(end, next_start)
+            else:
+                end = min(end, audio_duration)
             scene["start_time"] = round(start, 3)
             scene["end_time"] = round(max(start + 0.05, end), 3)
+
+        scene_plan["total_duration"] = round(audio_duration, 3)
+        save_json(scene_plan, self.scenes_dir / "scenes.json")
+
+    def _find_scene_segment_span(
+        self, segments: list[SubtitleSegment], scene_text: str, start_index: int
+    ) -> Optional[tuple[int, int]]:
+        target_tokens = self._match_tokens(scene_text)
+        if not target_tokens:
+            return None
+
+        for index in range(start_index, len(segments)):
+            best_end: Optional[int] = None
+            best_prefix = 0
+            max_window = min(len(segments), index + 12)
+            for end_index in range(index, max_window):
+                window = segments[index : end_index + 1]
+                combined_tokens = self._match_tokens(" ".join(segment.text for segment in window))
+                if not combined_tokens:
+                    continue
+                prefix_len = self._shared_prefix_len(combined_tokens, target_tokens)
+                if prefix_len > best_prefix:
+                    best_prefix = prefix_len
+                    best_end = end_index
+                if prefix_len == len(target_tokens):
+                    return (index, end_index)
+                if len(combined_tokens) >= len(target_tokens) and prefix_len < max(3, len(target_tokens) // 2):
+                    break
+            if best_end is not None and best_prefix >= min(5, len(target_tokens)):
+                return (index, best_end)
+        return None
+
+    def _shared_prefix_len(self, left: list[str], right: list[str]) -> int:
+        prefix_len = 0
+        for a, b in zip(left, right, strict=False):
+            if a != b:
+                break
+            prefix_len += 1
+        return prefix_len
 
         scene_plan["total_duration"] = round(audio_duration, 3)
         save_json(scene_plan, self.scenes_dir / "scenes.json")
@@ -425,7 +476,7 @@ class SubtitleStage:
         return int(minutes) * 60 + int(seconds)
 
     def _parse_hhmmss_ms(self, value: str) -> float:
-        hours, minutes, rest = value.split(":")
+        hours, minutes, rest = value.replace(".", ",").split(":")
         seconds, millis = rest.split(",")
         return int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(millis) / 1000.0
 

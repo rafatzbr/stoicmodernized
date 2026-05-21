@@ -9,7 +9,7 @@ from typing import Optional
 
 from PIL import Image
 
-from src.config import settings
+from src.config import Channel, settings
 from src.models import VideoRenderConfig, VideoRenderResult
 
 
@@ -59,10 +59,21 @@ class VideoRenderer:
         )
 
         if image_paths:
+            # Load title from research JSON for thumbnail
+            research_json = self.job_dir / "research" / "research.json"
+            title = "Stoic Modernized"
+            if research_json.exists():
+                try:
+                    import json as _json
+                    with open(research_json) as _f:
+                        _data = _json.load(_f)
+                        title = _data.get("title", title)
+                except Exception:
+                    pass
             # Generate a proper thumbnail with title overlay and branding
             thumbnail = self._generate_thumbnail(
                 source_image=image_paths[0],
-                title=job_record.title if hasattr(job_record, "title") and job_record.title else "Stoic Modernized",
+                title=title,
                 output_path=thumbnail_path,
                 width=config.width,
                 height=config.height,
@@ -226,6 +237,8 @@ class VideoRenderer:
 
         return [max(1.0, raw) for raw in raw_durations] or [3.0]
 
+
+
     def _output_duration_limit(self, audio_duration: Optional[float]) -> Optional[str]:
         if not audio_duration or audio_duration <= 0:
             return None
@@ -329,9 +342,9 @@ class VideoRenderer:
                     "-c:v",
                     "libx264",
                     "-preset",
-                    "medium",
+                    "slow",
                     "-crf",
-                    "23",
+                    "18",
                     "-pix_fmt",
                     "yuv420p",
                     str(output_path),
@@ -502,9 +515,9 @@ class VideoRenderer:
             "-level:v",
             "4.1",
             "-preset",
-            "medium",
+            "slow",
             "-crf",
-            "23",
+            "18",
             "-pix_fmt",
             "yuv420p",
             "-movflags",

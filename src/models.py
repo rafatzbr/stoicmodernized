@@ -66,6 +66,8 @@ class Scene(BaseModel):
     visual_prompt: str
     text_overlay: Optional[str] = None
     animation_style: str = "zoom"
+    scene_type: Optional[str] = None
+    title_text: Optional[str] = None
 
 
 class ScenePlan(BaseModel):

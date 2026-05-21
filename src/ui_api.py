@@ -13,14 +13,15 @@ import httpx
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from src.config import settings
+from src.config import Channel, settings
 from src.database import db
+from src.stages.news_fetcher import NewsFetcher, StorySummary
 
 BASE_DIR = Path(__file__).parent.parent
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
@@ -43,9 +44,10 @@ class RunRequest(BaseModel):
     topic: str
     video_mode: str = "short"
     provider: str = "edge"
+    channel: str = Channel.STOIC_MODERNIZED.value
     platform: str | None = None
     skip_upload: bool = True
-    renderer: str = "ffmpeg"
+    renderer: str = "remotion"
 
 
 class StepsRequest(BaseModel):
@@ -53,9 +55,10 @@ class StepsRequest(BaseModel):
     job_id: str | None = None
     video_mode: str = "short"
     provider: str = "edge"
+    channel: str = Channel.STOIC_MODERNIZED.value
     platform: str | None = None
     steps: list[str]
-    renderer: str = "ffmpeg"
+    renderer: str = "remotion"
 
 
 class FileUpdateRequest(BaseModel):
@@ -64,11 +67,26 @@ class FileUpdateRequest(BaseModel):
 
 class TopicSuggestionRequest(BaseModel):
     current_topic: str | None = None
+    channel: str = Channel.STOIC_MODERNIZED.value
 
 
 class UploadAssetRequest(BaseModel):
     asset_path: str
     mock: bool = False
+
+
+class NewsSelectionRequest(BaseModel):
+    indices: list[int]
+
+
+class NewsGenerateRequest(BaseModel):
+    channel: str = Channel.STOIC_MODERNIZED.value
+    topic: str = "managing work stress"
+    video_mode: str = "short"
+    provider: str = "edge"
+    renderer: str = "remotion"
+    skip_upload: bool = False
+    platform: str | None = None
 
 
 def _normalize_topic_line(value: str) -> str:
@@ -129,6 +147,19 @@ def _spawn_command(cmd: list[str]) -> str:
     return run_id
 
 
+def _read_job_context(job_id: str) -> dict[str, Any]:
+    job_context_path = settings.jobs_dir / job_id / "job.json"
+    if not job_context_path.exists():
+        return {}
+    try:
+        import json
+
+        data = json.loads(job_context_path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -137,18 +168,23 @@ def health() -> dict[str, str]:
 @app.get("/api/jobs")
 def list_jobs() -> list[dict[str, Any]]:
     jobs = db.get_all_jobs()
-    return [
-        {
-            "job_id": job.job_id,
-            "topic": job.topic,
-            "status": job.status,
-            "created_at": str(job.created_at),
-            "video_path": job.video_path,
-            "thumbnail_path": job.thumbnail_path,
-            "subtitle_path": job.subtitle_path,
-        }
-        for job in jobs
-    ]
+    items: list[dict[str, Any]] = []
+    for job in jobs:
+        context = _read_job_context(job.job_id)
+        items.append(
+            {
+                "job_id": job.job_id,
+                "topic": job.topic,
+                "status": job.status,
+                "created_at": str(job.created_at),
+                "channel": context.get("channel", settings.default_channel.value),
+                "channel_name": context.get("channel_name", settings.get_channel_name(settings.default_channel)),
+                "video_path": job.video_path,
+                "thumbnail_path": job.thumbnail_path,
+                "subtitle_path": job.subtitle_path,
+            }
+        )
+    return items
 
 
 @app.get("/api/jobs/{job_id}")
@@ -171,11 +207,16 @@ def get_job(job_id: str) -> dict[str, Any]:
                         "url": f"/api/jobs/{job_id}/assets/{path.relative_to(job_dir).as_posix()}",
                     }
                 )
+    context = _read_job_context(job_id)
     return {
         "job_id": job.job_id,
         "topic": job.topic,
         "status": job.status,
         "created_at": str(job.created_at),
+        "channel": context.get("channel", settings.default_channel.value),
+        "channel_name": context.get("channel_name", settings.get_channel_name(settings.default_channel)),
+        "channel_handle": context.get("channel_handle", settings.get_channel_handle(settings.default_channel)),
+        "channel_description": context.get("channel_description", settings.get_channel_description(settings.default_channel)),
         "video_path": job.video_path,
         "thumbnail_path": job.thumbnail_path,
         "subtitle_path": job.subtitle_path,
@@ -252,10 +293,12 @@ def start_run(request: RunRequest) -> dict[str, str]:
         request.video_mode,
         "--provider",
         request.provider,
+        "--channel",
+        request.channel,
     ]
     if request.renderer == "both":
         # Spawn a single process with --renderer both; CLI handles
-        # sequential ffmpeg→remotion render pass in one pipeline
+        # sequential remotion→ffmpeg render pass in one pipeline
         run_cmd = cmd + ["--renderer", "both"]
         if request.platform:
             run_cmd += ["--platform", request.platform]
@@ -279,33 +322,33 @@ def start_steps(request: StepsRequest) -> dict[str, str | None]:
 
     for step in request.steps:
         if step == "research":
-            cmd = [PYTHON_BIN, "-m", "src.main", "research", request.topic]
+            cmd = [PYTHON_BIN, "-m", "src.main", "research", request.topic, "--channel", request.channel]
             if current_job_id:
                 cmd += ["--job-id", current_job_id]
             commands.append(cmd)
         elif step == "script":
-            commands.append([PYTHON_BIN, "-m", "src.main", "script", current_job_id or "", "--video-mode", request.video_mode])
+            commands.append([PYTHON_BIN, "-m", "src.main", "script", current_job_id or "", "--video-mode", request.video_mode, "--channel", request.channel])
         elif step == "scene":
-            commands.append([PYTHON_BIN, "-m", "src.main", "scene", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "scene", current_job_id or "", "--channel", request.channel])
         elif step == "tts":
-            commands.append([PYTHON_BIN, "-m", "src.main", "tts", current_job_id or "", "--provider", request.provider])
+            commands.append([PYTHON_BIN, "-m", "src.main", "tts", current_job_id or "", "--provider", request.provider, "--channel", request.channel])
         elif step == "music":
             commands.append([PYTHON_BIN, "-m", "src.main", "music", current_job_id or ""])
         elif step == "images":
-            commands.append([PYTHON_BIN, "-m", "src.main", "images", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "images", current_job_id or "", "--channel", request.channel])
         elif step == "subtitles":
             commands.append([PYTHON_BIN, "-m", "src.main", "subtitles", current_job_id or ""])
         elif step == "render":
-            renderers = ("ffmpeg", "remotion") if request.renderer == "both" else (request.renderer or "ffmpeg",)
+            renderers = ("remotion", "ffmpeg") if request.renderer == "both" else (request.renderer or "remotion",)
             for r in renderers:
-                cmd = [PYTHON_BIN, "-m", "src.main", "render", current_job_id or "", "--video-mode", request.video_mode, "--renderer", r]
+                cmd = [PYTHON_BIN, "-m", "src.main", "render", current_job_id or "", "--video-mode", request.video_mode, "--renderer", r, "--channel", request.channel]
                 if request.platform:
                     cmd += ["--platform", request.platform]
                 commands.append(cmd)
         elif step == "metadata":
-            commands.append([PYTHON_BIN, "-m", "src.main", "metadata", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "metadata", current_job_id or "", "--channel", request.channel])
         elif step == "upload":
-            commands.append([PYTHON_BIN, "-m", "src.main", "upload", current_job_id or ""])
+            commands.append([PYTHON_BIN, "-m", "src.main", "upload", current_job_id or "", "--channel", request.channel])
 
     shell_cmd = " && ".join(" ".join(part for part in cmd if part) for cmd in commands)
     return {"run_id": _spawn_command(["bash", "-lc", shell_cmd]), "job_id": current_job_id}
@@ -342,6 +385,7 @@ def stop_run(run_id: str) -> dict[str, bool]:
 @app.post("/api/topics/suggest")
 async def suggest_topic(request: TopicSuggestionRequest) -> dict[str, Any]:
     current_topic = (request.current_topic or '').strip()
+    # Stoic Modernized topic suggestion prompt
     prompt = f"""
 You suggest one topic for a faceless YouTube channel called Stoic Modernized.
 The audience is modern workers dealing with stress, work pressure, boundaries, focus, ambition, burnout, and emotional resilience.
@@ -405,10 +449,176 @@ Current topic hint: {current_topic or 'none'}
     except Exception as exc:
         logger.exception('Local topic suggestion failed: %s', exc)
         print(f'[topic-suggest] Local topic suggestion failed: {exc!r}', file=sys.stderr, flush=True)
-        fallback = current_topic if current_topic else 'How to Stay Calm When Everything at Work Feels Urgent'
-        if fallback == current_topic and current_topic:
-            fallback = f'Stoic Strategies for {current_topic.title()}'
-        return {'topic': fallback, 'source': 'fallback', 'error': repr(exc), 'thinking': '', 'used_reasoning_fallback': False, 'finish_reason': None, 'raw_content': ''}
+        return {'topic': '', 'source': 'error', 'error': repr(exc), 'thinking': '', 'used_reasoning_fallback': False, 'finish_reason': None, 'raw_content': ''}
+
+
+# ── News dashboard state (in-memory, keyed by channel) ──────────────────
+_NEWS_STATE: dict[str, dict[str, Any]] = {}
+
+
+def _news_session_key(channel: str) -> str:
+    return f"news:{channel}"
+
+
+@app.post("/api/news/fetch")
+async def fetch_news(
+    channel: str = Query(Channel.STOIC_MODERNIZED.value),
+    append: bool = Query(False),
+) -> dict[str, Any]:
+    """Fetch Stoic Modernized research topics."""
+    try:
+        ch = Channel(channel)
+    except Exception:
+        ch = Channel.STOIC_MODERNIZED
+
+    session_key = _news_session_key(channel)
+    existing_state = _NEWS_STATE.get(session_key) if append else None
+    existing_stories = list((existing_state or {}).get("stories", []))
+    skip_urls = {
+        str(story.get("url") or "").strip().lower().split("#", 1)[0].split("?", 1)[0].rstrip("/")
+        for story in existing_stories
+        if story.get("url")
+    }
+
+    fetcher = NewsFetcher(channel=ch)
+    stories = await fetcher.fetch_stories("AI news", summarize=False, skip_urls=skip_urls)
+    new_stories = [s.to_dict() for s in stories]
+    combined_stories = [*existing_stories, *new_stories] if append else new_stories
+
+    existing_selected = list((existing_state or {}).get("selected_indices", [])) if append else []
+    _NEWS_STATE[session_key] = {
+        "stories": combined_stories,
+        "selected_indices": existing_selected,
+        "article_reads": [*((existing_state or {}).get("article_reads", [])), *fetcher.article_reads] if append else fetcher.article_reads,
+    }
+
+    return {
+        "stories": combined_stories,
+        "count": len(combined_stories),
+        "added_count": len(new_stories),
+    }
+
+
+@app.post("/api/news/selected")
+def save_selected_news(
+    request: NewsSelectionRequest,
+    channel: str = Query(Channel.AI_SIGNAL.value),
+) -> dict[str, Any]:
+    """Save the user's selected story indices."""
+    session_key = _news_session_key(channel)
+    if session_key not in _NEWS_STATE:
+        raise HTTPException(status_code=404, detail="No news session. Fetch first.")
+
+    _NEWS_STATE[session_key]["selected_indices"] = request.indices
+    return {"selected_count": len(_NEWS_STATE[session_key]["selected_indices"])}
+
+
+@app.get("/api/news/selected")
+def get_selected_news(channel: str = Query(Channel.AI_SIGNAL.value)) -> dict[str, Any]:
+    """Return currently selected stories."""
+    session_key = _news_session_key(channel)
+    if session_key not in _NEWS_STATE:
+        raise HTTPException(status_code=404, detail="No news session. Fetch first.")
+
+    state = _NEWS_STATE[session_key]
+    selected = [state["stories"][i] for i in state["selected_indices"] if 0 <= i < len(state["stories"])]
+    return {"stories": selected, "selected_count": len(selected)}
+
+
+@app.delete("/api/news/selected")
+def clear_selected_news(channel: str = Query(Channel.AI_SIGNAL.value)) -> dict[str, str]:
+    """Clear the current news session."""
+    session_key = _news_session_key(channel)
+    _NEWS_STATE.pop(session_key, None)
+    return {"cleared": "true"}
+
+
+@app.post("/api/news/generate")
+def generate_from_selected_news(request: NewsGenerateRequest) -> dict[str, str]:
+    """Create research from selected stories, then run remaining pipeline stages in the background."""
+    import asyncio
+    import json
+    import shlex
+
+    from src.models import ResearchSource
+    from src.stages.research import ResearchStage
+
+    channel = request.channel
+    topic = request.topic
+    video_mode = request.video_mode
+    provider = request.provider
+    renderer = request.renderer
+    platform = request.platform
+
+    try:
+        ch = Channel(channel)
+    except Exception:
+        ch = Channel.AI_SIGNAL
+        channel = ch.value
+
+    session_key = _news_session_key(channel)
+    if session_key not in _NEWS_STATE:
+        raise HTTPException(status_code=404, detail="No news session. Fetch first.")
+
+    state = _NEWS_STATE[session_key]
+    selected = [state["stories"][i] for i in state["selected_indices"] if 0 <= i < len(state["stories"])]
+    if not selected:
+        raise HTTPException(status_code=400, detail="No stories selected.")
+
+    job_record = db.create_job(topic)
+    job_id = job_record.job_id
+
+    job_dir = settings.jobs_dir / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    context = {
+        "job_id": job_id,
+        "topic": topic,
+        "channel": ch.value,
+        "channel_name": settings.get_channel_name(ch),
+        "channel_handle": settings.get_channel_handle(ch),
+        "channel_description": settings.get_channel_description(ch),
+        "channel_voice": settings.get_channel_voice(ch),
+    }
+    (job_dir / "job.json").write_text(json.dumps(context, indent=2), encoding="utf-8")
+
+    research_sources = [
+        ResearchSource(
+            title=st["title"],
+            url=st["url"],
+            note=st.get("summary") or st.get("content") or st.get("snippet") or "",
+            relevance=st.get("relevance", 0.9),
+            source=st.get("source", "web"),
+        )
+        for st in selected
+    ]
+
+    research_stage = ResearchStage(job_id=job_id, channel=ch, selected_sources=research_sources)
+    results = asyncio.run(research_stage.run(topic))
+    research_path = research_stage.save_results(results)
+    db.update_job(job_id, status="research_complete", research_path=str(research_path))
+
+    q_job = shlex.quote(job_id)
+    q_channel = shlex.quote(ch.value)
+    q_provider = shlex.quote(provider)
+    q_video_mode = shlex.quote(video_mode)
+    q_renderer = shlex.quote(renderer)
+    platform_arg = f" --platform {shlex.quote(platform)}" if platform else ""
+    upload_cmd = "" if request.skip_upload else f" && {shlex.quote(PYTHON_BIN)} -m src.main upload {q_job} --channel {q_channel}"
+    cmd = " && ".join([
+        f"{shlex.quote(PYTHON_BIN)} -m src.main script {q_job} --video-mode {q_video_mode} --channel {q_channel}",
+        f"{shlex.quote(PYTHON_BIN)} -m src.main scene {q_job} --channel {q_channel}",
+        f"{shlex.quote(PYTHON_BIN)} -m src.main tts {q_job} --provider {q_provider} --channel {q_channel}",
+        f"({shlex.quote(PYTHON_BIN)} -m src.main music {q_job} || true)",
+        f"{shlex.quote(PYTHON_BIN)} -m src.main images {q_job} --channel {q_channel}",
+        f"{shlex.quote(PYTHON_BIN)} -m src.main subtitles {q_job}",
+        f"{shlex.quote(PYTHON_BIN)} -m src.main render {q_job} --video-mode {q_video_mode} --renderer {q_renderer} --channel {q_channel}{platform_arg}",
+        f"{shlex.quote(PYTHON_BIN)} -m src.main metadata {q_job} --channel {q_channel}",
+    ]) + upload_cmd
+    if request.skip_upload:
+        cmd += f" && {shlex.quote(PYTHON_BIN)} - <<'PY'\nfrom src.database import db\ndb.update_job('{job_id}', status='ready_for_upload')\nPY"
+
+    run_id = _spawn_command(["bash", "-lc", cmd])
+    return {"run_id": run_id, "job_id": job_id}
 
 
 @app.get("/api/config/env")

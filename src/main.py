@@ -3,7 +3,11 @@
 import asyncio
 import contextlib
 import io
+import re
+import shutil
+import subprocess
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
@@ -12,12 +16,16 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.config import RemotionPlatform, VideoMode, settings
+from src.config import Channel, RemotionPlatform, VideoMode, settings
+import os, json, tempfile, pathlib
 from src.database import db
+from src.ledger_strategy import LedgerStrategyManager
 from src.logging_config import JobLogger
 from src.models import Scene, VideoRenderConfig
+from src.news_registry import news_registry
 from src.stages.images import ImageGenerationError, ImageGenerationStage
 from src.stages.music import BackgroundMusicStage
+from src.stages.quality_gate import QualityGateError, QualityGateStage
 from src.stages.render import VideoRenderer
 from src.stages.remotion_renderer import RemotionRenderer
 from src.stages.research import ResearchStage
@@ -25,6 +33,7 @@ from src.stages.scenes import SceneStage
 from src.stages.script import ScriptGenerationError, ScriptStage
 from src.stages.subtitles import SubtitleStage
 from src.stages.tts import TTSStage
+from src.stages.narration_prep import NarrationPreparationStage
 from src.stages.upload import YouTubeUploader
 from src.utils import get_job_dir, load_json, save_json
 
@@ -107,6 +116,17 @@ def print_job_table(jobs: list) -> None:
     console.print(table)
 
 
+def _terminate_process(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
 def _load_job_record(job_id: str):
     job_record = db.get_job(job_id)
     if not job_record:
@@ -122,6 +142,249 @@ def _save_metadata(job_id: str, metadata_payload: dict) -> Path:
     save_json(metadata_payload, metadata_path)
     db.update_job(job_id, status="metadata_complete", metadata_path=str(metadata_path))
     return metadata_path
+
+
+def _generate_metadata_payload_for_job(job_id: str, job_record, channel: Optional[Channel] = None, mock: bool = False) -> dict:
+    """Regenerate metadata from the current script artifact for a job."""
+    if not job_record.script_path:
+        raise ValueError("No script found for this job")
+
+    video_mode = _resolve_video_mode(job_id=job_id)
+    script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), video_mode)
+    resolved_channel = _resolve_channel(channel, job_id)
+    uploader = YouTubeUploader(mock=mock, channel=resolved_channel)
+    script_text = script_data.get("narration", "")
+
+    return uploader.generate_metadata(
+        script_title=script_data["title"],
+        chapters=script_data.get("chapters", []),
+        script_text=script_text,
+        job_dir=str(get_job_dir(job_id)),
+    )
+
+
+def _save_covered_news(job_id: str, video_title: str) -> int:
+    context = _load_job_context(job_id)
+    try:
+        channel = Channel(context.get("channel", settings.default_channel.value))
+    except Exception:
+        channel = settings.default_channel
+
+    # AI Signal channel removed - this function not needed for Stoic Modernized
+    return 0
+
+    job_record = db.get_job(job_id)
+    if not job_record or not job_record.research_path:
+        return 0
+
+    research_data = load_json(Path(job_record.research_path))
+    sources = research_data.get("sources", [])
+    entries = news_registry.build_entries_for_job(
+        job_id=job_id,
+        channel=channel,
+        topic=context.get("topic") or research_data.get("topic") or "",
+        video_title=video_title,
+        sources=sources,
+    )
+    return news_registry.add_entries(channel, entries)
+
+
+def _job_context_path(job_id: str) -> Path:
+    return get_job_dir(job_id) / "job.json"
+
+
+def _load_job_context(job_id: str) -> dict:
+    path = _job_context_path(job_id)
+    if path.exists():
+        try:
+            payload = load_json(path)
+            if isinstance(payload, dict):
+                return payload
+        except Exception:
+            pass
+    channel = settings.default_channel
+    return {
+        "channel": channel.value,
+        "channel_name": settings.get_channel_name(channel),
+        "channel_handle": settings.get_channel_handle(channel),
+        "channel_description": settings.get_channel_description(channel),
+        "channel_voice": settings.get_channel_voice(channel),
+    }
+
+
+def _resolve_channel(channel, job_id: Optional[str] = None) -> Channel:
+    # Handle OptionInfo objects from Typer
+    if hasattr(channel, 'default'):
+        channel = channel.default
+    if channel is not None:
+        return channel
+    if job_id:
+        context = _load_job_context(job_id)
+        try:
+            return Channel(context.get("channel", settings.default_channel.value))
+        except Exception:
+            return settings.default_channel
+    return settings.default_channel
+
+
+def _default_remotion_platform(mode: str, channel: Channel) -> str:
+    """Pick the visual preset that matches the destination surface."""
+    if mode != "portrait":
+        return "youtube"
+
+    if channel == Channel.STOIC_MODERNIZED:
+        return "youtube"
+
+    return "tiktok"
+
+
+def _resolve_video_mode(video_mode: Optional[VideoMode] = None, job_id: Optional[str] = None) -> VideoMode:
+    if video_mode is not None:
+        return video_mode
+    if job_id:
+        context = _load_job_context(job_id)
+        try:
+            return VideoMode(context.get("video_mode", settings.default_video_mode.value))
+        except Exception:
+            return settings.default_video_mode
+    return settings.default_video_mode
+
+
+def _short_chapters_from_script(script_data: dict) -> list[dict[str, float | str]]:
+    default_titles = ["Hook", "Stoic Principle", "Workplace Application", "CTA"]
+    timestamps = [0.0, 12.0, 30.0, 50.0]
+    sections = script_data.get("sections") if isinstance(script_data.get("sections"), list) else []
+    titles: list[str] = []
+    for section in sections[:4]:
+        if isinstance(section, dict):
+            title = str(section.get("title") or "").strip()
+            if title:
+                titles.append(title)
+    if len(titles) != 4:
+        titles = default_titles
+    return [{"title": title, "timestamp": ts} for title, ts in zip(titles, timestamps, strict=False)]
+
+
+def _normalize_script_for_video_mode(script_data: dict, video_mode: VideoMode) -> dict:
+    normalized = dict(script_data)
+    normalized["video_mode"] = video_mode.value
+    if video_mode != VideoMode.SHORT:
+        return normalized
+
+    narration = str(script_data.get("narration") or "").strip()
+    short_narration = str(script_data.get("short_version") or "").strip()
+    narration_word_count = len(narration.split())
+    has_timed_blocks = narration.startswith("[") and "\n" in narration
+    channel_name = str(script_data.get("channel") or "").strip().lower()
+    source_video_mode = str(script_data.get("video_mode") or "").strip().lower()
+    already_short_script = source_video_mode == "short" or len(script_data.get("chapters", [])) <= 4
+
+
+
+    # Keep authored/timed narration for shorts when it already has structure.
+    # Only fall back to short_version when narration is missing or clearly long-form/unstructured.
+    if short_narration and (not narration or (not already_short_script and not has_timed_blocks)):
+        normalized["narration"] = short_narration
+    normalized["chapters"] = _short_chapters_from_script(script_data)
+    return normalized
+
+
+def _persist_job_context(
+    job_id: str,
+    topic: str,
+    channel: Channel,
+    video_mode: VideoMode | None = None,
+) -> Path:
+    existing = _load_job_context(job_id) if _job_context_path(job_id).exists() else {}
+    resolved_video_mode = video_mode or VideoMode(existing.get("video_mode", settings.default_video_mode.value))
+    payload = {
+        "job_id": job_id,
+        "topic": topic,
+        "channel": channel.value,
+        "channel_name": settings.get_channel_name(channel),
+        "channel_handle": settings.get_channel_handle(channel),
+        "channel_description": settings.get_channel_description(channel),
+        "channel_voice": settings.get_channel_voice(channel),
+        "video_mode": resolved_video_mode.value,
+    }
+    return save_json(payload, _job_context_path(job_id))
+
+
+@app.command("ui-dev")
+def ui_dev(
+    host: str = typer.Option("0.0.0.0", "--host", help="Host for both the API and Vite dev server"),
+    api_port: int = typer.Option(8001, "--api-port", help="Port for the FastAPI backend"),
+    frontend_port: int = typer.Option(5173, "--frontend-port", help="Port for the Vite dev server"),
+) -> None:
+    """Run the control UI in hot-reload development mode."""
+    repo_dir = Path(__file__).parent.parent
+    frontend_dir = repo_dir / "frontend"
+
+    if not frontend_dir.exists():
+        console.print("[red]Error: frontend directory not found[/red]")
+        raise typer.Exit(code=1)
+
+    npm_bin = shutil.which("npm")
+    if not npm_bin:
+        console.print("[red]Error: npm is required for ui-dev[/red]")
+        raise typer.Exit(code=1)
+
+    display_host = "127.0.0.1" if host == "0.0.0.0" else host
+    backend_cmd = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "src.ui_api:app",
+        "--reload",
+        "--host",
+        host,
+        "--port",
+        str(api_port),
+    ]
+    frontend_cmd = [
+        npm_bin,
+        "run",
+        "dev",
+        "--",
+        "--host",
+        host,
+        "--port",
+        str(frontend_port),
+    ]
+
+    frontend_env = os.environ.copy()
+    frontend_env["VITE_API_BASE_URL"] = f"http://{display_host}:{api_port}"
+
+    print_header()
+    console.print("[bold]Starting hot-reload UI development servers[/bold]")
+    console.print(f"[dim]API:[/dim]      http://{display_host}:{api_port}")
+    console.print(f"[dim]Frontend:[/dim] http://{display_host}:{frontend_port}")
+    console.print("[dim]Press Ctrl+C to stop both processes.[/dim]\n")
+
+    backend = subprocess.Popen(backend_cmd, cwd=str(repo_dir))
+    frontend = subprocess.Popen(frontend_cmd, cwd=str(frontend_dir), env=frontend_env)
+
+    try:
+        while True:
+            backend_code = backend.poll()
+            frontend_code = frontend.poll()
+
+            if backend_code is not None:
+                _terminate_process(frontend)
+                console.print(f"\n[red]Backend exited with code {backend_code}[/red]")
+                raise typer.Exit(code=backend_code if backend_code is not None else 1)
+
+            if frontend_code is not None:
+                _terminate_process(backend)
+                console.print(f"\n[red]Frontend exited with code {frontend_code}[/red]")
+                raise typer.Exit(code=frontend_code if frontend_code is not None else 1)
+
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Stopping UI development servers...[/yellow]")
+        _terminate_process(frontend)
+        _terminate_process(backend)
+        raise typer.Exit(code=0)
 
 
 @app.command()
@@ -155,8 +418,16 @@ def idea(
         console.print("[dim]Tip: Use 'python -m src.main research <your-topic>' to start a job[/dim]")
         return
 
-    console.print("[yellow]Real idea generation not yet implemented.[/yellow]")
-    console.print("[dim]Please use --mock flag for demo purposes[/dim]")
+    manager = LedgerStrategyManager()
+    ideas_payload = manager.load_topic_plan(niche=niche)
+    ideas = list(ideas_payload.get("ideas", []))[:count]
+    console.print()
+    for i, idea_data in enumerate(ideas, 1):
+        objective = idea_data.get("objective", "balanced")
+        title = idea_data.get("title", "Untitled")
+        console.print(f"[green]✓[/green] {i}. [{objective}] {title}")
+    console.print()
+    console.print("[dim]Generated from current Ledger strategy. Use 'python -m src.main research <your-topic>' to start a job[/dim]")
 
 
 @app.command()
@@ -164,6 +435,7 @@ def research(
     topic: str = typer.Argument(..., help="Topic to research"),
     job_id: Optional[str] = typer.Option(None, "--job-id", help="Attach research to an existing job"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline: stoic-modernized", show_default=False),
 ) -> None:
     """Perform research on a topic and store sources."""
     print_header()
@@ -174,6 +446,9 @@ def research(
         job_record = db.create_job(topic)
         job_id = job_record.job_id
 
+    resolved_channel = _resolve_channel(channel, job_id)
+    _persist_job_context(job_id, topic, resolved_channel)
+
     logger = JobLogger(job_id)
     db.update_job(job_id, log_path=logger.log_path)
 
@@ -182,15 +457,38 @@ def research(
 
     logger.info(f"Starting research for topic: {topic}")
 
-    stage = ResearchStage(job_id=job_id, mock=mock)
-    results = asyncio.run(stage.run(topic))
+    stage = ResearchStage(job_id=job_id, mock=mock, channel=resolved_channel)
+    try:
+        results = asyncio.run(stage.run(topic))
+    except Exception as exc:
+        error_text = str(exc)
+        db.update_job(job_id, status="research_failed", error_message=error_text, log_path=logger.log_path)
+        console.print()
+        console.print("[bold red]Research Failed![/bold red]")
+        console.print(f"[dim]Reason:[/dim] {error_text}")
+        logger.info(f"Research stage failed: {error_text}")
+        raise typer.Exit(code=1)
+    final_topic = stage.last_topic or topic
+    if final_topic != topic:
+        console.print(f"[yellow]Topic replaced during research:[/yellow] {topic} -> {final_topic}")
+        logger.info(f"Topic replaced during research: {topic} -> {final_topic}")
     research_path = stage.save_results(results)
 
-    db.update_job(job_id, status="research_complete", research_path=str(research_path), log_path=logger.log_path)
+    db.update_job(
+        job_id,
+        topic=final_topic,
+        status="research_complete",
+        research_path=str(research_path),
+        log_path=logger.log_path,
+        error_message=None,
+    )
+    _persist_job_context(job_id, final_topic, resolved_channel)
 
     console.print()
     console.print("[bold green]Research Complete![/bold green]")
     console.print(f"[dim]Job ID:[/dim] {job_id}")
+    if final_topic != topic:
+        console.print(f"[dim]Validated topic:[/dim] {final_topic}")
     console.print(f"[dim]Sources found:[/dim] {len(results.sources)}")
     console.print(f"[dim]Next step:[/dim] python -m src.main script {job_id}")
 
@@ -201,7 +499,8 @@ def research(
 def script(
     job_id: str = typer.Argument(..., help="Job ID from research stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
-    video_mode: VideoMode = typer.Option(VideoMode.LONG, "--video-mode", help="Video mode: short or long"),
+    video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline override", show_default=False),
 ) -> None:
     """Generate a video script based on research."""
     print_header()
@@ -214,7 +513,9 @@ def script(
     research_data = load_json(Path(job_record.research_path))
     console.print(f"[bold]Generating script for:[/bold] {research_data['title']}")
 
-    stage = ScriptStage(job_id=job_id, mock=mock, video_mode=video_mode)
+    resolved_channel = _resolve_channel(channel, job_id)
+    _persist_job_context(job_id, job_record.topic, resolved_channel, video_mode=video_mode)
+    stage = ScriptStage(job_id=job_id, mock=mock, video_mode=video_mode, channel=resolved_channel)
     report_path = stage.script_dir / "script_generation_report.json"
 
     try:
@@ -241,7 +542,8 @@ def script(
     console.print()
     console.print("[bold green]Script Complete![/bold green]")
     console.print(f"[dim]Title:[/dim] {script_result.title}")
-    console.print(f"[dim]Duration:[/dim] ~9 minutes")
+    expected_duration = "~1 minute" if video_mode == VideoMode.SHORT else "~9 minutes"
+    console.print(f"[dim]Duration:[/dim] {expected_duration}")
     console.print(f"[dim]Chapters:[/dim] {len(script_result.chapters)}")
     if report:
         console.print(f"[dim]Local LLM success:[/dim] {report.get('local_llm_success')}")
@@ -254,6 +556,7 @@ def script(
 def scene(
     job_id: str = typer.Argument(..., help="Job ID from script stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline override", show_default=False),
 ) -> None:
     """Create a scene plan for the video."""
     print_header()
@@ -263,7 +566,8 @@ def scene(
         console.print("[red]Error: No script found for this job[/red]")
         raise typer.Exit(code=1)
 
-    script_data = load_json(Path(job_record.script_path))
+    video_mode = _resolve_video_mode(job_id=job_id)
+    script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), video_mode)
     console.print(f"[bold]Creating scene plan for:[/bold] {script_data['title']}")
 
     scene_mock = mock or settings.mock_mode
@@ -272,7 +576,8 @@ def scene(
     else:
         console.print("[green]Using local-LLM scene planner[/green]")
 
-    stage = SceneStage(job_id=job_id, mock=scene_mock)
+    resolved_channel = _resolve_channel(channel, job_id)
+    stage = SceneStage(job_id=job_id, mock=scene_mock, channel=resolved_channel)
     scene_plan = asyncio.run(stage.run(script_data))
     scene_path = stage.save_scene_plan(scene_plan)
 
@@ -288,8 +593,9 @@ def scene(
 @app.command()
 def tts(
     job_id: str = typer.Argument(..., help="Job ID from scene stage"),
-    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (local, edge, elevenlabs, or voxcpm)"),
+    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (edge only)"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline override", show_default=False),
 ) -> None:
     """Generate TTS narration for the video."""
     print_header()
@@ -302,9 +608,11 @@ def tts(
     scene_plan = load_json(Path(job_record.scene_plan_path))
     console.print(f"[bold]Generating TTS with provider:[/bold] {provider}")
 
-    stage = TTSStage(job_id=job_id, provider=provider, mock=mock)
+    resolved_channel = _resolve_channel(channel, job_id)
+    stage = TTSStage(job_id=job_id, provider=provider, mock=mock, channel=resolved_channel)
     audio_path = asyncio.run(stage.run(scene_plan))
     stage.save_audio_path(audio_path)
+    db.update_job(job_id, status="tts_complete", audio_path=str(audio_path), error_message=None)
 
     console.print()
     console.print("[bold green]TTS Complete![/bold green]")
@@ -337,6 +645,12 @@ def images(
     job_id: str = typer.Argument(..., help="Job ID from tts stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
     placeholder_only: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
+    allow_placeholder_images: bool = typer.Option(
+        False,
+        "--allow-placeholder-images",
+        help="Explicitly allow placeholder scene cards for a real run after Rafael requests them.",
+    ),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline override", show_default=False),
 ) -> None:
     """Generate images for each scene."""
     print_header()
@@ -349,7 +663,12 @@ def images(
     scene_plan = load_json(Path(job_record.scene_plan_path))
     console.print(f"[bold]Generating {len(scene_plan['scenes'])} images for scenes...[/bold]")
 
-    stage = ImageGenerationStage(job_id=job_id, mock=mock, placeholder_only=placeholder_only)
+    stage = ImageGenerationStage(
+        job_id=job_id,
+        mock=mock,
+        placeholder_only=placeholder_only,
+        allow_placeholder_override=allow_placeholder_images,
+    )
     try:
         assets = asyncio.run(stage.run(scene_plan))
     except ImageGenerationError as exc:
@@ -384,7 +703,8 @@ def subtitles(
         console.print("[red]Error: No script found for this job[/red]")
         raise typer.Exit(code=1)
 
-    script_data = load_json(Path(job_record.script_path))
+    video_mode = _resolve_video_mode(job_id=job_id)
+    script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), video_mode)
     stage = SubtitleStage(job_id=job_id, mock=mock)
     result = asyncio.run(stage.run(script_data, job_record.audio_path))
     stage.save_subtitles(result)
@@ -401,7 +721,7 @@ def subtitles(
 def render(
     job_id: str = typer.Argument(..., help="Job ID from subtitles stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
-    video_mode: VideoMode = typer.Option(VideoMode.SHORT, "--video-mode", help="Video mode: short or long"),
+    video_mode: Optional[VideoMode] = typer.Option(None, "--video-mode", help="Video mode: short or long"),
     renderer_type: str = typer.Option(
         "remotion", "--renderer", "-r",
         help="Renderer to use: remotion or ffmpeg"
@@ -411,6 +731,7 @@ def render(
         "--platform",
         help="Remotion platform preset: youtube or tiktok. Defaults from video mode if omitted.",
     ),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline override", show_default=False),
 ) -> None:
     """Render the final video with ffmpeg or Remotion."""
     print_header()
@@ -422,12 +743,35 @@ def render(
     if not job_record.audio_path:
         console.print("[red]Error: No audio file found. Run TTS stage first.[/red]")
         raise typer.Exit(code=1)
+
+    audio_vtt_path = get_job_dir(job_id) / "audio" / "narration.vtt"
+    subtitle_json_path = get_job_dir(job_id) / "subtitles" / "subtitles.json"
+    should_refresh_subtitles = (
+        audio_vtt_path.exists()
+        and (
+            not job_record.subtitle_path
+            or not subtitle_json_path.exists()
+            or audio_vtt_path.stat().st_mtime > subtitle_json_path.stat().st_mtime
+        )
+    )
+    if should_refresh_subtitles:
+        console.print("[cyan]Refreshing subtitles from Edge TTS VTT before render...[/cyan]")
+        subtitle_video_mode = _resolve_video_mode(job_id=job_id)
+        subtitle_script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), subtitle_video_mode)
+        subtitle_stage = SubtitleStage(job_id=job_id, mock=mock)
+        subtitle_result = asyncio.run(subtitle_stage.run(subtitle_script_data, job_record.audio_path))
+        subtitle_stage.save_subtitles(subtitle_result)
+        db.update_job(job_id, status="subtitles_complete", subtitle_path=subtitle_result.srt_path)
+        job_record = _load_job_record(job_id)
+
     if not job_record.subtitle_path:
         console.print("[red]Error: No subtitles found. Run subtitles stage first.[/red]")
         raise typer.Exit(code=1)
 
-    width = settings.short_video_width if video_mode == VideoMode.SHORT else settings.video_width
-    height = settings.short_video_height if video_mode == VideoMode.SHORT else settings.video_height
+    resolved_video_mode = _resolve_video_mode(video_mode=video_mode, job_id=job_id)
+
+    width = settings.short_video_width if resolved_video_mode == VideoMode.SHORT else settings.video_width
+    height = settings.short_video_height if resolved_video_mode == VideoMode.SHORT else settings.video_height
 
     background_music_path: Optional[Path] = None
     if settings.background_music_enabled:
@@ -448,9 +792,11 @@ def render(
         except Exception as exc:
             console.print(f"[yellow]Warning: Background music skipped: {exc}[/yellow]")
 
+    resolved_channel = _resolve_channel(channel, job_id)
+
     if renderer_type == "remotion":
-        mode = "portrait" if video_mode == VideoMode.SHORT else "landscape"
-        resolved_platform = platform.value if platform else ("tiktok" if mode == "portrait" else "youtube")
+        mode = "portrait" if resolved_video_mode == VideoMode.SHORT else "landscape"
+        resolved_platform = platform.value if platform else _default_remotion_platform(mode, resolved_channel)
         console.print(f"[bold cyan]Using Remotion renderer ({mode}, platform={resolved_platform})[/bold cyan]")
         renderer = RemotionRenderer(
             job_id=job_id,
@@ -460,6 +806,7 @@ def render(
             fps=settings.video_fps,
             mode=mode,
             platform=resolved_platform,
+            channel=resolved_channel,
         )
         result = renderer.run()
         output_path = result['video_path']
@@ -484,7 +831,7 @@ def render(
     save_json(
         {
             "renderer": renderer_type,
-            "video_mode": video_mode.value,
+            "video_mode": resolved_video_mode.value,
             "video_path": result['video_path'] if isinstance(result, dict) else result.video_path,
             "background_music_included": bool(background_music_path),
             "background_music_path": str(background_music_path) if background_music_path else None,
@@ -503,7 +850,7 @@ def render(
     console.print("[bold green]Rendering Complete![/bold green]")
     console.print(f"[dim]Video path:[/dim] {result['video_path'] if isinstance(result, dict) else result.video_path}")
     console.print(f"[dim]Renderer:[/dim] {renderer_type}")
-    console.print(f"[dim]Mode:[/dim] {video_mode.value}")
+    console.print(f"[dim]Mode:[/dim] {resolved_video_mode.value}")
     console.print(f"[dim]Next step:[/dim] python -m src.main metadata {job_id}")
 
 
@@ -511,6 +858,7 @@ def render(
 def metadata(
     job_id: str = typer.Argument(..., help="Job ID from render stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline override", show_default=False),
 ) -> None:
     """Generate YouTube metadata (title, description, tags, chapters)."""
     print_header()
@@ -520,25 +868,150 @@ def metadata(
         console.print("[red]Error: No script found for this job[/red]")
         raise typer.Exit(code=1)
 
-    script_data = load_json(Path(job_record.script_path))
-    uploader = YouTubeUploader(mock=mock)
-
-    # Extract script narration text for AI description generation
-    script_text = script_data.get("narration", "")
-
-    metadata_payload = uploader.generate_metadata(
-        script_title=script_data["title"],
-        chapters=script_data.get("chapters", []),
-        script_text=script_text,
+    metadata_payload = _generate_metadata_payload_for_job(
+        job_id=job_id,
+        job_record=job_record,
+        channel=channel,
+        mock=mock,
     )
     metadata_path = _save_metadata(job_id, metadata_payload)
+    covered_news_added = _save_covered_news(job_id, metadata_payload["title"])
 
     console.print()
     console.print("[bold green]Metadata Complete![/bold green]")
     console.print(f"[dim]Title:[/dim] {metadata_payload['title']}")
     console.print(f"[dim]Tags:[/dim] {len(metadata_payload['tags'])}")
     console.print(f"[dim]Metadata path:[/dim] {metadata_path}")
+    if covered_news_added:
+        console.print(f"[dim]Covered stories saved:[/dim] {covered_news_added}")
     console.print(f"[dim]Next step:[/dim] python -m src.main upload {job_id}")
+
+
+def _format_tiktok_hashtag(tag: str) -> str | None:
+    words = re.findall(r'[A-Za-z0-9]+', str(tag))
+    if not words:
+        return None
+    stopwords = {'at', 'the', 'a', 'an', 'and', 'or', 'to', 'of', 'for', 'your', 'you', 'what'}
+    kept = [word for word in words if word.lower() not in stopwords]
+    if not kept:
+        kept = words
+    slug = '#' + ''.join(word[:1].upper() + word[1:] for word in kept[:4])
+    if len(slug) <= 2:
+        return None
+    return slug[:28].rstrip()
+
+
+def _build_tiktok_share_copy(metadata_payload: dict, channel_name: str) -> tuple[str, str]:
+    raw_title = str(metadata_payload.get('title') or 'Untitled Video').replace(f' | {channel_name}', '').strip()
+    raw_description = str(metadata_payload.get('description') or '').strip()
+    body = raw_description.split('\n\nResources:', 1)[0].strip()
+    tags = metadata_payload.get('tags') if isinstance(metadata_payload.get('tags'), list) else []
+    generic_tags = {'stoicism', 'stoic philosophy', 'modern stoicism', 'stoic modernized'}
+    prioritized_tags = [tag for tag in tags if str(tag).strip().lower() not in generic_tags]
+    hashtags = []
+    seen: set[str] = set()
+    for base in ['Stoicism', 'StoicModernized', *prioritized_tags, *tags]:
+        slug = _format_tiktok_hashtag(base)
+        if not slug:
+            continue
+        lowered = slug.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        hashtags.append(slug)
+        if len(hashtags) >= 4:
+            break
+
+    if not hashtags:
+        hashtags = re.findall(r'#[A-Za-z0-9_]+', body)
+
+    normalized_hashtags = []
+    seen_normalized: set[str] = set()
+    for tag in hashtags:
+        slug = _format_tiktok_hashtag(tag)
+        if not slug:
+            continue
+        lowered = slug.lower()
+        if lowered in seen_normalized:
+            continue
+        seen_normalized.add(lowered)
+        normalized_hashtags.append(slug)
+        if len(normalized_hashtags) >= 4:
+            break
+
+    body = re.sub(r'Subscribe to @stoic-modernized[^.#!?]*(?:[.!?]|$)', '', body, flags=re.IGNORECASE).strip()
+    body = re.sub(r'#[A-Za-z0-9_]+', '', body).strip()
+    body = re.sub(r'\s+', ' ', body).strip(' -')
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', body) if s.strip()]
+    short_body = ' '.join(sentences[:2]).strip() or body or raw_title
+    if len(short_body) > 180:
+        short_body = short_body[:177].rsplit(' ', 1)[0].rstrip(' ,;:-') + '...'
+    tiktok_description = short_body
+    if normalized_hashtags:
+        tiktok_description = f"{short_body} {' '.join(normalized_hashtags)}".strip()
+    return raw_title, tiktok_description
+
+
+def _send_telegram_upload(job_id: str, video_url: str, title: str, metadata_payload: Optional[dict] = None) -> None:
+    """Send upload notification to Telegram."""
+    try:
+        # Get bot token from .env
+        env_path = Path(__file__).parent.parent / '.env'
+        token = None
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                if line.startswith('TELEGRAM_BOT_TOKEN='):
+                    token = line.split('=', 1)[1].strip()
+                    break
+        if not token:
+            console.print("[yellow]⚠ No TELEGRAM_BOT_TOKEN found, skipping Telegram send[/yellow]")
+            return
+
+        # Get recipient
+        recipient_id = os.environ.get('TELEGRAM_CHAT_ID', '508227795')
+
+        context = _load_job_context(job_id)
+        channel_name = context.get('channel_name', settings.channel_name)
+        clean_title = title.replace(f' | {channel_name}', '').strip()
+        tiktok_title, tiktok_description = _build_tiktok_share_copy(metadata_payload or {'title': clean_title}, channel_name)
+        caption = (
+            f"🎬 New video uploaded!\n"
+            f"\n"
+            f"\"{clean_title}\" — {channel_name}\n"
+            f"\n"
+            f"<a href=\"{video_url}\">Watch on YouTube</a>\n"
+            f"\n"
+            f"TikTok title: {tiktok_title}\n"
+            f"TikTok description: {tiktok_description}"
+        )
+
+        import subprocess
+        script = pathlib.Path(__file__).parent.parent / '.openclaw' / 'scripts' / 'send_telegram.py'
+        if not script.exists():
+            # Fallback: direct Bot API call
+            import urllib.request
+            url = f'https://api.telegram.org/bot{token}/sendMessage'
+            params = urllib.parse.urlencode({
+                'chat_id': recipient_id,
+                'text': caption,
+                'parse_mode': 'HTML',
+            }).encode()
+            req = urllib.request.Request(url, data=params, method='POST')
+            urllib.request.urlopen(req, timeout=15)
+            console.print("[green]✓ Sent to Telegram[/green]")
+            return
+
+        result = subprocess.run(
+            ['python3', str(script), recipient_id, caption],
+            capture_output=True, text=True, timeout=30,
+            cwd=str(pathlib.Path(__file__).parent.parent),
+        )
+        if result.returncode == 0:
+            console.print("[green]✓ Sent to Telegram[/green]")
+        else:
+            console.print(f"[yellow]⚠ Telegram send failed: {result.stderr[:100]}[/yellow]")
+    except Exception as e:
+        console.print(f"[yellow]⚠ Telegram send failed: {e}[/yellow]")
 
 
 @app.command()
@@ -546,6 +1019,7 @@ def upload(
     job_id: str = typer.Argument(..., help="Job ID from metadata stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
     video_path: Optional[str] = typer.Option(None, "--video-path", help="Override the video file to upload"),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline override", show_default=False),
 ) -> None:
     """Upload video to YouTube."""
     print_header()
@@ -575,8 +1049,15 @@ def upload(
         console.print()
         raise typer.Exit(code=1)
 
-    metadata_payload = load_json(Path(job_record.metadata_path))
-    uploader = YouTubeUploader(mock=mock)
+    metadata_payload = _generate_metadata_payload_for_job(
+        job_id=job_id,
+        job_record=job_record,
+        channel=channel,
+        mock=mock,
+    )
+    _save_metadata(job_id, metadata_payload)
+    resolved_channel = _resolve_channel(channel, job_id)
+    uploader = YouTubeUploader(mock=mock, channel=resolved_channel)
     result = asyncio.run(
         uploader.upload(
             video_path=resolved_video_path,
@@ -603,16 +1084,25 @@ def upload(
     console.print(f"[dim]Job ID:[/dim] {job_id}")
     console.print(f"[dim]Uploaded file:[/dim] {resolved_video_path}")
 
+    # Auto-send to Telegram on successful real upload
+    if result.upload_status == 'completed' and not mock:
+        _send_telegram_upload(job_id, result.video_url, metadata_payload.get('title', ''), metadata_payload)
+
 
 @app.command()
 def run(
     topic: str = typer.Argument(..., help="Topic for the video"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data for all stages"),
-    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (local, edge, elevenlabs, or voxcpm)"),
+    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (edge only)"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
     video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
     renderer: str = typer.Option("remotion", "--renderer", "-r", help="Renderer to use: remotion, ffmpeg, or both"),
     placeholder_images: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
+    allow_placeholder_images: bool = typer.Option(
+        False,
+        "--allow-placeholder-images",
+        help="Explicitly allow placeholder scene cards for a real run after Rafael requests them.",
+    ),
     platform: Optional[RemotionPlatform] = typer.Option(
         None,
         "--platform",
@@ -622,6 +1112,7 @@ def run(
     """Run the complete pipeline for a topic."""
     job_record = db.create_job(topic)
     job_id = job_record.job_id
+    _persist_job_context(job_id, topic, settings.default_channel, video_mode=video_mode)
 
     with job_output_capture(job_id):
         print_header()
@@ -629,6 +1120,10 @@ def run(
         if skip_upload:
             console.print("[yellow]Upload stage will be skipped[/yellow]")
         if placeholder_images:
+            if not (mock or settings.mock_mode or allow_placeholder_images):
+                console.print("[bold red]Placeholder scene cards are blocked for real Stoic daily runs.[/bold red]")
+                console.print("[dim]Daily jobs must use real generated images. Only rerun with placeholders after Rafael explicitly requests them.[/dim]")
+                raise typer.Exit(code=1)
             console.print("[yellow]Using placeholder scene cards instead of sd-cli[/yellow]")
 
         research_stage_mock = mock or settings.mock_mode
@@ -652,6 +1147,27 @@ def run(
 
         research(topic=topic, job_id=job_id, mock=research_stage_mock)
         script(job_id=job_id, mock=script_stage_mock, video_mode=video_mode)
+        
+        # Quality gate: Run Mittens script review before render
+        console.print()
+        console.print("[bold cyan]Running quality gate (Mittens)...[/bold cyan]")
+        try:
+            quality_gate = QualityGateStage(job_id=job_id)
+            quality_result = quality_gate.run()
+            console.print()
+            console.print("[bold green]✓ Quality gate passed![/bold green]")
+            console.print(f"[dim]Title:[/dim] {quality_result['title']}")
+            console.print(f"[dim]Issues found:[/dim] {len(quality_result['issues'])}")
+            console.print(f"[dim]Report:[/dim] {quality_result['report_path']}")
+        except QualityGateError as e:
+            console.print()
+            console.print("[bold red]✗ Quality gate failed![/bold red]")
+            console.print(f"[dim]Reason:[/dim] {e}")
+            console.print()
+            console.print("[bold]Pipeline halted. Fix issues and retry:[/bold]")
+            console.print(f"[dim]python -m src.main retry {job_id} --stage script[/dim]")
+            raise typer.Exit(code=1)
+        
         scene(job_id=job_id, mock=scene_stage_mock)
         tts(job_id=job_id, provider=provider, mock=media_stage_mock)
         if settings.background_music_enabled:
@@ -659,20 +1175,25 @@ def run(
                 music(job_id=job_id)
             except Exception as exc:
                 console.print(f"[yellow]Background music skipped: {exc}[/yellow]")
-        images(job_id=job_id, mock=media_stage_mock, placeholder_only=placeholder_images)
+        images(
+            job_id=job_id,
+            mock=media_stage_mock,
+            placeholder_only=placeholder_images,
+            allow_placeholder_images=allow_placeholder_images,
+        )
         subtitles(job_id=job_id, mock=media_stage_mock)
 
         # Render stage - supports ffmpeg, remotion, or both
         renderers_to_run = [renderer] if renderer != "both" else ["remotion", "ffmpeg"]
         for r in renderers_to_run:
             console.print(f"[bold cyan]Rendering with {r}...[/bold cyan]")
-            render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, renderer_type=r)
+            render(job_id=job_id, mock=media_stage_mock, video_mode=video_mode, renderer_type=r, platform=platform)
             console.print(f"[dim]Render ({r}) complete.[/dim]")
 
         metadata(job_id=job_id, mock=script_stage_mock)
 
         if not skip_upload:
-            upload(job_id=job_id, mock=mock)
+            upload(job_id=job_id, mock=mock, video_path=None)
         else:
             db.update_job(job_id, status="ready_for_upload")
 
@@ -702,6 +1223,8 @@ def retry(
     job_id: str = typer.Argument(..., help="Job ID to retry"),
     stage: Optional[str] = typer.Option(None, "--stage", "-s", help="Specific stage to retry"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
+    video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
+    channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel override", show_default=False),
 ) -> None:
     """Retry a failed stage for a job."""
     print_header()
@@ -714,11 +1237,11 @@ def retry(
         console.print(f"[bold]Retrying stage:[/bold] {stage}")
         stage_map = {
             "research": lambda: research(topic=job_record.topic, job_id=job_id, mock=mock),
-            "script": lambda: script(job_id=job_id, mock=mock),
-            "scene": lambda: scene(job_id=job_id, mock=mock),
-            "tts": lambda: tts(job_id=job_id, provider=settings.tts_provider.value, mock=mock),
+            "script": lambda: script(job_id=job_id, mock=mock, video_mode=video_mode, channel=_resolve_channel(channel, job_id)),
+            "scene": lambda: scene(job_id=job_id, mock=mock, channel=_resolve_channel(None, job_id)),
+            "tts": lambda: tts(job_id=job_id, provider=settings.tts_provider.value, mock=mock, channel=_resolve_channel(None, job_id)),
             "music": lambda: music(job_id=job_id),
-            "images": lambda: images(job_id=job_id, mock=mock),
+            "images": lambda: images(job_id=job_id, mock=mock, channel=_resolve_channel(None, job_id)),
             "subtitles": lambda: subtitles(job_id=job_id, mock=mock),
             "render": lambda: render(job_id=job_id, mock=mock),
             "metadata": lambda: metadata(job_id=job_id, mock=mock),

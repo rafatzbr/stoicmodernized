@@ -9,7 +9,7 @@ import shlex
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 
@@ -981,14 +981,19 @@ def build_narrative_scene_prompt(
     narration_segment: str,
     overlay: object,
     mode: str,
+    steering_hint: str = "",
 ) -> str:
     scene_key = _normalize_scene_key(overlay, scene_prompt, narration_segment)
     if scene_key:
         effective_mode = mode
         if scene_key == "pause first" and mode == "hands_only":
             effective_mode = "object_only"
-        return BOUNDARY_SCENE_TEMPLATES[scene_key].get(effective_mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
-    return _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
+        base = BOUNDARY_SCENE_TEMPLATES[scene_key].get(effective_mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
+    else:
+        base = _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
+    if steering_hint:
+        return f"{base}, {steering_hint}"
+    return base
 
 # Scene modes for variety
 SCENE_MODES = ["object_only", "object_only", "object_only", "object_only"]
@@ -1072,13 +1077,21 @@ ULTRA_SAFE_FALLBACK = "Phone face-down beside a notebook and laptop on a dark de
 class ImageGenerationStage:
     """Handles image generation for scenes using SD CLI, SD Server, or fallbacks."""
 
-    def __init__(self, job_id: str, mock: bool = False, placeholder_only: bool = False):
+    def __init__(
+        self,
+        job_id: str,
+        mock: bool = False,
+        placeholder_only: bool = False,
+        allow_placeholder_override: bool = False,
+    ):
         self.job_id = job_id
         self.mock = mock or settings.mock_mode
         self.placeholder_only = placeholder_only or settings.force_placeholder_images
+        self.allow_placeholder_override = allow_placeholder_override
         self.job_dir = settings.jobs_dir / job_id
         self.images_dir = self.job_dir / "images"
         self.sd_log_path = self.images_dir / "sd-cli.log"
+        self.last_steering_context: dict[str, Any] | None = None
 
         # SD CLI settings
         self.sd_cli_path = settings.sd_cli_path
@@ -1104,11 +1117,18 @@ class ImageGenerationStage:
     async def run(self, scene_plan: dict) -> list[ImageAsset]:
         """Run image generation stage."""
         self.images_dir.mkdir(parents=True, exist_ok=True)
+        self.last_steering_context = self._extract_steering_context(scene_plan)
 
         if self.mock:
             return await self._generate_placeholder_images(scene_plan, style="mock")
 
         if self.placeholder_only:
+            if not self.allow_placeholder_override:
+                raise ImageGenerationError(
+                    "placeholder_images_forbidden: local placeholder scene cards are blocked for real Stoic Modernized runs. "
+                    "Daily jobs must use real generated images. Only use placeholders after Rafael explicitly requests them "
+                    "and rerun with both --placeholder-images and --allow-placeholder-images."
+                )
             return await self._generate_placeholder_images(scene_plan, style="local")
 
         # Priority: SD Server > SD CLI > Error
@@ -1125,12 +1145,12 @@ class ImageGenerationStage:
                 raise ImageGenerationError(
                     "no_image_provider_available: "
                     "neither SD CLI nor SD server is available; "
-                    "use --placeholder-images for local generated cards, "
-                    "or set up SD CLI or SD server"
+                    "daily Stoic jobs must stop here until a real image provider is restored. "
+                    "Only use placeholders after Rafael explicitly requests them."
                 )
             raise ImageGenerationError(
                 "sd_cli_unavailable: stable diffusion CLI or model files are missing; "
-                "use --placeholder-images if you want local placeholder cards"
+                "restore a real image provider instead of falling back to placeholders for Stoic daily jobs"
             )
 
     def _sd_cli_available(self) -> bool:
@@ -1195,6 +1215,40 @@ class ImageGenerationStage:
         }
         return instructions.get(mode, "Show one person at a desk, upper body visible, not looking at camera.")
 
+    def _extract_steering_context(self, scene_plan: dict) -> dict[str, Any]:
+        if not isinstance(scene_plan, dict):
+            return {"ledger_packet": {}, "whiskers_handoff": {}, "whiskers_brief": {}, "ledger_strategy": {}}
+        steering = scene_plan.get("steering_context") if isinstance(scene_plan.get("steering_context"), dict) else {}
+        return {
+            "ledger_packet": steering.get("ledger_packet") if isinstance(steering.get("ledger_packet"), dict) else {},
+            "whiskers_handoff": steering.get("whiskers_handoff") if isinstance(steering.get("whiskers_handoff"), dict) else {},
+            "whiskers_brief": steering.get("whiskers_brief") if isinstance(steering.get("whiskers_brief"), dict) else {},
+            "ledger_strategy": steering.get("ledger_strategy") if isinstance(steering.get("ledger_strategy"), dict) else {},
+        }
+
+    def _steering_prompt_hint(self, scene_plan: dict, scene: dict) -> str:
+        steering = self._extract_steering_context(scene_plan)
+        ledger_packet = steering.get("ledger_packet") or {}
+        whiskers_handoff = steering.get("whiskers_handoff") or {}
+        ledger_strategy = steering.get("ledger_strategy") or {}
+        hints: list[str] = []
+        packaging_angle = str(ledger_packet.get("packaging_angle") or ledger_strategy.get("packaging_angle") or "").strip()
+        if packaging_angle:
+            hints.append(f"packaging angle: {packaging_angle}")
+        work_scenario = str(whiskers_handoff.get("work_scenario") or whiskers_handoff.get("viewer_problem") or "").strip()
+        if work_scenario:
+            hints.append(f"scene focus: {work_scenario}")
+        stoic_move = str(whiskers_handoff.get("stoic_move") or "").strip()
+        if stoic_move:
+            hints.append(f"stoic move: {stoic_move}")
+        objective = str(ledger_packet.get("objective") or ledger_strategy.get("audience_job") or "").strip()
+        if objective:
+            hints.append(f"lane: {objective}")
+        overlay = scene.get("text_overlay") if isinstance(scene, dict) else None
+        if overlay:
+            hints.append(f"overlay cue: {overlay}")
+        return " | ".join(hints)
+
     def _extract_subject(self, scene_plan: dict) -> str:
         topic = scene_plan.get("topic") if isinstance(scene_plan, dict) else None
         if isinstance(topic, str) and topic.strip():
@@ -1218,7 +1272,10 @@ class ImageGenerationStage:
         for scene in scene_plan.get("scenes", []):
             image_path = self.images_dir / f"scene_{scene['scene_number']:03d}.jpg"
             scene_prompt = scene.get("visual_prompt", "Stoic visual")
+            steering_hint = self._steering_prompt_hint(scene_plan, scene)
             focused_prompt = f"subject: {subject} | scene: {scene_prompt}"
+            if steering_hint:
+                focused_prompt += f" | steering: {steering_hint}"
             self._create_scene_card(
                 image_path=image_path,
                 title=f"Scene {scene['scene_number']:03d}",
@@ -1256,12 +1313,14 @@ class ImageGenerationStage:
 
             narration_segment = scene.get("narration_segment", "")
             overlay = scene.get("text_overlay")
+            steering_hint = self._steering_prompt_hint(scene_plan, scene)
             scene_line = build_narrative_scene_prompt(
                 subject=subject,
                 scene_prompt=scene_prompt,
                 narration_segment=narration_segment,
                 overlay=overlay,
                 mode=mode,
+                steering_hint=steering_hint,
             )
             style_suffix = build_scene_style_suffix(
                 subject=subject,
@@ -1983,6 +2042,7 @@ GOOD examples (DO this):
 
         data = {
             "images": [a.model_dump() for a in assets],
+            "steering_context": self.last_steering_context,
             "generated_at": "generated-locally",
         }
         return save_json(data, self.images_dir / "assets.json")

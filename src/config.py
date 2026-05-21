@@ -8,13 +8,14 @@ from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+ENV_FILE = PROJECT_ROOT / ".env"
+
+
 class TTSProvider(str, Enum):
     """Supported TTS providers."""
 
-    LOCAL = "local"
     EDGE = "edge"
-    ELEVENLABS = "elevenlabs"
-    VOXCPM = "voxcpm"
 
 
 class ImageProvider(str, Enum):
@@ -40,6 +41,12 @@ class VideoMode(str, Enum):
     LONG = "long"
 
 
+class Channel(str, Enum):
+    """Supported channel pipelines."""
+
+    STOIC_MODERNIZED = "stoic-modernized"
+
+
 class RemotionPlatform(str, Enum):
     """Supported Remotion visual platform presets."""
 
@@ -51,18 +58,22 @@ class Settings(BaseSettings):
     """Global application settings."""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
+        env_file=str(ENV_FILE), env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
-    project_root: Path = Path(__file__).parent.parent
-    output_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "output")
-    jobs_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "output" / "jobs")
+    project_root: Path = PROJECT_ROOT
+    output_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "output")
+    jobs_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "output" / "jobs")
 
-    db_path: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "stoic.db")
+    db_path: Path = Field(default_factory=lambda: PROJECT_ROOT / "stoic.db")
 
+    # Stoic Modernized
     channel_name: str = "Stoic Modernized"
+    channel_handle: str = "@stoicmodernized"
+    channel_description: str = "Ancient logic for the high-performance digital age"
     channel_voice: str = "calm, practical, concise, modern, not preachy, not academic"
 
+    default_channel: Channel = Channel.STOIC_MODERNIZED
     default_video_mode: VideoMode = VideoMode.SHORT
     video_width: int = 1920
     video_height: int = 1080
@@ -72,17 +83,18 @@ class Settings(BaseSettings):
     short_target_scene_count: int = 6
     long_max_duration_seconds: int = 900
     video_fps: int = 30
-    background_music_volume: float = 0.08
+    background_music_volume: float = 0.03
     background_music_enabled: bool = True
     background_music_provider: str = "curated"
     background_music_query: str = "calm ambient instrumental background music"
     background_music_min_duration: int = 30
     background_music_max_duration: int = 600
-    youtube_allow_background_music_uploads: bool = False
+    youtube_allow_background_music_uploads: bool = True
 
-    tts_provider: TTSProvider = TTSProvider.LOCAL
+    tts_provider: TTSProvider = TTSProvider.EDGE
     tts_voice: str = Field(default="en-US-GuyNeural", validation_alias=AliasChoices("TTS_VOICE", "TS_VOICE"))
     tts_speed: float = 1.0
+    narration_prep_enabled: bool = False  # Enable narration preparation for natural TTS delivery
     tts_api_key: Optional[str] = None
 
     subtitle_asr_enabled: bool = True
@@ -97,16 +109,15 @@ class Settings(BaseSettings):
     sd_t5xxl_path: str = "/data/sd-models/t5xxl_fp16.safetensors"
     sd_image_width: int = 544
     sd_image_height: int = 960
-    sd_cfg_scale: float = 3.8  # Rafael 2026-04-05: Lower for more natural results (3.5-4.0 range)
-    sd_steps: int = 20  # Rafael 2026-04-05: Start with 40, compare with 30-36
+    sd_cfg_scale: float = 3.8
+    sd_steps: int = 20
     sd_sampling_method: str = "euler"
     sd_negative_prompt: str = "blurry, low quality, deformed, extra people in foreground, cluttered desk, text, logo, watermark, overexposed, bad hands, extra fingers, missing fingers, duplicate objects, malformed laptop, distorted pen, plastic skin, uncanny smile, centered headshot, stiff stock photo pose, oversmoothed skin, multiple computers"
     force_placeholder_images: bool = False
 
-    # SD Server (local stable diffusion web UI or ComfyUI)
     sd_server_url: str = "http://localhost:1234"
     sd_server_api_path: str = "/sdapi/v1/txt2img"
-    sd_server_timeout_seconds: float = 300.0
+    sd_server_timeout_seconds: float = 1800.0
 
     youtube_api_key: Optional[str] = None
     youtube_credentials_path: Optional[str] = None
@@ -115,7 +126,7 @@ class Settings(BaseSettings):
 
     local_llm_base_url: str = "http://localhost:8080/v1/chat/completions"
     local_llm_model: str = "local"
-    local_llm_timeout_seconds: float = 120.0
+    local_llm_timeout_seconds: float = 300.0
     local_llm_max_tokens: int = 32
 
     local_script_model: Optional[str] = None
@@ -141,6 +152,38 @@ class Settings(BaseSettings):
     def db(self) -> str:
         """Database connection string."""
         return f"sqlite:///{self.db_path}"
+
+    def get_channel_name(self, channel: Channel) -> str:
+        return self.channel_name
+
+    def get_channel_handle(self, channel: Channel) -> str:
+        return self.channel_handle
+
+    def get_channel_description(self, channel: Channel) -> str:
+        return self.channel_description
+
+    def get_channel_voice(self, channel: Channel) -> str:
+        return self.channel_voice
+
+    def get_channel_tts_voice(self, channel: Channel) -> str:
+        return self.tts_voice
+
+    def get_channel_cta(self, channel: Channel) -> str:
+        return "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+
+    def get_channel_tags(self, channel: Channel) -> list[str]:
+        return [
+            "stoicism",
+            "stoic philosophy",
+            "modern stoicism",
+            "stoic modernized",
+            "ancient wisdom",
+            "personal development",
+            "mindfulness",
+            "productivity",
+            "career advice",
+            "workplace stress",
+        ]
 
 
 settings = Settings()

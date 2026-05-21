@@ -20,6 +20,61 @@ from src.utils import save_json
 class PixabayMusicDownloader:
     """Search and download royalty-free background music from Pixabay."""
 
+    blacklist_path = settings.project_root / "music" / "blacklist.json"
+
+    def load_blacklist(self) -> dict[str, Any]:
+        if not self.blacklist_path.exists():
+            return {"pixabay_ids": [], "audio_urls": [], "tracks": []}
+        try:
+            payload = json.loads(self.blacklist_path.read_text())
+        except Exception:
+            return {"pixabay_ids": [], "audio_urls": [], "tracks": []}
+        return {
+            "pixabay_ids": payload.get("pixabay_ids", []),
+            "audio_urls": payload.get("audio_urls", []),
+            "tracks": payload.get("tracks", []),
+        }
+
+    def save_blacklist(self, payload: dict[str, Any]) -> None:
+        self.blacklist_path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(payload, self.blacklist_path)
+
+    def blacklist_track(self, track: dict[str, Any], *, reason: str, job_id: str) -> None:
+        payload = self.load_blacklist()
+        pixabay_id = track.get("pixabay_id")
+        audio_url = track.get("audio_url")
+
+        if pixabay_id is not None and pixabay_id not in payload["pixabay_ids"]:
+            payload["pixabay_ids"].append(pixabay_id)
+        if audio_url and audio_url not in payload["audio_urls"]:
+            payload["audio_urls"].append(audio_url)
+
+        entry = {
+            "provider": "pixabay",
+            "pixabay_id": pixabay_id,
+            "audio_url": audio_url,
+            "title": track.get("title"),
+            "artist": track.get("artist"),
+            "reason": reason,
+            "job_id": job_id,
+            "blacklisted_at": time.time(),
+        }
+        if not any(
+            existing.get("pixabay_id") == pixabay_id and existing.get("audio_url") == audio_url
+            for existing in payload["tracks"]
+        ):
+            payload["tracks"].append(entry)
+
+        self.save_blacklist(payload)
+
+    def is_blacklisted(self, track: dict[str, Any]) -> bool:
+        payload = self.load_blacklist()
+        pixabay_id = track.get("pixabay_id")
+        audio_url = track.get("audio_url")
+        return (pixabay_id is not None and pixabay_id in payload["pixabay_ids"]) or (
+            bool(audio_url) and audio_url in payload["audio_urls"]
+        )
+
     _USER_AGENT = (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -162,6 +217,9 @@ class PixabayMusicDownloader:
             if track.get("duration") is not None and min_duration <= track["duration"] <= max_duration
         ]
         candidates = filtered or tracks
+        candidates = [track for track in candidates if not self.is_blacklisted(track)]
+        if not candidates:
+            raise RuntimeError("All matching Pixabay tracks are blacklisted")
 
         def score(track: dict[str, Any]) -> tuple[float, float, float]:
             duration = track.get("duration")
