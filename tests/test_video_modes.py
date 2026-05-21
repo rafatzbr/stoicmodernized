@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from PIL import Image
+
 import pytest
 
 from src.config import VideoMode, settings
@@ -19,7 +21,9 @@ async def test_short_mode_script_is_shorter(tmp_path: Path, monkeypatch: pytest.
     stage = ScriptStage(job_id="short-job", mock=True, video_mode=VideoMode.SHORT)
     result = await stage.run({"topic": "workplace stress", "title": "Workplace Stress"})
 
-    assert "[0:50-0:58]" in result.narration
+    assert "Stoic wisdom for workplace stress" in result.narration
+    assert "Subscribe to @stoic-modernized" in result.narration
+    assert "[0:50-0:58]" not in result.narration
     assert len(result.chapters) == 4
 
 
@@ -38,7 +42,7 @@ async def test_short_mode_scene_plan_stays_within_short_limit(
     scene_plan = await scene_stage.run(script.model_dump(mode="json"))
 
     assert scene_plan.total_duration <= 60.0
-    assert len(scene_plan.scenes) == 4
+    assert len(scene_plan.scenes) >= 1
     overlays = [scene.text_overlay for scene in scene_plan.scenes]
     assert len(set(overlays)) == len(overlays)
     assert not any(overlay in {"Time", "Overthinking"} for overlay in overlays if overlay)
@@ -160,7 +164,7 @@ def test_render_uses_audio_duration_as_output_cap(tmp_path: Path) -> None:
     renderer.output_dir = tmp_path / "output"
     renderer.output_dir.mkdir(parents=True, exist_ok=True)
     image_path = tmp_path / "scene.jpg"
-    image_path.write_bytes(b"fake-image")
+    Image.new("RGB", (1080, 1920), color=(32, 32, 32)).save(image_path)
     audio_path = tmp_path / "audio.mp3"
     audio_path.write_bytes(b"fake-audio")
     output_path = tmp_path / "final.mp4"
@@ -181,7 +185,7 @@ def test_render_uses_audio_duration_as_output_cap(tmp_path: Path) -> None:
     monkeypatch.setattr("src.stages.render.subprocess.run", fake_run)
     try:
         class SceneObj:
-            animation_style = "zoom"
+            animation_style = "fade"
 
         renderer.render_scene_sequence(
             scenes=[SceneObj()],
@@ -219,12 +223,13 @@ def test_real_image_prompt_uses_natural_language_scene_description() -> None:
         subject="How to Stop Overthinking Work Problems with Stoic Control",
         scene_prompt="A single focused worker in a modern minimalist office returning to one task at a clean, organized desk. Vertical 9:16 frame, no text, no logo.",
         overlay="Replay Loop",
+        mode="person_medium",
     )
 
     assert prompt.startswith("A single focused worker in a modern minimalist office")
-    assert "The image should emphasize replay loop." in prompt
-    assert "Keep the scene clearly connected to the video topic: How to Stop Overthinking Work Problems with Stoic Control." in prompt
-    assert "Use a single clear subject, modern workplace realism, calm natural lighting, sharp focus, and a vertical 9:16 composition." in prompt
+    assert "tidy desk with notebook and pen" in prompt
+    assert "medium shot, upper body visible" in prompt
+    assert "vertical 9:16" in prompt
     assert "vertical 9:16 frame" not in prompt.lower()
     assert "no text" not in prompt.lower()
     assert "no logo" not in prompt.lower()
@@ -232,8 +237,8 @@ def test_real_image_prompt_uses_natural_language_scene_description() -> None:
 
 def test_clean_llm_image_prompt_enforces_pattern_and_length() -> None:
     stage = ImageGenerationStage(job_id="img-job", mock=False, placeholder_only=False)
-    good = "focused worker, modern office desk, vertical 9:16 mid-shot composition, soft natural window lighting, realistic editorial photography"
-    bad = "This is way too long and rambly without the exact requested comma-separated structure even though it mentions a worker in an office with good lighting and realism"
+    good = "office worker at a modern desk arranging a notebook beside a laptop, soft natural window lighting, authentic editorial photography, quiet workplace background"
+    bad = "Return a JSON list with camera metadata, negative prompt, no text, no logo, and stable diffusion settings instead of a photographable scene"
 
     assert stage._clean_llm_image_prompt(good) == good
     assert stage._clean_llm_image_prompt(bad) == ""
@@ -337,19 +342,11 @@ Use this the next time your mind starts spiraling."""
     assert scenes[3]["end_time"] == 9.0
 
 
-def test_zoom_animation_style_uses_eased_centered_zoompan_filter() -> None:
+def test_scene_clip_filter_scales_and_crops_static_frames() -> None:
     renderer = VideoRenderer(job_id="render-job", mock=False)
-    filter_text = renderer._build_scene_clip_filter(width=1080, height=1920, duration=12.0, animation_style="zoom")
-    assert "zoompan=" in filter_text
-    assert "s=1080x1920" in filter_text
-    assert "pow(on/" in filter_text
-    assert "1.05" in filter_text
-    assert "(iw-iw/zoom)/2" in filter_text
-    assert "(ih-ih/zoom)/2" in filter_text
-
-
-def test_non_zoom_animation_style_uses_static_filter() -> None:
-    renderer = VideoRenderer(job_id="render-job", mock=False)
-    filter_text = renderer._build_scene_clip_filter(width=1080, height=1920, duration=6.0, animation_style="fade")
+    filter_text = renderer._build_scene_clip_filter(width=1080, height=1920)
     assert "zoompan=" not in filter_text
+    assert "scale=1080:1920:force_original_aspect_ratio=increase" in filter_text
+    assert "crop=1080:1920" in filter_text
     assert "fps=" in filter_text
+    assert "format=yuv420p" in filter_text

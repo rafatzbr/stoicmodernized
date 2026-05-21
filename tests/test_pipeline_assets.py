@@ -6,7 +6,7 @@ from src.models import Scene, VideoRenderConfig
 from src.stages.images import ImageGenerationStage
 from src.stages.render import VideoRenderer
 from src.stages.subtitles import SubtitleStage
-from src.stages.tts import TTSStage
+from src.stages.tts import EdgeTTSAudio, TTSStage
 
 
 @pytest.mark.asyncio
@@ -41,14 +41,34 @@ async def test_local_pipeline_stages_create_real_assets(monkeypatch: pytest.Monk
         ]
     }
 
-    tts_stage = TTSStage(job_id=job_id, provider="local", mock=False)
+    async def fake_edge_audio(self, text: str, output_path: Path, **kwargs) -> Path:
+        _ = self, text, kwargs
+        import math
+        import struct
+        import wave
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        sample_rate = 16_000
+        duration_seconds = 1.0
+        with wave.open(str(output_path), "wb") as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(sample_rate)
+            for i in range(int(sample_rate * duration_seconds)):
+                sample = int(1600 * math.sin(2 * math.pi * 440 * i / sample_rate))
+                handle.writeframes(struct.pack("<h", sample))
+        return output_path
+
+    monkeypatch.setattr(EdgeTTSAudio, "generate_audio", fake_edge_audio)
+
+    tts_stage = TTSStage(job_id=job_id, provider="edge", mock=False)
     tts_stage.job_dir = test_settings.jobs_dir / job_id
     tts_stage.audio_dir = tts_stage.job_dir / "audio"
     audio_path = await tts_stage.run(scene_plan)
     assert audio_path.exists()
     assert audio_path.stat().st_size > 1000
 
-    image_stage = ImageGenerationStage(job_id=job_id, mock=False, placeholder_only=True)
+    image_stage = ImageGenerationStage(job_id=job_id, mock=False, placeholder_only=True, allow_placeholder_override=True)
     image_stage.job_dir = test_settings.jobs_dir / job_id
     image_stage.images_dir = image_stage.job_dir / "images"
     assets = await image_stage.run(scene_plan)

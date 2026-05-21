@@ -19,17 +19,9 @@ from src.config import (
 class TestTTSProvider:
     """Tests for TTSProvider enum."""
 
-    def test_local_value(self) -> None:
-        """Should have correct local value."""
-        assert TTSProvider.LOCAL.value == "local"
-
     def test_edge_value(self) -> None:
         """Should have correct edge value."""
         assert TTSProvider.EDGE.value == "edge"
-
-    def test_elevenlabs_value(self) -> None:
-        """Should have correct elevenlabs value."""
-        assert TTSProvider.ELEVENLABS.value == "elevenlabs"
 
 
 class TestImageProvider:
@@ -74,7 +66,7 @@ class TestSettings:
         assert test_settings.short_video_height == 1920
         assert test_settings.default_video_mode == VideoMode.SHORT
         assert test_settings.video_fps == 30
-        assert test_settings.tts_provider == TTSProvider.LOCAL
+        assert test_settings.tts_provider == TTSProvider.EDGE
         assert test_settings.tts_voice == "en-US-GuyNeural"
         assert test_settings.tts_speed == 1.0
         assert test_settings.sd_image_width == 544
@@ -147,4 +139,4 @@ class TestSettings:
     def test_background_music_volume_range(self) -> None:
         """Should have valid background music volume."""
         assert 0.0 <= settings.background_music_volume <= 1.0
-        assert settings.background_music_volume == 0.15
+        assert settings.background_music_volume == 0.03

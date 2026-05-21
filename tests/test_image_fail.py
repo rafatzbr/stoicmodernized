@@ -19,7 +19,9 @@ async def test_real_image_generation_raises_instead_of_fallback(tmp_path: Path, 
     stage = ImageGenerationStage(job_id="img-fail", mock=False, placeholder_only=False)
     stage.job_dir = tmp_path / "jobs" / "img-fail"
     stage.images_dir = stage.job_dir / "images"
+    stage.prompt_seed_path = tmp_path / "prompt_seed.json"
     stage._sd_cli_available = lambda: True  # type: ignore[method-assign]
+    stage._sd_server_available = lambda: False  # type: ignore[method-assign]
 
     async def fail_generate_single_image(**_: object) -> None:
         raise RuntimeError("boom")
@@ -99,11 +101,11 @@ def test_sd_cli_log_is_appended_per_image_run(tmp_path: Path, monkeypatch: pytes
         stdout="ok output",
         stderr="warn output",
     )
-    stage._append_sd_cli_log(
+    attempt_id = stage._append_sd_cli_log_start(
         output_path=stage.images_dir / "scene_001.jpg",
         command=["sd", "-p", "prompt", "-n", "text, logo"],
-        result=result,
     )
+    stage._append_sd_cli_log_result(attempt_id=attempt_id, result=result)
 
     log_text = stage.sd_log_path.read_text(encoding="utf-8")
     assert "output_image:" in log_text
@@ -153,7 +155,7 @@ async def test_sd_cli_assert_failure_retries_with_safe_profile(tmp_path: Path, m
 
     assert len(calls) == 2
     assert '--steps' in calls[0] and '--steps' in calls[1]
-    assert '40' in calls[0]
+    assert str(stage.sd_steps) in calls[0]
     assert '32' in calls[1]
     log_text = stage.sd_log_path.read_text(encoding='utf-8')
     assert log_text.count('command:') == 2
