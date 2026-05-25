@@ -100,7 +100,7 @@ class Settings(BaseSettings):
     tts_api_key: Optional[str] = None
     kokoro_command: str = "kokoro-tts"
     kokoro_voice: str = "bm_lewis"
-    kokoro_speed: Optional[float] = 0.82
+    kokoro_speed: Optional[float] = 0.66
     kokoro_format: str = "wav"
     kokoro_timeout_seconds: float = 300.0
     kokoro_model_path: Optional[Path] = Path.home() / ".cache" / "kokoro-onnx" / "kokoro-v1.0.onnx"

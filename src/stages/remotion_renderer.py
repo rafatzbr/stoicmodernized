@@ -184,6 +184,36 @@ class RemotionRenderer:
 
         return None
 
+    def _get_media_duration_seconds(self, relative_path: Optional[str]) -> Optional[float]:
+        """Measure a copied media asset duration with ffprobe."""
+        if not relative_path:
+            return None
+        media_path = self.frontend_dir / 'public' / relative_path
+        if not media_path.exists():
+            media_path = self.job_dir / relative_path
+        if not media_path.exists():
+            return None
+        try:
+            result = subprocess.run(
+                [
+                    'ffprobe',
+                    '-v',
+                    'error',
+                    '-show_entries',
+                    'format=duration',
+                    '-of',
+                    'default=noprint_wrappers=1:nokey=1',
+                    str(media_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            return float(result.stdout.strip())
+        except Exception:
+            return None
+
     def _generate_props(
         self,
         scenes: list[dict],
@@ -229,10 +259,14 @@ class RemotionRenderer:
                 'words': None,
             })
 
-        # Calculate total duration
+        # Calculate total duration. Include measured narration duration so a
+        # slowly paced Kokoro render is never cut off merely because the final
+        # aligned subtitle ends before a trailing breath/silence.
+        audio_duration = self._get_media_duration_seconds(audio_path)
         total_duration = max(
             max((scene.get('endTime', 0) for scene in remotion_scenes), default=0.0),
             max((sub.get('endTime', 0) for sub in remotion_subtitles), default=0.0),
+            audio_duration or 0.0,
         )
 
         # Get channel metadata from job data if available

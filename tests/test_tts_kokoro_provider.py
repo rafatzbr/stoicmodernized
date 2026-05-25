@@ -14,7 +14,7 @@ def test_kokoro_provider_config_is_available() -> None:
     assert TTSProvider.KOKORO.value == "kokoro"
     assert settings.kokoro_command == "kokoro-tts"
     assert settings.kokoro_voice == "bm_lewis"
-    assert settings.kokoro_speed == 0.82
+    assert settings.kokoro_speed == 0.66
     assert settings.kokoro_format == "wav"
     assert settings.kokoro_timeout_seconds > 0
     assert settings.kokoro_language == "en-gb"
@@ -25,14 +25,21 @@ async def test_kokoro_stage_generates_audio_without_native_vtt_sidecar(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     async def fake_generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
-        assert isinstance(self, KokoroTTSAudio)
-        assert "Choose the next right action" in text
-        assert "subtitles_path" not in kwargs
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(b"fake kokoro mp3")
+        if "subtitles_path" in kwargs:
+            Path(kwargs["subtitles_path"]).write_text(
+                "WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nChoose the next right action\n",
+                encoding="utf-8",
+            )
+        else:
+            assert isinstance(self, KokoroTTSAudio)
+            assert "Choose the next right action" in text
+            output_path.write_bytes(b"fake kokoro mp3")
         return output_path
 
     monkeypatch.setattr(KokoroTTSAudio, "generate_audio", fake_generate_audio)
+    from src.stages.tts import EdgeTTSAudio
+    monkeypatch.setattr(EdgeTTSAudio, "generate_audio", fake_generate_audio)
 
     stage = TTSStage(job_id="kokoro-job", provider="kokoro", mock=False)
     stage.job_dir = tmp_path / "jobs" / "kokoro-job"
@@ -55,6 +62,7 @@ async def test_kokoro_stage_generates_audio_without_native_vtt_sidecar(
     assert path.exists()
     assert path.stat().st_size > 0
     assert not (stage.audio_dir / "narration.vtt").exists()
+    assert (stage.audio_dir / "narration.edge.vtt").exists()
 
 
 @pytest.mark.asyncio
@@ -78,7 +86,8 @@ async def test_kokoro_stage_uses_kokoro_specific_speed(
         return output_path
 
     monkeypatch.setattr(tts_module.settings, "tts_speed", 1.0)
-    monkeypatch.setattr(tts_module.settings, "kokoro_speed", 0.82)
+    monkeypatch.setattr(tts_module.settings, "kokoro_speed", 0.66)
+    monkeypatch.setattr(tts_module.settings, "tts_subtitles_enabled", False)
     monkeypatch.setattr(TTSStage, "_audio_interface", fake_audio_interface)
     monkeypatch.setattr(KokoroTTSAudio, "generate_audio", fake_generate_audio)
 
@@ -88,7 +97,7 @@ async def test_kokoro_stage_uses_kokoro_specific_speed(
 
     await stage.run({"scenes": [{"narration_segment": "Speak at the channel pace."}]})
 
-    assert observed["speed"] == 0.82
+    assert observed["speed"] == 0.66
 
 
 def test_kokoro_audio_invokes_configured_command(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

@@ -190,6 +190,9 @@ class SubtitleStage:
         if not words:
             return []
         words = self._retime_transcript_words(words, transcript)
+        template_segments = self._segments_from_edge_template(words)
+        if template_segments:
+            return template_segments
         cues = group_words_into_readable_cues(words, max_words=5, max_duration=2.2)
         return [
             SubtitleSegment(
@@ -209,6 +212,74 @@ class SubtitleStage:
             )
             for cue in cues
         ]
+
+    def _segments_from_edge_template(self, words: list[TimedWord]) -> list[SubtitleSegment]:
+        """Retiming Kokoro captions into EdgeTTS cue boundaries.
+
+        EdgeTTS emits a VTT sidecar with the cue phrasing Rafael prefers. For
+        audio-only providers such as Kokoro, use that sidecar as a text/structure
+        template while taking cue start/end times from forced-aligned Kokoro word
+        timings. This keeps the exact Edge-style line breaks without displaying
+        subtitles on Edge's unrelated audio timeline.
+        """
+
+        template_path = self.audio_dir / "narration.edge.vtt"
+        if not template_path.exists() or not words:
+            return []
+        try:
+            template_cues = parse_webvtt_cues(template_path.read_text(encoding="utf-8"), source="edge-template")
+        except Exception:
+            return []
+        if not template_cues:
+            return []
+
+        segments: list[SubtitleSegment] = []
+        word_index = 0
+        for cue in template_cues:
+            cue_tokens = [token for token in cue.text.split() if token.strip()]
+            if not cue_tokens:
+                continue
+            matched_words: list[TimedWord] = []
+            for token in cue_tokens:
+                token_key = self._normalize_alignment_token(token)
+                match_index = None
+                for candidate_index in range(word_index, min(len(words), word_index + 5)):
+                    if token_key and token_key == self._normalize_alignment_token(words[candidate_index].text):
+                        match_index = candidate_index
+                        break
+                if match_index is None:
+                    if word_index < len(words):
+                        matched_words.append(words[word_index])
+                        word_index += 1
+                    continue
+                matched_words.extend(words[word_index : match_index + 1])
+                word_index = match_index + 1
+
+            if not matched_words:
+                continue
+            start = matched_words[0].start_time
+            end = max(start + 0.001, matched_words[-1].end_time)
+            segments.append(
+                SubtitleSegment(
+                    start_time=round(start, 3),
+                    end_time=round(end, 3),
+                    text=cue.text,
+                    words=[
+                        {
+                            "text": word.text,
+                            "start": word.start_time,
+                            "end": word.end_time,
+                            "source": word.source,
+                            "confidence": word.confidence,
+                        }
+                        for word in matched_words
+                    ],
+                )
+            )
+
+        if len(segments) < max(1, int(len(template_cues) * 0.8)):
+            return []
+        return segments
 
     def _retime_transcript_words(self, aligned_words: list[TimedWord], transcript: str) -> list[TimedWord]:
         """Preserve script text while using aligner timings.

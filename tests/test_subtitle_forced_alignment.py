@@ -60,6 +60,45 @@ def test_subtitle_stage_can_use_optional_forced_alignment_before_asr(tmp_path, m
     assert cues[-1].end_time == 3.2
 
 
+def test_alignment_can_retime_edge_vtt_template_structure(tmp_path) -> None:
+    stage = SubtitleStage(job_id="edge-template-retime", mock=True)
+    stage.job_dir = tmp_path / "jobs" / "edge-template-retime"
+    stage.audio_dir = stage.job_dir / "audio"
+    stage.audio_dir.mkdir(parents=True)
+    (stage.audio_dir / "narration.edge.vtt").write_text(
+        "WEBVTT\n\n"
+        "00:00:00.000 --> 00:00:01.000\n"
+        "When the priority changes at four,\n\n"
+        "00:00:01.000 --> 00:00:02.000\n"
+        "the test is not speed.\n",
+        encoding="utf-8",
+    )
+    words = [
+        TimedWord(text="When", start_time=0.20, end_time=0.30, source="alignment"),
+        TimedWord(text="the", start_time=0.30, end_time=0.40, source="alignment"),
+        TimedWord(text="priority", start_time=0.40, end_time=0.80, source="alignment"),
+        TimedWord(text="changes", start_time=0.80, end_time=1.00, source="alignment"),
+        TimedWord(text="at", start_time=1.00, end_time=1.10, source="alignment"),
+        TimedWord(text="four,", start_time=1.10, end_time=1.50, source="alignment"),
+        TimedWord(text="the", start_time=1.90, end_time=2.00, source="alignment"),
+        TimedWord(text="test", start_time=2.00, end_time=2.20, source="alignment"),
+        TimedWord(text="is", start_time=2.20, end_time=2.30, source="alignment"),
+        TimedWord(text="not", start_time=2.30, end_time=2.45, source="alignment"),
+        TimedWord(text="speed.", start_time=2.45, end_time=2.80, source="alignment"),
+    ]
+
+    segments = stage._segments_from_edge_template(words)
+
+    assert [segment.text for segment in segments] == [
+        "When the priority changes at four,",
+        "the test is not speed.",
+    ]
+    assert segments[0].start_time == 0.2
+    assert segments[0].end_time == 1.5
+    assert segments[1].start_time == 1.9
+    assert segments[1].end_time == 2.8
+
+
 def test_forced_alignment_is_skipped_when_disabled(monkeypatch) -> None:
     import src.stages.subtitles as subtitles_module
 

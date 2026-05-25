@@ -75,7 +75,7 @@ class TestSettings:
         assert test_settings.codex_image_command == "hermes"
         assert test_settings.tts_voice == "en-US-GuyNeural"
         assert test_settings.tts_speed == 1.0
-        assert test_settings.kokoro_speed == 0.82
+        assert test_settings.kokoro_speed == 0.66
         assert test_settings.sd_image_width == 544
         assert test_settings.sd_image_height == 960
         assert test_settings.youtube_privacy_status == YouTubePrivacy.UNLISTED

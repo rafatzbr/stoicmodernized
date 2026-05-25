@@ -241,10 +241,40 @@ class TTSStage:
                     audio_path,
                     subtitles_path=subtitles_path,
                 )
-            return await audio_interface.generate_audio(all_text, audio_path)
+            generated_path = await audio_interface.generate_audio(all_text, audio_path)
+            await self._write_edge_subtitle_template(all_text)
+            return generated_path
         except Exception as e:
             print(f"[TTS] {self.provider} generation failed: {e}")
             raise RuntimeError(f"TTS generation failed for provider '{self.provider}'.") from e
+
+    async def _write_edge_subtitle_template(self, text: str) -> None:
+        """Write an EdgeTTS VTT sidecar for cue structure when using audio-only TTS.
+
+        Kokoro has no native subtitle sidecar. We keep Kokoro audio, but ask
+        EdgeTTS to emit its familiar phrase cue structure into a separate VTT
+        template that the subtitle stage can retime against Kokoro alignment.
+        Failure is non-fatal: forced alignment/ASR fallbacks still work.
+        """
+
+        if not settings.tts_subtitles_enabled:
+            return
+        template_vtt = self.audio_dir / "narration.edge.vtt"
+        template_audio = self.audio_dir / "narration.edge-template.mp3"
+        try:
+            await EdgeTTSAudio(voice=self.voice, speed=settings.tts_speed).generate_audio(
+                text,
+                template_audio,
+                subtitles_path=template_vtt,
+            )
+        except Exception as exc:
+            print(f"[TTS] Edge subtitle template generation skipped: {exc}")
+        finally:
+            try:
+                if template_audio.exists():
+                    template_audio.unlink()
+            except Exception:
+                pass
 
     def _audio_interface(self) -> TTSAudioInterface:
         if self.provider == "kokoro":
