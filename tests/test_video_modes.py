@@ -5,6 +5,7 @@ from PIL import Image
 import pytest
 
 from src.config import VideoMode, settings
+from src.models import SubtitleSegment
 from src.stages.images import ImageGenerationStage
 from src.stages.render import VideoRenderer
 from src.stages.scenes import SceneStage
@@ -46,7 +47,7 @@ async def test_short_scene_plan_appends_separate_spoken_cta_when_script_cta_is_n
 
     scene_plan = await stage.run(script)
 
-    assert scene_plan.scenes[-1].narration_segment == "Use this at work today."
+    assert scene_plan.scenes[-1].narration_segment == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
     assert scene_plan.scenes[-1].scene_type == "cta"
     assert scene_plan.scenes[-1].text_overlay == "CTA"
     assert scene_plan.total_duration <= 60.0
@@ -108,6 +109,28 @@ async def test_subtitles_alignment_transcript_prefers_scene_plan_with_appended_c
     )
 
     assert transcript == "Keep moving. Use this at work today."
+
+
+@pytest.mark.asyncio
+async def test_subtitles_polish_merges_tiny_final_cta_fragment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+
+    stage = SubtitleStage(job_id="sub-cta-fragment", mock=False)
+    segments = [
+        SubtitleSegment(start_time=46.74, end_time=50.54, text="Subscribe to @stoic-modernized for practical"),
+        SubtitleSegment(start_time=50.54, end_time=53.46, text="Stoic tools you can use"),
+        SubtitleSegment(start_time=53.46, end_time=53.845, text="at work."),
+    ]
+
+    polished = stage._polish_segments(segments, audio_duration=53.845)
+
+    assert polished[-1].text == "Stoic tools you can use at work."
+    assert polished[-1].start_time == 50.54
+    assert polished[-1].end_time == 53.845
 
 
 @pytest.mark.asyncio

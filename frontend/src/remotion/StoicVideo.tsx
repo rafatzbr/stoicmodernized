@@ -455,7 +455,7 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
                 @stoic-modernized
               </>
             </div>
-            {ctaText && ctaText.toLowerCase() !== 'subscribe to @stoic-modernized' ? (
+            {ctaText && !ctaText.toLowerCase().includes('@stoic-modernized') ? (
               <div
                 style={{
                   maxWidth: isPortrait ? '88%' : '62%',

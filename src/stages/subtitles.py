@@ -914,4 +914,19 @@ class SubtitleStage:
             if 0.0 < audio_duration - polished[-1].end_time <= 0.25:
                 polished[-1].end_time = round(audio_duration, 3)
 
+        if len(polished) >= 2:
+            last = polished[-1]
+            last_duration = last.end_time - last.start_time
+            if last_duration < 1.0:
+                previous = polished[-2]
+                combined_text = self._clean_subtitle_text(f"{previous.text} {last.text}")
+                combined_words = (previous.words or []) + (last.words or [])
+                polished[-2] = SubtitleSegment(
+                    start_time=previous.start_time,
+                    end_time=last.end_time,
+                    text=combined_text,
+                    words=combined_words,
+                )
+                polished.pop()
+
         return polished

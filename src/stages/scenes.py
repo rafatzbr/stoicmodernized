@@ -99,7 +99,7 @@ class SceneStage:
                 self._append_scene_stage_debug_log("Preserving short scene specs without extra expansion")
 
         if is_short and self._should_append_cta_scene(script_data, scene_specs):
-            cta_text = str(script_data.get("cta") or "").strip()
+            cta_text = self._short_cta_text(script_data)
             self._append_scene_stage_debug_log(f"Appending separate narrated CTA scene: {cta_text!r}")
             scene_specs.append({"text": cta_text, "label": "CTA", "scene_type": "cta"})
 
@@ -661,8 +661,17 @@ Input scenes:
             )
         return sections
 
+    def _short_cta_text(self, script_data: dict) -> str:
+        """Return the established Stoic Modernized short CTA text.
+
+        Short renders already have a branded subscribe end card. Keep the spoken CTA
+        aligned with the channel default instead of allowing per-script micro-CTAs to
+        invent a different ending style.
+        """
+        return settings.get_channel_cta(self.channel).strip() or str(script_data.get("cta") or "").strip()
+
     def _should_append_cta_scene(self, script_data: dict, scene_specs: list[dict[str, object]]) -> bool:
-        cta_text = str(script_data.get("cta") or "").strip()
+        cta_text = self._short_cta_text(script_data)
         if not cta_text:
             return False
         normalized_cta = self._normalize_spoken_text(cta_text)

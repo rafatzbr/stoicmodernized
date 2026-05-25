@@ -299,17 +299,10 @@ class RemotionRenderer:
         if not video_title and scenes:
             video_title = _clean_video_title(scenes[0].get('topic') or scenes[0].get('title'))
 
-        # Get CTA text. Prefer the script's CTA so the visual end card matches
-        # the narrated CTA scene when one exists; fall back to channel boilerplate.
+        # Get the established channel CTA. Script-specific micro-CTAs may be useful
+        # for metadata, but the rendered short end card should keep the existing
+        # Stoic Modernized subscribe style.
         cta_text = settings.get_channel_cta(channel)
-        if script_path.exists():
-            try:
-                script_data = load_json(script_path)
-                script_cta = str(script_data.get('cta') or '').strip()
-                if script_cta:
-                    cta_text = script_cta
-            except Exception:
-                pass
 
         # Use relative path for staticFile()
         audio_relative = audio_path if audio_path else 'audio/narration.mp3'
