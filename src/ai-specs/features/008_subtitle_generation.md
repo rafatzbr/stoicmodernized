@@ -87,6 +87,7 @@ The subtitle generation stage creates synchronized subtitles using provider timi
 - **Word-level timing**: When available, each segment includes word-level start/end times for sync with Remotion word highlighting.
 - **Cue style**: WebVTT output should be readable phrase-level cues for videos, not one-word karaoke captions.
 - **Video-workflow subtitle sidecars**: `tts_subtitles_enabled` and `tts_subtitles_format` control whether the subtitle stage writes the final provider-neutral `subtitles.vtt` sidecar; this is scoped to video artifacts and does not change Hermes voice replies.
+- **Scene-plan fallback retiming**: When subtitles fall back to scene-plan narration for audio-only providers, scale all scene cue boundaries to the measured narration duration. Do not clamp a longer estimated scene plan to audio duration without scaling, because that drops late narration from the VTT and leaves scenes/audio out of sync.
 
 ## Cross-Package References
 

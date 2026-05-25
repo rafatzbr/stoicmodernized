@@ -470,11 +470,10 @@ class SubtitleStage:
             last_end = max(end for _, end, _ in spoken_scenes)
             if last_end > 0:
                 scale = audio_duration / last_end
-                if 0.85 <= scale <= 1.25:
-                    spoken_scenes = [
-                        (round(start * scale, 3), round(end * scale, 3), text)
-                        for start, end, text in spoken_scenes
-                    ]
+                spoken_scenes = [
+                    (round(start * scale, 3), round(end * scale, 3), text)
+                    for start, end, text in spoken_scenes
+                ]
 
         segments: list[SubtitleSegment] = []
         for start, end, text in spoken_scenes:

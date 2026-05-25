@@ -187,3 +187,14 @@ When the Ledger topic carries missing workplace context and substantially overla
 ### Verification
 Added `test_resolve_metadata_title_prefers_contextual_ledger_topic_over_fragment_suffix` in `tests/test_upload_metadata.py`. Run `python -m pytest tests/test_upload_metadata.py -q` after metadata-title changes.
 
+
+## Kokoro Scene-Plan Subtitle Fallback Must Scale to Audio Duration (May 2026)
+
+### Problem
+Rafael caught a placeholder Kokoro smoke-test video where narration and subtitles were badly out of sync. The scene planner estimated 54 seconds, but Kokoro rendered 33.088 seconds of continuous narration. The subtitle fallback kept the 54-second scene timings because the scale ratio was outside the old 0.85–1.25 guard, then `_polish_segments()` clamped cues to the audio duration. That truncated the late narration captions and produced a broken VTT.
+
+### Fix
+For audio-only/provider-neutral fallback subtitles, scale scene-plan cue boundaries to the measured narration duration whenever `audio_duration` is available. Never clamp a longer estimated scene plan to audio duration without scaling first.
+
+### Verification
+Added `test_scene_plan_fallback_scales_all_scene_text_to_actual_audio_duration` in `tests/test_subtitle_heuristic_vtt_sidecar.py`. Run the subtitle/VTT subset after touching this path.
