@@ -52,6 +52,7 @@ Add a provider-neutral TTS timing/subtitle layer for Stoic Modernized video work
 ## Notes / guardrails
 - Subtitles stay scoped to video workflows.
 - Final captions should be readable phrase cues, not one-word karaoke.
+- Forced-aligned Kokoro captions need readability display windows; do not use exact first/last word spans for cue display duration.
 - Prefer open-source/commercial-safe local voices, but keep quality exceptions explicit.
 - Do not touch `.env` or credentials.
 - Do not push without Rafael asking.

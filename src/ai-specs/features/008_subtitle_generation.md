@@ -49,6 +49,7 @@ The subtitle generation stage creates synchronized subtitles using provider timi
 | `TimedWord` | Provider-neutral word timing from native providers or aligners |
 | `TimedCue` | Readable phrase-level cue with timing and source metadata |
 | `group_words_into_readable_cues()` | Groups native/aligned words into readable cues instead of karaoke-style one-word captions |
+| `apply_readability_windows()` | Extends forced-aligned phrase cues beyond exact word spans so short phrases remain readable without overlapping the next cue |
 | `make_heuristic_cues()` | Last-resort text + duration cue timing for audio-only providers |
 | `parse_webvtt_cues()` | Normalizes EdgeTTS/WebVTT sidecars into `TimedCue` records |
 | `write_webvtt()` | Deterministic WebVTT writer with dot-millisecond timestamps |
@@ -86,6 +87,7 @@ The subtitle generation stage creates synchronized subtitles using provider timi
 - **Chunk length**: 20-second chunks balance accuracy and memory usage.
 - **Word-level timing**: When available, each segment includes word-level start/end times for sync with Remotion word highlighting.
 - **Cue style**: WebVTT output should be readable phrase-level cues for videos, not one-word karaoke captions.
+- **Readability windows**: Forced-aligned Kokoro captions must not use exact spoken-word spans as display durations. Short phrase cues are extended to a readable minimum hold time, capped by the next cue/audio boundary.
 - **Video-workflow subtitle sidecars**: `tts_subtitles_enabled` and `tts_subtitles_format` control whether the subtitle stage writes the final provider-neutral `subtitles.vtt` sidecar; this is scoped to video artifacts and does not change Hermes voice replies.
 - **Scene-plan fallback retiming**: When subtitles fall back to scene-plan narration for audio-only providers, scale all scene cue boundaries to the measured narration duration. Do not clamp a longer estimated scene plan to audio duration without scaling, because that drops late narration from the VTT and leaves scenes/audio out of sync.
 

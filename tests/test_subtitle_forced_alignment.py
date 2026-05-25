@@ -57,7 +57,7 @@ def test_subtitle_stage_can_use_optional_forced_alignment_before_asr(tmp_path, m
     cues = parse_webvtt_cues(vtt_path.read_text(encoding="utf-8"), source="alignment")
     assert [cue.text for cue in cues] == [segment.text for segment in result.segments]
     assert cues[0].start_time == 0.1
-    assert cues[-1].end_time == 3.2
+    assert cues[-1].end_time == 4.0
 
 
 def test_alignment_can_retime_edge_vtt_template_structure(tmp_path) -> None:
@@ -94,9 +94,9 @@ def test_alignment_can_retime_edge_vtt_template_structure(tmp_path) -> None:
         "the test is not speed.",
     ]
     assert segments[0].start_time == 0.2
-    assert segments[0].end_time == 1.5
+    assert segments[0].end_time >= 1.55
     assert segments[1].start_time == 1.9
-    assert segments[1].end_time == 2.8
+    assert segments[1].end_time >= 3.4
 
 
 def test_forced_alignment_is_skipped_when_disabled(monkeypatch) -> None:

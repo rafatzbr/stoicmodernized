@@ -63,10 +63,19 @@ def group_words_into_readable_cues(
                 source=word.source,
                 confidence=word.confidence,
             )
+        if current:
+            projected_duration = word.end_time - current[0].start_time
+            if len(current) + 1 > max_words or projected_duration > max_duration:
+                cues.append(_cue_from_words(current))
+                current = []
         current.append(word)
         duration = current[-1].end_time - current[0].start_time
         sentence_break = bool(_SENTENCE_END_RE.search(word.text.strip()))
-        phrase_break = len(current) >= 2 and bool(_SOFT_PHRASE_END_RE.search(word.text.strip()))
+        phrase_break = (
+            len(current) >= 2
+            and duration >= 1.2
+            and bool(_SOFT_PHRASE_END_RE.search(word.text.strip()))
+        )
         should_close = (
             len(current) >= max_words
             or duration >= max_duration
@@ -81,6 +90,55 @@ def group_words_into_readable_cues(
         cues.append(_cue_from_words(current))
 
     return cues
+
+
+def apply_readability_windows(
+    cues: list[TimedCue],
+    *,
+    audio_duration: Optional[float] = None,
+    min_duration: float = 1.35,
+    short_phrase_min_duration: float = 1.6,
+    max_gap_to_extend: float = 0.6,
+    max_cps: float = 20.0,
+) -> list[TimedCue]:
+    """Extend cue display windows so phrase captions are readable.
+
+    Forced alignment produces precise spoken-word spans, but phrase captions need
+    to stay visible through short natural pauses. This keeps cue order and avoids
+    overlap while allowing display windows to run past exact spoken-word spans.
+    """
+
+    ordered = _validate_and_sort_cues(cues)
+    if not ordered:
+        return []
+
+    readable: list[TimedCue] = []
+    previous_end = 0.0
+    for cue in ordered:
+        start = max(cue.start_time, previous_end)
+        word_count = max(1, len(cue.text.split()))
+        base_duration = short_phrase_min_duration if word_count <= 3 else min_duration
+        cps_duration = len(cue.text) / max_cps if max_cps > 0 else 0.0
+        target_duration = max(base_duration, cps_duration)
+        target_end = max(cue.end_time, start + target_duration, cue.end_time + max_gap_to_extend)
+
+        if audio_duration is not None and target_end > audio_duration:
+            target_end = max(cue.end_time, audio_duration)
+
+        if target_end <= start:
+            target_end = max(cue.end_time, start + 0.001)
+
+        normalized = TimedCue(
+            start_time=round(start, 3),
+            end_time=round(target_end, 3),
+            text=cue.text,
+            source=cue.source,
+            words=cue.words,
+        )
+        readable.append(normalized)
+        previous_end = normalized.end_time
+
+    return _validate_and_sort_cues(readable)
 
 
 def make_heuristic_cues(

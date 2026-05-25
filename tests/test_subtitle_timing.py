@@ -1,6 +1,7 @@
 from src.subtitle_timing import (
     TimedCue,
     TimedWord,
+    apply_readability_windows,
     group_words_into_readable_cues,
     make_heuristic_cues,
     parse_webvtt_cues,
@@ -135,3 +136,58 @@ def test_parse_webvtt_cues_strips_payload_markup_and_inline_timestamps() -> None
             source="edge",
         )
     ]
+
+
+def test_groups_aligned_words_into_short_stoic_phrases_at_natural_boundaries() -> None:
+    words = [
+        TimedWord(text="When", start_time=0.0, end_time=0.12, source="alignment"),
+        TimedWord(text="the", start_time=0.12, end_time=0.22, source="alignment"),
+        TimedWord(text="priority", start_time=0.22, end_time=0.58, source="alignment"),
+        TimedWord(text="changes", start_time=0.58, end_time=0.96, source="alignment"),
+        TimedWord(text="at", start_time=0.96, end_time=1.10, source="alignment"),
+        TimedWord(text="four,", start_time=1.10, end_time=1.40, source="alignment"),
+        TimedWord(text="the", start_time=1.70, end_time=1.82, source="alignment"),
+        TimedWord(text="test", start_time=1.82, end_time=2.10, source="alignment"),
+        TimedWord(text="is", start_time=2.10, end_time=2.22, source="alignment"),
+        TimedWord(text="not", start_time=2.22, end_time=2.42, source="alignment"),
+        TimedWord(text="speed.", start_time=2.42, end_time=2.82, source="alignment"),
+    ]
+
+    cues = group_words_into_readable_cues(words, max_words=6, max_duration=2.2)
+
+    assert [cue.text for cue in cues] == [
+        "When the priority changes at four,",
+        "the test is not speed.",
+    ]
+
+
+def test_readability_windows_hold_short_phrases_long_enough_without_overlap() -> None:
+    cues = [
+        TimedCue(
+            start_time=3.10,
+            end_time=3.72,
+            text="It is ownership.",
+            source="alignment",
+            words=[
+                TimedWord(text="It", start_time=3.10, end_time=3.22),
+                TimedWord(text="is", start_time=3.22, end_time=3.36),
+                TimedWord(text="ownership.", start_time=3.36, end_time=3.72),
+            ],
+        ),
+        TimedCue(
+            start_time=5.00,
+            end_time=5.62,
+            text="One message.",
+            source="alignment",
+            words=[
+                TimedWord(text="One", start_time=5.00, end_time=5.24),
+                TimedWord(text="message.", start_time=5.24, end_time=5.62),
+            ],
+        ),
+    ]
+
+    readable = apply_readability_windows(cues, audio_duration=7.0)
+
+    assert readable[0].end_time - readable[0].start_time >= 1.599
+    assert readable[1].end_time - readable[1].start_time >= 1.599
+    assert readable[0].end_time <= readable[1].start_time

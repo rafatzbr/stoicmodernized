@@ -10,6 +10,7 @@ from src.models import SubtitleSegment, SubtitleResult
 from src.subtitle_timing import (
     TimedCue,
     TimedWord,
+    apply_readability_windows,
     group_words_into_readable_cues,
     parse_webvtt_cues,
     write_webvtt,
@@ -193,25 +194,9 @@ class SubtitleStage:
         template_segments = self._segments_from_edge_template(words)
         if template_segments:
             return template_segments
-        cues = group_words_into_readable_cues(words, max_words=5, max_duration=2.2)
-        return [
-            SubtitleSegment(
-                start_time=cue.start_time,
-                end_time=cue.end_time,
-                text=cue.text,
-                words=[
-                    {
-                        "text": word.text,
-                        "start": word.start_time,
-                        "end": word.end_time,
-                        "source": word.source,
-                        "confidence": word.confidence,
-                    }
-                    for word in cue.words
-                ],
-            )
-            for cue in cues
-        ]
+        cues = group_words_into_readable_cues(words, max_words=9, max_duration=3.2)
+        cues = apply_readability_windows(cues, audio_duration=words[-1].end_time + 0.6 if words else None)
+        return [self._subtitle_segment_from_timed_cue(cue) for cue in cues]
 
     def _segments_from_edge_template(self, words: list[TimedWord]) -> list[SubtitleSegment]:
         """Retiming Kokoro captions into EdgeTTS cue boundaries.
@@ -257,29 +242,33 @@ class SubtitleStage:
 
             if not matched_words:
                 continue
-            start = matched_words[0].start_time
-            end = max(start + 0.001, matched_words[-1].end_time)
-            segments.append(
-                SubtitleSegment(
-                    start_time=round(start, 3),
-                    end_time=round(end, 3),
-                    text=cue.text,
-                    words=[
-                        {
-                            "text": word.text,
-                            "start": word.start_time,
-                            "end": word.end_time,
-                            "source": word.source,
-                            "confidence": word.confidence,
-                        }
-                        for word in matched_words
-                    ],
-                )
+            cue_segments = group_words_into_readable_cues(matched_words, max_words=9, max_duration=3.2)
+            cue_segments = apply_readability_windows(
+                cue_segments,
+                audio_duration=words[-1].end_time + 0.6 if words else None,
             )
+            segments.extend(self._subtitle_segment_from_timed_cue(cue_segment) for cue_segment in cue_segments)
 
         if len(segments) < max(1, int(len(template_cues) * 0.8)):
             return []
         return segments
+
+    def _subtitle_segment_from_timed_cue(self, cue: TimedCue) -> SubtitleSegment:
+        return SubtitleSegment(
+            start_time=cue.start_time,
+            end_time=cue.end_time,
+            text=cue.text,
+            words=[
+                {
+                    "text": word.text,
+                    "start": word.start_time,
+                    "end": word.end_time,
+                    "source": word.source,
+                    "confidence": word.confidence,
+                }
+                for word in cue.words
+            ],
+        )
 
     def _retime_transcript_words(self, aligned_words: list[TimedWord], transcript: str) -> list[TimedWord]:
         """Preserve script text while using aligner timings.
