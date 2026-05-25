@@ -6,6 +6,8 @@ export type RemotionScene = {
   narrationSegment: string;
   textOverlay?: string | null;
   animationStyle?: string | null;
+  sceneType?: string | null;
+  titleText?: string | null;
 };
 
 export type RemotionSubtitle = {

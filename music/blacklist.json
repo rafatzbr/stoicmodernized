@@ -1,0 +1,35 @@
+{
+  "pixabay_ids": [
+    515549
+  ],
+  "audio_urls": [
+    "https://cdn.pixabay.com/audio/2026/04/18/audio_58d15e3620.mp3"
+  ],
+  "tracks": [
+    {
+      "provider": "pixabay",
+      "pixabay_id": 515549,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/04/18/audio_58d15e3620.mp3",
+      "title": "Phonk Music",
+      "artist": "SolarFLEX",
+      "reason": "Rejected by Rafael: wrong/unsuitable background music for latest video",
+      "job_id": "0cde838c-dd97-4719-959e-7c3ad90a4519",
+      "blacklisted_at": 1777240397.3585026
+    },
+    {
+      "artist": "Pretty John",
+      "reason": "Blacklisted by Rafael: all music by Pretty John blocked",
+      "blacklisted_at": 1746060445.0
+    },
+    {
+      "provider": "pixabay",
+      "pixabay_id": 518713,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/04/13/audio_339e92e1e4.mp3",
+      "title": "Orchestral",
+      "artist": "PaulYudin",
+      "reason": "Blacklisted by Rafael: copyright claim on AI Signal video",
+      "job_id": "e65e0cd9-53e1-48f3-adc4-a358cec1e74d",
+      "blacklisted_at": 1777649227.906059
+    }
+  ]
+}

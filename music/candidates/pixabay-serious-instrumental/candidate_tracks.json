@@ -1,0 +1,374 @@
+{
+  "created_at": "2026-05-21T09:26:30Z",
+  "selection_basis": "61 local video metadata files: repeated themes are work anxiety, deadline pressure, Slack/notifications, bad meetings/rumination, coworker disrespect, approval seeking, AI/work headlines, calm under pressure.",
+  "hard_filters": [
+    "instrumental",
+    "serious/ambient/documentary/cinematic",
+    "not dance/phonk/upbeat",
+    "not blacklisted pixabay IDs/artists in music/blacklist.json",
+    "30-600s duration",
+    "short-form compatible real tracks around 96-109s"
+  ],
+  "license_note": "Pixabay tracks are marked for Pixabay Content License. Before auto-uploading at scale, keep per-track source/audio URL metadata and be prepared for occasional platform content-ID disputes even with royalty-free sources.",
+  "tracks": [
+    {
+      "id": "pixabay-443538",
+      "title": "Instrumental Ambient",
+      "artist": "The_Mountain",
+      "duration": 206,
+      "pixabay_id": 443538,
+      "audio_url": "https://cdn.pixabay.com/audio/2025/12/03/audio_f743a30517.mp3",
+      "moods": [
+        "ambient",
+        "calm",
+        "serious",
+        "minimal"
+      ],
+      "fits": [
+        "general stoic narration",
+        "work anxiety",
+        "deadline pressure",
+        "approval seeking"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-443538-the-mountain-instrumental-ambient.mp3",
+      "file_size": 6592888,
+      "ffprobe": {
+        "duration": "206.027750",
+        "size": "6592888",
+        "bit_rate": "256000"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/instrumental-ambient/",
+      "source_search_query": "derived from local Stoic Modernized metadata: serious ambient instrumental, dark ambient, meditative corporate, documentary tension, calm piano"
+    },
+    {
+      "id": "pixabay-158051",
+      "title": "Ambient Corporate",
+      "artist": "The_Mountain",
+      "duration": 166,
+      "pixabay_id": 158051,
+      "audio_url": "https://cdn.pixabay.com/audio/2023/07/13/audio_845a1446b4.mp3",
+      "moods": [
+        "corporate",
+        "ambient",
+        "serious",
+        "minimal"
+      ],
+      "fits": [
+        "AI/workplace topics",
+        "Slack/notifications",
+        "modern work stress"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-158051-the-mountain-ambient-corporate.mp3",
+      "file_size": 5313933,
+      "ffprobe": {
+        "duration": "166.060406",
+        "size": "5313933",
+        "bit_rate": "256000"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/ambient-corporate/",
+      "source_search_query": "derived from local Stoic Modernized metadata: serious ambient instrumental, dark ambient, meditative corporate, documentary tension, calm piano"
+    },
+    {
+      "id": "pixabay-509385",
+      "title": "Meditative Ambient",
+      "artist": "leberch",
+      "duration": 308,
+      "pixabay_id": 509385,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/27/audio_ff2246219f.mp3",
+      "moods": [
+        "meditative",
+        "ambient",
+        "calm",
+        "slow"
+      ],
+      "fits": [
+        "calm is a skill",
+        "slow down before deciding",
+        "self-control"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-509385-leberch-meditative-ambient.mp3",
+      "file_size": 9857149,
+      "ffprobe": {
+        "duration": "308.035906",
+        "size": "9857149",
+        "bit_rate": "256000"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/meditative-ambient/",
+      "source_search_query": "derived from local Stoic Modernized metadata: serious ambient instrumental, dark ambient, meditative corporate, documentary tension, calm piano"
+    },
+    {
+      "id": "pixabay-510518",
+      "title": "Ambient Cinematic",
+      "artist": "AtlasAudio",
+      "duration": 124,
+      "pixabay_id": 510518,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/29/audio_72a9ff54fb.mp3",
+      "moods": [
+        "cinematic",
+        "ambient",
+        "serious"
+      ],
+      "fits": [
+        "pressure",
+        "disrespect",
+        "rumination"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-510518-atlasaudio-ambient-cinematic.mp3",
+      "file_size": 3968940,
+      "ffprobe": {
+        "duration": "124.029375",
+        "size": "3968940",
+        "bit_rate": "256000"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/ambient-cinematic/",
+      "source_search_query": "derived from local Stoic Modernized metadata: serious ambient instrumental, dark ambient, meditative corporate, documentary tension, calm piano"
+    },
+    {
+      "id": "pixabay-519912",
+      "title": "Tension Documentary",
+      "artist": "AtlasAudio",
+      "duration": 122,
+      "pixabay_id": 519912,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/04/15/audio_e444601d4d.mp3",
+      "moods": [
+        "documentary",
+        "tension",
+        "serious"
+      ],
+      "fits": [
+        "deadline anxiety",
+        "bad meetings",
+        "psychological paper cuts"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-519912-atlasaudio-tension-documentary.mp3",
+      "file_size": 3905410,
+      "ffprobe": {
+        "duration": "122.044063",
+        "size": "3905410",
+        "bit_rate": "255999"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/tension-documentary/",
+      "source_search_query": "derived from local Stoic Modernized metadata: serious ambient instrumental, dark ambient, meditative corporate, documentary tension, calm piano"
+    },
+    {
+      "id": "pixabay-505385",
+      "title": "Dark Ambient Background",
+      "artist": "LemonMusicLab",
+      "duration": 322,
+      "pixabay_id": 505385,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/20/audio_4767f64a64.mp3",
+      "moods": [
+        "dark",
+        "ambient",
+        "minimal",
+        "serious"
+      ],
+      "fits": [
+        "burnout",
+        "anxiety",
+        "reactivity loops"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-505385-lemonmusiclab-dark-ambient-background.mp3",
+      "file_size": 10314396,
+      "ffprobe": {
+        "duration": "322.324875",
+        "size": "10314396",
+        "bit_rate": "256000"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/dark-ambient-background/",
+      "source_search_query": "derived from local Stoic Modernized metadata: serious ambient instrumental, dark ambient, meditative corporate, documentary tension, calm piano"
+    },
+    {
+      "id": "pixabay-524039",
+      "title": "Ambient Piano",
+      "artist": "FreeMusicForVideo",
+      "duration": 125,
+      "pixabay_id": 524039,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/05/07/audio_98b252e81c.mp3",
+      "moods": [
+        "piano",
+        "ambient",
+        "calm",
+        "reflective"
+      ],
+      "fits": [
+        "personal reflection",
+        "approval seeking",
+        "calm focus"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-524039-freemusicforvideo-ambient-piano.mp3",
+      "file_size": 4027454,
+      "ffprobe": {
+        "duration": "125.857938",
+        "size": "4027454",
+        "bit_rate": "255999"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/ambient-piano/",
+      "source_search_query": "derived from local Stoic Modernized metadata: serious ambient instrumental, dark ambient, meditative corporate, documentary tension, calm piano"
+    },
+    {
+      "id": "pixabay-375987",
+      "title": "Dramatic Ambient",
+      "artist": "The_Mountain",
+      "duration": 133,
+      "pixabay_id": 375987,
+      "audio_url": "https://cdn.pixabay.com/audio/2025/07/17/audio_3263f59a28.mp3",
+      "moods": [
+        "dramatic",
+        "ambient",
+        "serious"
+      ],
+      "fits": [
+        "high-pressure workplace topics",
+        "urgent work",
+        "decision pressure"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-375987-the-mountain-dramatic-ambient.mp3",
+      "file_size": 4273214,
+      "ffprobe": {
+        "duration": "133.537938",
+        "size": "4273214",
+        "bit_rate": "255999"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/dramatic-ambient/",
+      "source_search_query": "derived from local Stoic Modernized metadata: serious ambient instrumental, dark ambient, meditative corporate, documentary tension, calm piano"
+    },
+    {
+      "id": "pixabay-524032",
+      "title": "Dark Ambient Soundscape Dreamscape",
+      "artist": "FreeMusicForVideo",
+      "duration": 98,
+      "pixabay_id": 524032,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/04/24/audio_ab6925e595.mp3",
+      "moods": [
+        "dark",
+        "ambient",
+        "serious",
+        "short"
+      ],
+      "fits": [
+        "shorts",
+        "anxiety",
+        "reaction loops"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-524032-freemusicforvideo-dark-ambient-soundscape-dreamscape.mp3",
+      "file_size": 3137201,
+      "ffprobe": {
+        "duration": "98.037531",
+        "size": "3137201",
+        "bit_rate": "256000"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/dark-ambient-soundscape-dreamscape/",
+      "source_search_query": "metadata-derived short-form serious ambient/documentary tracks for 60-90s Stoic shorts"
+    },
+    {
+      "id": "pixabay-517370",
+      "title": "Documentary",
+      "artist": "leberch",
+      "duration": 96,
+      "pixabay_id": 517370,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/04/18/audio_072f2fafd7.mp3",
+      "moods": [
+        "documentary",
+        "serious",
+        "minimal",
+        "short"
+      ],
+      "fits": [
+        "shorts",
+        "work pressure",
+        "bad meetings"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-517370-leberch-documentary.mp3",
+      "file_size": 3072835,
+      "ffprobe": {
+        "duration": "96.026094",
+        "size": "3072835",
+        "bit_rate": "255999"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/documentary/",
+      "source_search_query": "metadata-derived short-form serious ambient/documentary tracks for 60-90s Stoic shorts"
+    },
+    {
+      "id": "pixabay-495568",
+      "title": "Dark Ambient Ambient",
+      "artist": "SOULFULJAMTRACKS",
+      "duration": 109,
+      "pixabay_id": 495568,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/05/audio_3dc0b3b4ea.mp3",
+      "moods": [
+        "dark",
+        "ambient",
+        "serious",
+        "short"
+      ],
+      "fits": [
+        "shorts",
+        "deadline anxiety",
+        "burnout"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-495568-soulfuljamtracks-dark-ambient-ambient.mp3",
+      "file_size": 3505005,
+      "ffprobe": {
+        "duration": "109.531406",
+        "size": "3505005",
+        "bit_rate": "256000"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/dark-ambient-ambient/",
+      "source_search_query": "metadata-derived short-form serious ambient/documentary tracks for 60-90s Stoic shorts"
+    },
+    {
+      "id": "pixabay-507994",
+      "title": "Calm",
+      "artist": "The_Mountain",
+      "duration": 100,
+      "pixabay_id": 507994,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/24/audio_431333f472.mp3",
+      "moods": [
+        "calm",
+        "ambient",
+        "minimal",
+        "short"
+      ],
+      "fits": [
+        "shorts",
+        "calm under pressure",
+        "self-control"
+      ],
+      "local_path": "/home/rafatz/projects/stoic-modernized/music/candidates/pixabay-serious-instrumental/pixabay-507994-the-mountain-calm.mp3",
+      "file_size": 3221629,
+      "ffprobe": {
+        "duration": "100.675906",
+        "size": "3221629",
+        "bit_rate": "256000"
+      },
+      "license": "Pixabay Content License (royalty-free; attribution not required per Pixabay license mirror, but appreciated)",
+      "attribution_required": false,
+      "source_url": "https://pixabay.com/music/search/calm/",
+      "source_search_query": "metadata-derived short-form serious ambient/documentary tracks for 60-90s Stoic shorts"
+    }
+  ],
+  "updated_at": "2026-05-21T09:34:14Z"
+}

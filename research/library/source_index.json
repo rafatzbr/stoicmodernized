@@ -1,0 +1,23 @@
+{
+  "sources": [
+    {
+      "id": "the-daily-stoic",
+      "title": "The Daily Stoic",
+      "author": "Holiday, Ryan & Hanselman, Stephen",
+      "source_card": "/home/rafatz/projects/stoic-modernized/research/library/the-daily-stoic/source_card.json",
+      "library_dir": "/home/rafatz/projects/stoic-modernized/research/library/the-daily-stoic",
+      "pages": 423,
+      "ingested_at_utc": "2026-05-23T07:14:15Z"
+    },
+    {
+      "id": "stoic-six-pack-meditations-golden-sayings-fragments",
+      "title": "Stoic Six Pack: Meditations of Marcus Aurelius, Golden Sayings, Fragments and Discourses of Epictetus, Letters From A Stoic and The Enchiridion - PDFDrive.com",
+      "author": "Marcus Aurelius & Epictetus & Seneca",
+      "source_card": "/home/rafatz/projects/stoic-modernized/research/library/stoic-six-pack-meditations-golden-sayings-fragments/source_card.json",
+      "library_dir": "/home/rafatz/projects/stoic-modernized/research/library/stoic-six-pack-meditations-golden-sayings-fragments",
+      "pages": 1033,
+      "nonempty_pages": 1032,
+      "ingested_at_utc": "2026-05-23T07:16:43Z"
+    }
+  ]
+}

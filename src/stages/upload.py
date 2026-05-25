@@ -170,6 +170,15 @@ class YouTubeUploader:
             " Remove the background track or replace it with a curated approved instrumental track."
         )
 
+    def validate_script_for_generation(self, metadata: dict[str, Any], job_dir: Optional[str]) -> Optional[str]:
+        """Validate the finished script/title before expensive media generation.
+
+        This reuses the same duplicate/same-month subject guardrail as upload, but is
+        intended to run immediately after script generation and before scene, TTS,
+        image generation, subtitles, render, or upload work.
+        """
+        return self._recent_video_duplicate_guardrail(metadata, job_dir)
+
     def _recent_video_duplicate_guardrail(self, metadata: dict[str, Any], job_dir: Optional[str], recent_limit: int = 5) -> Optional[str]:
         if not job_dir:
             return None
@@ -239,14 +248,16 @@ class YouTubeUploader:
             # family in the same month, even if more than `recent_limit` jobs exist.
             concept_overlap = current_family_tokens & other_family_tokens
             if self._same_month_subject_hit(concept_overlap, metadata_path, other_metadata):
-                overlap_terms = ", ".join(sorted(concept_overlap)[:4])
+                subject_signals = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
+                overlap_terms = ", ".join(sorted(subject_signals or concept_overlap)[:4])
                 return (
                     "Upload blocked by same-month subject guardrail: this video repeats a subject already sent this month from "
                     f"'{other_metadata.get('title', other_job_dir.name)}' (job {other_job_dir.name}). "
                     f"Shared subject signals: {overlap_terms}. Regenerate with a different workplace trigger before publishing."
                 )
             if self._concept_cooldown_hit(concept_overlap, metadata_path):
-                overlap_terms = ", ".join(sorted(concept_overlap)[:4])
+                subject_signals = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
+                overlap_terms = ", ".join(sorted(subject_signals or concept_overlap)[:4])
                 return (
                     "Upload blocked by topic-cooldown guardrail: this video repeats a recent concept family from "
                     f"'{other_metadata.get('title', other_job_dir.name)}' (job {other_job_dir.name}). "
@@ -323,14 +334,16 @@ class YouTubeUploader:
 
             concept_overlap = current_family_tokens & other_family_tokens
             if self._same_month_subject_hit(concept_overlap, metadata_path, other_metadata):
-                overlap_terms = ", ".join(sorted(concept_overlap)[:4])
+                subject_signals = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
+                overlap_terms = ", ".join(sorted(subject_signals or concept_overlap)[:4])
                 return (
                     "Research blocked by same-month subject guardrail: this topic repeats a subject already sent this month from "
                     f"'{other_metadata.get('title', other_job_dir.name)}' (job {other_job_dir.name}). "
                     f"Shared subject signals: {overlap_terms}. Research a different workplace trigger before continuing."
                 )
             if self._concept_cooldown_hit(concept_overlap, metadata_path):
-                overlap_terms = ", ".join(sorted(concept_overlap)[:4])
+                subject_signals = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
+                overlap_terms = ", ".join(sorted(subject_signals or concept_overlap)[:4])
                 return (
                     "Research blocked by topic-cooldown guardrail: this topic repeats a recent concept family from "
                     f"'{other_metadata.get('title', other_job_dir.name)}' (job {other_job_dir.name}). "

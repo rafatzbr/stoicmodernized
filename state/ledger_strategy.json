@@ -1,0 +1,326 @@
+{
+  "generated_at": "2026-05-25T05:56:38.700660+00:00",
+  "source_files": [
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-05-24.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-05-24.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-05-24.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-05-25.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-05-25.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-05-25.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-05-23.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-05-23.json"
+  ],
+  "evidence_excerpt": [
+    "# Stoic Modernized Council Plan — 2026-05-10",
+    "## Council update",
+    "- **Ledger** — analytics and growth strategist",
+    "- role: read channel metrics, separate reach vs conversion, propose experiments and packaging changes",
+    "- files:",
+    "- `~/.openclaw/agents/council-of-cats/ledger/identity.md`",
+    "- `~/.openclaw/agents/council-of-cats/ledger/config.yaml`",
+    "- `~/.openclaw/agents/council-of-cats/ledger/SKILL.md`",
+    "- `~/.openclaw/agents/council-of-cats/council.yaml`",
+    "## Council synthesis",
+    "## Strongest findings",
+    "1. Shorts feed is the dominant distribution surface.",
+    "2. The audience is mostly unsubscribed, so the channel has discovery but weak conversion.",
+    "3. Concrete workplace-problem videos drive reach best.",
+    "4. Emotionally sharp identity-level topics appear better at subscriber conversion.",
+    "5. LinkedIn is a plausible secondary distribution surface for this niche.",
+    "## Recommended operating split for next 7 uploads",
+    "- **4 discovery videos**",
+    "- **3 conversion videos**",
+    "### Discovery lane",
+    "# Stoic Modernized YouTube Analytics — 2026-05-24",
+    "## Window",
+    "- 2026-04-27 → 2026-05-24",
+    "## Traffic sources",
+    "- SHORTS: 1,527 views, 117 minutes watched",
+    "- EXT_URL: 77 views, 37 minutes watched",
+    "- YT_OTHER_PAGE: 59 views, 6 minutes watched",
+    "- YT_SEARCH: 44 views, 105 minutes watched",
+    "- NO_LINK_OTHER: 30 views, 4 minutes watched",
+    "- YT_CHANNEL: 19 views, 5 minutes watched",
+    "- SUBSCRIBER: 3 views, 0 minutes watched",
+    "- NOTIFICATION: 3 views, 1 minutes watched",
+    "- RELATED_VIDEO: 2 views, 0 minutes watched",
+    "## Subscriber status",
+    "- UNSUBSCRIBED: 1,657 views, 235 minutes watched",
+    "- SUBSCRIBED: 107 views, 44 minutes watched",
+    "## Device types",
+    "- MOBILE: 1,397 views",
+    "- DESKTOP: 250 views",
+    "- TABLET: 80 views",
+    "# Stoic Modernized YouTube Metrics — 2026-05-24",
+    "## Channel snapshot",
+    "- Channel: Stoic Modernized",
+    "- Channel ID: UCySgvb2LxpQkZRjiSY-T6Mw",
+    "- Subscribers: 7",
+    "- Lifetime views: 1,787",
+    "- Lifetime videos: 36",
+    "## Analytics window (2026-04-27 → 2026-05-24)",
+    "- Views: 1,767",
+    "- Estimated minutes watched: 280"
+  ],
+  "metric_signals": {
+    "source_count": 9,
+    "platform": {
+      "youtube_shorts_views": 1527.0,
+      "youtube_search_minutes": 105.0,
+      "mobile_view_share": 0.848,
+      "unsubscribed_view_share": 0.939,
+      "subscribers_gained": 4.0,
+      "facebook_video_views": 470.0,
+      "facebook_post_engagements": 14.0,
+      "facebook_reach": 1652.0
+    },
+    "winning_themes": [
+      "approval pressure / disagreement / seeking validation",
+      "deadline rushing / pressure spirals / urgency",
+      "strategic patience / decision pause / restraint",
+      "coworker disrespect / passive aggression / reactivity",
+      "discipline without burnout / sustainable focus",
+      "conflict",
+      "discipline systems",
+      "strategic patience"
+    ],
+    "youtube_top_titles": [
+      "Stop Busy Idleness At Work | Stoic Modernized",
+      "Your Coworkers Disrespect Only Wins If You React | Stoic Modernized",
+      "Use Death to Stop Procrastinating | Stoic Modernized",
+      "Build Discipline Without Burning Out | Stoic Modernized",
+      "How Marcus Aurelius Handles Your 9 AM Meeting | Stoic Modernized"
+    ],
+    "facebook_top_titles": [
+      "Finance wants cost, Marketing wants speed. You panic thinking they hate you, but that's ju…",
+      "Your boss shifts priorities at 4 PM on Friday, sparking deep resentment. Stop dwelling on …",
+      "Why Work Pressure Gets Worse When You Rush | Stoic Modernized",
+      "You think staying calm is a trait you lack, but it's actually a skill anyone can master. L…",
+      "You feel pressure when a colleague disagrees, but they aren't attacking you. Stop letting …"
+    ],
+    "tiktok_top_titles": [
+      "697 views / 25 engagements (3.6%) — Your colleague's disrespect isn't stealing your peace; your judgment of them is. Discover how to stop their chaos from d — https://www.tiktok.com/@stoic_modernized/video/7634819797414448405",
+      "567 views / 20 engagements (3.5%) — Strategic Patience: The Ultimate Workplace Power Move | Stoic Modernized Stop forcing outcomes. Your rush to act is cost — https://www.tiktok.com/@stoic_modernized/video/7637051122150165781",
+      "396 views / 13 engagements (3.3%) — Stop Overexplaining At Work You sent a long Slack message just to prove you were right. Fear is stealing your credibilit — https://www.tiktok.com/@stoic_modernized/video/7639633308141260052",
+      "361 views / 15 engagements (4.2%) — Build Discipline Without Burning Out | Stoic Modernized Willpower is a finite battery that dies when you need it most. T — https://www.tiktok.com/@stoic_modernized/video/7637759093603699989",
+      "347 views / 8 engagements (2.3%) — Stop burning out trying to control outcomes you can't touch. True power isn't forcing results; it's mastering your react — https://www.tiktok.com/@stoic_modernized/video/7634819359688494357"
+    ],
+    "tiktok_weightings": [
+      {
+        "label": "approval pressure / disagreement / seeking validation",
+        "weight": 35.0
+      },
+      {
+        "label": "deadline rushing / pressure spirals / urgency",
+        "weight": 25.0
+      },
+      {
+        "label": "strategic patience / decision pause / restraint",
+        "weight": 20.0
+      },
+      {
+        "label": "coworker disrespect / passive aggression / reactivity",
+        "weight": 15.0
+      },
+      {
+        "label": "discipline without burnout / sustainable focus",
+        "weight": 5.0
+      }
+    ],
+    "format_steering": [
+      "mobile-first 9:16 Shorts framing",
+      "name the concrete work scenario in the first 1-2 seconds",
+      "keep one problem, one Stoic move, one concrete scenario",
+      "optimize for cold/unsubscribed viewers: self-contained hook before channel context",
+      "for TikTok reuse, prefer scenario-first captions and 2-4 focused hashtags",
+      "join Facebook Reels/Page metrics with YouTube and TikTok before choosing the next content batch"
+    ],
+    "manual_tiktok_supported_patterns": [
+      "stoic-modernized-tiktok-analytics-YYYY-MM-DD.md/json/csv",
+      "stoic-modernized-tiktok-metrics-YYYY-MM-DD.md/json/csv"
+    ],
+    "facebook_supported_patterns": [
+      "stoic-modernized-facebook-metrics-YYYY-MM-DD.md",
+      "stoic-modernized-facebook-analytics-YYYY-MM-DD.md",
+      "stoic-modernized-facebook-analytics-snapshot-YYYY-MM-DD.json"
+    ]
+  },
+  "format_steering": [
+    "mobile-first 9:16 Shorts framing",
+    "name the concrete work scenario in the first 1-2 seconds",
+    "keep one problem, one Stoic move, one concrete scenario",
+    "optimize for cold/unsubscribed viewers: self-contained hook before channel context",
+    "for TikTok reuse, prefer scenario-first captions and 2-4 focused hashtags",
+    "join Facebook Reels/Page metrics with YouTube and TikTok before choosing the next content batch"
+  ],
+  "distribution": {
+    "primary_surface": "shorts_feed",
+    "device_priority": "mobile_first",
+    "audience_profile": "mostly_unsubscribed",
+    "secondary_surface": "linkedin_experiment",
+    "tiktok_surface": "scenario_first_short_hooks"
+  },
+  "content_lanes": {
+    "discovery": {
+      "share": 6,
+      "themes": [
+        "conflict",
+        "disrespect",
+        "patience",
+        "discipline",
+        "focus",
+        "decision-making",
+        "overexplaining",
+        "burnout",
+        "procrastination",
+        "meetings",
+        "power dynamics",
+        "status games"
+      ],
+      "title_formulas": [
+        "Stop <bad loop> at work",
+        "How to <solve work pain> without <common trap>",
+        "Your <workplace trigger> only wins if you react",
+        "<Stoic move> is the workplace power move nobody teaches",
+        "What Marcus Aurelius would do in <specific work scenario>"
+      ]
+    },
+    "conversion": {
+      "share": 2,
+      "themes": [
+        "anxiety",
+        "control",
+        "calm",
+        "dignity",
+        "self-command",
+        "acceptance"
+      ],
+      "title_formulas": [
+        "Why <inner struggle> keeps running your work life",
+        "You do not need <false need> to stay steady",
+        "Calm is not <misbelief> — it is <reframe>"
+      ]
+    },
+    "balanced": {
+      "share": 2,
+      "themes": [
+        "patience",
+        "focus",
+        "calm",
+        "decision-making",
+        "timing",
+        "restraint",
+        "clarity"
+      ],
+      "title_formulas": [
+        "Why <work pressure> gets worse when you rush",
+        "How to stay steady when work feels urgent",
+        "<Stoic move> beats reacting under pressure"
+      ]
+    }
+  },
+  "title_avoid": [
+    "abstract philosophy without a modern work scenario",
+    "airy words like boredom or letting go without tension",
+    "subtitle-style short titles with colons or parentheses"
+  ],
+  "hook_constraints": [
+    "name the work problem in the first 1-2 seconds",
+    "use plain language, not mystical Stoic prose",
+    "match the script angle exactly"
+  ],
+  "script_constraints": [
+    "one problem, one Stoic move, one concrete scenario",
+    "55-70 seconds for most shorts",
+    "prefer practical phrasing over slogans"
+  ],
+  "research_steering": {
+    "prioritize_scenarios": [
+      "approval pressure / disagreement / seeking validation",
+      "deadline rushing / pressure spirals / urgency",
+      "strategic patience / decision pause / restraint",
+      "coworker disrespect / passive aggression / reactivity",
+      "discipline without burnout / sustainable focus",
+      "conflict",
+      "coworker disrespect",
+      "status games",
+      "strategic patience",
+      "discipline systems",
+      "overexplaining",
+      "meetings",
+      "focus friction",
+      "burnout tied to control"
+    ],
+    "prioritize_emotions": [
+      "reactivity",
+      "resentment",
+      "loss of control",
+      "humiliation",
+      "approval seeking",
+      "fear",
+      "anxiety"
+    ],
+    "deprioritize_topics": [
+      "generic anxiety without a concrete scenario",
+      "slack-specific or brand-specific hooks",
+      "broad rest or stillness advice without tension"
+    ],
+    "avoid_angles": [
+      "generic philosophy surveys",
+      "detached inspirational content",
+      "multiple unrelated Stoic ideas in one short"
+    ]
+  },
+  "platform_packaging": {
+    "youtube": {
+      "caption_style": "longer metadata allowed",
+      "hashtags": "3-6 relevant hashtags",
+      "affiliate_links": true,
+      "description_style": "hook + CTA + resources"
+    },
+    "tiktok": {
+      "caption_style": "one sharp hook sentence, no paragraph dump",
+      "hashtags": "2-4 scenario-specific hashtags",
+      "affiliate_links": false,
+      "description_style": "no resource block, no long CTA, no YouTube-style description inheritance",
+      "winning_topics": [
+        "coworker disrespect",
+        "strategic patience",
+        "discipline and focus systems",
+        "burnout from control",
+        "status games",
+        "overexplaining"
+      ],
+      "avoid_topics": [
+        "boredom",
+        "stillness",
+        "generic rest advice",
+        "broad abstract philosophy",
+        "generic anxiety without tension"
+      ]
+    }
+  },
+  "active_experiments": [
+    {
+      "tag": "discovery_batch",
+      "goal": "increase shorts-feed reach with concrete workplace framing",
+      "success_metric": "average 24h views per video"
+    },
+    {
+      "tag": "tiktok_conflict_batch",
+      "goal": "test conflict/disrespect and patience hooks on TikTok",
+      "success_metric": "average TikTok views and shares per post"
+    },
+    {
+      "tag": "conversion_batch",
+      "goal": "increase subscribers gained per video with identity/emotion framing",
+      "success_metric": "subscribers gained per video"
+    },
+    {
+      "tag": "linkedin_repost",
+      "goal": "test LinkedIn as repeatable external surface",
+      "success_metric": "external views and linkedin source detail"
+    }
+  ]
+}

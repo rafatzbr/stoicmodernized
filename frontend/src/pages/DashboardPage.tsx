@@ -1,23 +1,16 @@
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import FiberManualRecordRoundedIcon from '@mui/icons-material/FiberManualRecordRounded';
 import StopCircleRoundedIcon from '@mui/icons-material/StopCircleRounded';
 import {
   Alert,
-  AppBar,
   Box,
   Button,
-  Chip,
-  Container,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Grid,
   Paper,
   Snackbar,
   Stack,
-  Toolbar,
   Typography,
 } from '@mui/material';
 import { AxiosError } from 'axios';
@@ -42,10 +35,7 @@ import { JobAssets } from '../components/JobAssets';
 import { JobsList } from '../components/JobsList';
 import { LiveLogs } from '../components/LiveLogs';
 import { RunControls } from '../components/RunControls';
-import { StepRunner } from '../components/StepRunner';
 import type { Job, JobDetail, RunState } from '../types';
-
-const DEFAULT_STEPS = ['research', 'script', 'scene', 'tts', 'music', 'images', 'subtitles', 'render', 'metadata'];
 
 type Notice = {
   message: string;
@@ -58,7 +48,6 @@ function getErrorMessage(error: unknown, fallback: string) {
     if (typeof detail === 'string') {
       return detail;
     }
-
     return error.message || fallback;
   }
 
@@ -73,7 +62,7 @@ function extractEnvValue(content: string, key: string): string | null {
   const line = content
     .split('\n')
     .map((item) => item.trim())
-    .find((item) => item.startsWith(`${key}=`) && !item.startsWith(`#`));
+    .find((item) => item.startsWith(`${key}=`) && !item.startsWith('#'));
 
   if (!line) {
     return null;
@@ -83,13 +72,22 @@ function extractEnvValue(content: string, key: string): string | null {
   return raw.replace(/^['"]|['"]$/g, '');
 }
 
+function resolveHeroStatus(runState: RunState | null, runId: string | null) {
+  if (runState?.running) return 'RUNNING';
+  if (runState && runState.returncode === 0) return 'COMPLETE';
+  if (runState && runState.returncode !== null && runState.returncode !== 0) return 'FAILED';
+  if (runId) return 'IDLE';
+  return 'READY';
+}
+
 export function DashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [jobsError, setJobsError] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState('');
   const [jobDetail, setJobDetail] = useState<JobDetail | null>(null);
-  const [renderer, setRenderer] = useState('ffmpeg');
+  const [channel, setChannel] = useState('stoic-modernized');
+  const [renderer, setRenderer] = useState('remotion');
   const [jobDetailLoading, setJobDetailLoading] = useState(false);
   const [topic, setTopic] = useState('workplace stress');
   const [videoMode, setVideoMode] = useState('short');
@@ -101,7 +99,6 @@ export function DashboardPage() {
   const [envContent, setEnvContent] = useState('');
   const [configContent, setConfigContent] = useState('');
   const [configLoading, setConfigLoading] = useState(true);
-  const [selectedSteps, setSelectedSteps] = useState<string[]>(DEFAULT_STEPS);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pendingDeleteJob, setPendingDeleteJob] = useState<Job | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
@@ -109,6 +106,13 @@ export function DashboardPage() {
 
   const showNotice = useCallback((message: string, severity: Notice['severity'] = 'info') => {
     setNotice({ message, severity });
+  }, []);
+
+  const onChannelChange = useCallback((nextChannel: string) => {
+    setChannel(nextChannel);
+    if (nextChannel === 'ai-signal') {
+      setRenderer('remotion');
+    }
   }, []);
 
   const loadJobs = useCallback(async () => {
@@ -154,6 +158,9 @@ export function DashboardPage() {
       try {
         const detail = await fetchJob(jobId);
         setJobDetail(detail);
+        if (detail.channel) {
+          setChannel(detail.channel);
+        }
       } catch (error) {
         setJobDetail(null);
         showNotice(getErrorMessage(error, 'Failed to load job detail.'), 'error');
@@ -211,13 +218,16 @@ export function DashboardPage() {
     };
   }, [loadJobDetail, loadJobs, runId, selectedJobId, showNotice]);
 
+  const effectiveTopic = channel === 'ai-signal' ? 'AI news' : topic;
+
   const onStart = useCallback(async () => {
     setRunLoading(true);
     try {
       const result = await startRun({
-        topic,
+        topic: effectiveTopic,
         video_mode: videoMode,
         provider,
+        channel,
         platform: platform === 'auto' ? null : platform,
         skip_upload: true,
         renderer,
@@ -230,7 +240,7 @@ export function DashboardPage() {
     } finally {
       setRunLoading(false);
     }
-  }, [platform, provider, showNotice, topic, videoMode]);
+  }, [channel, effectiveTopic, platform, provider, renderer, showNotice, videoMode]);
 
   const onSelectJob = useCallback(
     async (jobId: string) => {
@@ -243,47 +253,19 @@ export function DashboardPage() {
   const onSuggestTopic = useCallback(async () => {
     setSuggestingTopic(true);
     try {
-      const result = await suggestTopic(topic);
-      setTopic(result.topic);
-      if (result.source === 'local-ai') {
-        showNotice('Suggested a topic using the local AI model.', 'success');
-      } else {
-        showNotice(result.error ? `Local AI fallback: ${result.error}` : 'Local AI was unavailable, so I used a fallback topic.', 'warning');
+      const result = await suggestTopic(effectiveTopic, channel);
+      if (result.source !== 'local-ai' || !result.topic) {
+        showNotice(result.error || 'Local topic suggestion failed.', 'error');
+        return;
       }
+      setTopic(result.topic);
+      showNotice('Suggested a topic using the local AI model.', 'success');
     } catch (error) {
       showNotice(getErrorMessage(error, 'Failed to suggest a topic.'), 'error');
     } finally {
       setSuggestingTopic(false);
     }
-  }, [showNotice, topic]);
-
-  const onToggleStep = useCallback((step: string) => {
-    setSelectedSteps((previous) =>
-      previous.includes(step) ? previous.filter((item) => item !== step) : [...previous, step],
-    );
-  }, []);
-
-  const onRunSteps = useCallback(async () => {
-    setRunLoading(true);
-    try {
-      const result = await startSteps({
-        topic,
-        job_id: selectedJobId || null,
-        video_mode: videoMode,
-        provider,
-        platform: platform === 'auto' ? null : platform,
-        steps: selectedSteps,
-        renderer,
-      });
-      setRunId(result.run_id);
-      setRunState(null);
-      showNotice(`Selected steps started: ${result.run_id}`, 'success');
-    } catch (error) {
-      showNotice(getErrorMessage(error, 'Failed to start selected steps.'), 'error');
-    } finally {
-      setRunLoading(false);
-    }
-  }, [platform, provider, selectedJobId, selectedSteps, showNotice, topic, videoMode]);
+  }, [channel, effectiveTopic, showNotice]);
 
   const onRunSpecificSteps = useCallback(
     async (steps: string[], rendererOverride?: string) => {
@@ -296,10 +278,11 @@ export function DashboardPage() {
       setRunLoading(true);
       try {
         const result = await startSteps({
-          topic,
+          topic: effectiveTopic,
           job_id: selectedJobId || null,
           video_mode: videoMode,
           provider,
+          channel,
           platform: platform === 'auto' ? null : platform,
           steps,
           renderer: nextRenderer,
@@ -313,7 +296,7 @@ export function DashboardPage() {
         setRunLoading(false);
       }
     },
-    [platform, provider, renderer, selectedJobId, showNotice, topic, videoMode],
+    [channel, effectiveTopic, platform, provider, renderer, selectedJobId, showNotice, videoMode],
   );
 
   const onStopRun = useCallback(async () => {
@@ -365,6 +348,7 @@ export function DashboardPage() {
         topic: jobDetail.topic,
         video_mode: videoMode,
         provider,
+        channel: jobDetail.channel ?? channel,
         platform: platform === 'auto' ? null : platform,
         skip_upload: true,
         renderer,
@@ -377,205 +361,191 @@ export function DashboardPage() {
     } finally {
       setRunLoading(false);
     }
-  }, [jobDetail, platform, provider, renderer, showNotice, videoMode]);
+  }, [channel, jobDetail, platform, provider, renderer, showNotice, videoMode]);
 
-  const onUploadAsset = useCallback(async (assetPath: string) => {
-    if (!jobDetail) {
-      return;
-    }
+  const onUploadAsset = useCallback(
+    async (assetPath: string) => {
+      if (!jobDetail) {
+        return;
+      }
 
-    setRunLoading(true);
-    try {
-      const result = await uploadJobAsset(jobDetail.job_id, { asset_path: assetPath });
-      setRunId(result.run_id);
-      setRunState(null);
-      showNotice(`Upload started: ${assetPath}`, 'success');
-    } catch (error) {
-      showNotice(getErrorMessage(error, 'Failed to start upload.'), 'error');
-    } finally {
-      setRunLoading(false);
-    }
-  }, [jobDetail, showNotice]);
+      setRunLoading(true);
+      try {
+        const result = await uploadJobAsset(jobDetail.job_id, { asset_path: assetPath });
+        setRunId(result.run_id);
+        setRunState(null);
+        showNotice(`Upload started: ${assetPath}`, 'success');
+      } catch (error) {
+        showNotice(getErrorMessage(error, 'Failed to start upload.'), 'error');
+      } finally {
+        setRunLoading(false);
+      }
+    },
+    [jobDetail, showNotice],
+  );
 
+  const heroStatus = resolveHeroStatus(runState, runId);
   const summary = useMemo(
     () => [
-      { label: 'Jobs', value: jobs.length.toString(), tone: 'default' as const },
-      { label: 'Selected steps', value: selectedSteps.length.toString(), tone: 'secondary' as const },
-      {
-        label: 'Run status',
-        value: runState?.running ? 'Running' : runId ? 'Idle' : 'Ready',
-        tone: runState?.running ? ('warning' as const) : ('success' as const),
-      },
-      { label: 'Provider', value: provider, tone: 'default' as const },
-      { label: 'Renderer', value: renderer, tone: 'default' as const },
+      { label: 'CHANNEL', value: channel === 'ai-signal' ? 'AI SIGNAL' : 'STOIC' },
+      { label: 'JOBS', value: String(jobs.length).padStart(2, '0') },
+      { label: 'RENDERER', value: renderer.toUpperCase() },
     ],
-    [jobs.length, provider, renderer, runId, runState?.running, selectedSteps.length],
+    [channel, jobs.length, renderer],
   );
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="sticky" color="transparent" elevation={0} sx={{ backdropFilter: 'blur(18px)', borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Toolbar sx={{ gap: 2, flexWrap: 'wrap', py: 1 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexGrow: 1 }}>
-            <AutoAwesomeRoundedIcon color="secondary" />
-            <Box>
-              <Typography variant="h6">Stoic Modernized Control Panel</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Internal dashboard for runs, assets, configs, and live pipeline control.
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-            <Chip
-              icon={<FiberManualRecordRoundedIcon sx={{ fontSize: 10 }} />}
-              label={runState?.running ? `Active run ${runId}` : 'System ready'}
-              color={runState?.running ? 'warning' : 'success'}
-              variant="outlined"
-            />
-            <Button
-              variant="outlined"
-              color="warning"
-              onClick={onStopRun}
-              startIcon={<StopCircleRoundedIcon />}
-              disabled={!runId || !runState?.running}
-            >
-              Stop run
-            </Button>
-          </Stack>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="xl" sx={{ py: { xs: 3, md: 4 } }}>
-        <Stack spacing={3}>
-          <Paper sx={{ p: { xs: 2, md: 3 }, backgroundImage: 'radial-gradient(circle at top right, rgba(203, 166, 247, 0.18), transparent 35%)' }}>
-            <Stack spacing={2.5}>
-              <Box>
-                <Typography variant="overline" color="secondary.main">
-                  Overview
+    <Box sx={{ minHeight: '100vh', px: { xs: 2, md: 4 }, py: { xs: 2, md: 3 } }}>
+      <Stack spacing={2}>
+        <Paper sx={{ p: { xs: 2.25, md: 3 }, border: '1px solid', borderColor: 'divider' }}>
+          <Stack spacing={3}>
+            <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={3}>
+              <Stack spacing={1}>
+                <Typography variant="overline" color="text.secondary">
+                  STOIC MODERNIZED CONTROL SURFACE
                 </Typography>
-                <Typography variant="h4" sx={{ mb: 1 }}>
-                  Pipeline command center
+                <Typography sx={{ fontSize: { xs: 48, md: 84 }, lineHeight: 0.95, letterSpacing: '-0.06em', fontWeight: 500 }}>
+                  {heroStatus}
                 </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 900 }}>
-                  Start full runs, execute individual stages, inspect job outputs, watch live logs, and tune configuration files from one place.
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 760 }}>
+                  One surface for starting runs, rerunning slices, checking artifacts, and fixing configuration without digging through the repo.
                 </Typography>
-              </Box>
+              </Stack>
 
-              <Grid container spacing={2}>
-                {summary.map((item) => (
-                  <Grid key={item.label} size={{ xs: 6, md: 3 }}>
-                    <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.label}
-                      </Typography>
-                      <Typography variant="h5" sx={{ mt: 1, mb: 1 }}>
-                        {item.value}
-                      </Typography>
-                      <Chip size="small" label={item.tone === 'secondary' ? 'Configurable' : item.value} color={item.tone} variant="outlined" />
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
+              <Stack spacing={1.25} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+                <Typography variant="overline" color="text.secondary">
+                  ACTIVE RUN
+                </Typography>
+                <Typography variant="body2">{runId ?? 'NONE'}</Typography>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={onStopRun}
+                  startIcon={<StopCircleRoundedIcon />}
+                  disabled={!runId || !runState?.running}
+                >
+                  STOP RUN
+                </Button>
+              </Stack>
             </Stack>
-          </Paper>
 
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, lg: 4 }}>
-              <Stack spacing={3}>
-                <RunControls
-                  topic={topic}
-                  videoMode={videoMode}
-                  provider={provider}
-                  platform={platform}
-                  renderer={renderer}
-                  isStarting={runLoading}
-                  isSuggestingTopic={suggestingTopic}
-                  onTopicChange={setTopic}
-                  onVideoModeChange={setVideoMode}
-                  onProviderChange={setProvider}
-                  onPlatformChange={setPlatform}
-                  onRendererChange={setRenderer}
-                  onSuggestTopic={onSuggestTopic}
-                  onStart={onStart}
-                />
-                <StepRunner
-                  selectedJobId={selectedJobId}
-                  selectedSteps={selectedSteps}
-                  isRunning={runLoading}
-                  onToggleStep={onToggleStep}
-                  onRunSteps={onRunSteps}
-                />
-                <JobsList
-                  jobs={jobs}
-                  selectedJobId={selectedJobId}
-                  isLoading={jobsLoading}
-                  error={jobsError}
-                  deletingJobId={deletingJobId}
-                  onSelect={onSelectJob}
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
+              {summary.map((item) => (
+                <Box key={item.label} sx={{ minWidth: 132, borderTop: '1px solid', borderColor: 'divider', pt: 1 }}>
+                  <Typography variant="overline" color="text.secondary">
+                    {item.label}
+                  </Typography>
+                  <Typography variant="h6">{item.value}</Typography>
+                </Box>
+              ))}
+            </Stack>
+          </Stack>
+        </Paper>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: { xs: '1fr', xl: '380px minmax(0, 1fr)' },
+            alignItems: 'start',
+          }}
+        >
+          <Stack spacing={2}>
+            <Paper sx={{ p: 3 }}>
+              <RunControls
+                topic={topic}
+                channel={channel}
+                videoMode={videoMode}
+                provider={provider}
+                platform={platform}
+                renderer={renderer}
+                isStarting={runLoading}
+                isSuggestingTopic={suggestingTopic}
+                onTopicChange={setTopic}
+                onChannelChange={onChannelChange}
+                onVideoModeChange={setVideoMode}
+                onProviderChange={setProvider}
+                onPlatformChange={setPlatform}
+                onRendererChange={setRenderer}
+                onSuggestTopic={onSuggestTopic}
+                onStart={onStart}
+              />
+            </Paper>
+
+            <Paper sx={{ p: 3 }}>
+              <JobsList
+                jobs={jobs}
+                selectedJobId={selectedJobId}
+                isLoading={jobsLoading}
+                error={jobsError}
+                deletingJobId={deletingJobId}
+                onSelect={onSelectJob}
+                onRefresh={() => {
+                  void loadJobs();
+                }}
+                onDeleteRequest={setPendingDeleteJob}
+              />
+            </Paper>
+          </Stack>
+
+          <Stack spacing={2}>
+            <Paper sx={{ p: 3 }}>
+              <LiveLogs runState={runState} onClear={() => setRunState(null)} />
+            </Paper>
+
+            <Paper sx={{ p: 3 }}>
+              {jobDetailLoading ? (
+                <Typography variant="body2" color="text.secondary">
+                  Loading job details…
+                </Typography>
+              ) : (
+                <JobAssets
+                  jobDetail={jobDetail}
                   onRefresh={() => {
-                    void loadJobs();
+                    if (selectedJobId) {
+                      void loadJobDetail(selectedJobId);
+                    }
                   }}
-                  onDeleteRequest={setPendingDeleteJob}
+                  onRerunSteps={(steps, rendererOverride) => {
+                    void onRunSpecificSteps(steps, rendererOverride);
+                  }}
+                  onFullRerun={onFullRerun}
+                  onUploadAsset={(assetPath) => {
+                    void onUploadAsset(assetPath);
+                  }}
+                  rerunBusy={runLoading || Boolean(runId && runState?.running)}
                 />
-              </Stack>
-            </Grid>
+              )}
+            </Paper>
 
-            <Grid size={{ xs: 12, lg: 8 }}>
-              <Stack spacing={3}>
-                <LiveLogs runState={runState} onClear={() => setRunState(null)} />
-                {jobDetailLoading ? (
-                  <Paper variant="outlined" sx={{ p: 3 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Loading job details…
-                    </Typography>
-                  </Paper>
-                ) : (
-                  <JobAssets
-                    jobDetail={jobDetail}
-                    onRefresh={() => {
-                      if (selectedJobId) {
-                        void loadJobDetail(selectedJobId);
-                      }
-                    }}
-                    onRerunSteps={(steps, rendererOverride) => {
-                      void onRunSpecificSteps(steps, rendererOverride);
-                    }}
-                    onFullRerun={onFullRerun}
-                    onUploadAsset={(assetPath) => {
-                      void onUploadAsset(assetPath);
-                    }}
-                    rerunBusy={runLoading || Boolean(runId && runState?.running)}
-                  />
-                )}
-                <FileEditors
-                  envContent={envContent}
-                  configContent={configContent}
-                  isLoading={configLoading}
-                  onEnvChange={setEnvContent}
-                  onConfigChange={setConfigContent}
-                  onSaveEnv={async () => {
-                    try {
-                      await saveEnv(envContent);
-                      showNotice('Saved .env', 'success');
-                    } catch (error) {
-                      showNotice(getErrorMessage(error, 'Failed to save .env'), 'error');
-                    }
-                  }}
-                  onSaveConfig={async () => {
-                    try {
-                      await saveConfigFile(configContent);
-                      showNotice('Saved src/config.py', 'success');
-                    } catch (error) {
-                      showNotice(getErrorMessage(error, 'Failed to save config.py'), 'error');
-                    }
-                  }}
-                />
-              </Stack>
-            </Grid>
-          </Grid>
-        </Stack>
-      </Container>
+            <Paper sx={{ p: 3 }}>
+              <FileEditors
+                envContent={envContent}
+                configContent={configContent}
+                isLoading={configLoading}
+                onEnvChange={setEnvContent}
+                onConfigChange={setConfigContent}
+                onSaveEnv={async () => {
+                  try {
+                    await saveEnv(envContent);
+                    showNotice('Saved .env', 'success');
+                  } catch (error) {
+                    showNotice(getErrorMessage(error, 'Failed to save .env'), 'error');
+                  }
+                }}
+                onSaveConfig={async () => {
+                  try {
+                    await saveConfigFile(configContent);
+                    showNotice('Saved src/config.py', 'success');
+                  } catch (error) {
+                    showNotice(getErrorMessage(error, 'Failed to save config.py'), 'error');
+                  }
+                }}
+              />
+            </Paper>
+          </Stack>
+        </Box>
+      </Stack>
 
       <Dialog open={Boolean(pendingDeleteJob)} onClose={() => (deletingJobId ? undefined : setPendingDeleteJob(null))} maxWidth="xs" fullWidth>
         <DialogTitle>Delete job?</DialogTitle>

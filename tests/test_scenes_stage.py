@@ -24,6 +24,27 @@ def test_extract_steering_context_prefers_persisted_script_fields() -> None:
     assert context["ledger_strategy"]["packaging_angle"] == "concrete pain first"
 
 
+def test_status_games_visual_prompt_is_concrete_and_non_generic() -> None:
+    stage = SceneStage(job_id="scene-job-status", mock=False)
+
+    prompt = stage._generate_visual_prompt(
+        topic="Why Status Games Drain Your Energy",
+        line="You're in a meeting. Your colleague tries to one-up you on a project. Your heart races. You feel the urge to defend your ego.",
+        scene_num=2,
+        is_short=True,
+        label="After The Meeting",
+    )
+
+    assert "tense glass meeting room" in prompt
+    assert "one coworker blurred" in prompt
+    assert "gripping a pen" in prompt
+    assert "no readable text" in prompt
+    assert "emotionally specific" not in prompt
+    assert "grounded contemporary office" not in prompt
+    assert "modern office professional" not in prompt
+    assert "workplace context:" not in prompt
+
+
 def test_save_scene_plan_persists_steering_context(tmp_path: Path) -> None:
     stage = SceneStage(job_id="scene-job-2", mock=False)
     stage.scenes_dir = tmp_path / "scenes"

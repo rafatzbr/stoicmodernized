@@ -21,6 +21,7 @@ class TTSProvider(str, Enum):
 class ImageProvider(str, Enum):
     """Supported image generation providers."""
 
+    CODEX_IMAGE = "codex_image"
     SD_CLI = "sd_cli"
     SD_SERVER = "sd_server"
     DALL_E = "dall_e"
@@ -113,6 +114,10 @@ class Settings(BaseSettings):
     sd_steps: int = 20
     sd_sampling_method: str = "euler"
     sd_negative_prompt: str = "blurry, low quality, deformed, extra people in foreground, cluttered desk, text, logo, watermark, overexposed, bad hands, extra fingers, missing fingers, duplicate objects, malformed laptop, distorted pen, plastic skin, uncanny smile, centered headshot, stiff stock photo pose, oversmoothed skin, multiple computers"
+    image_provider: ImageProvider = ImageProvider.CODEX_IMAGE
+    codex_image_command: str = "hermes"
+    codex_image_timeout_seconds: float = 900.0
+    codex_image_aspect_ratio: str = "portrait"
     force_placeholder_images: bool = False
 
     sd_server_url: str = "http://localhost:1234"
@@ -123,6 +128,20 @@ class Settings(BaseSettings):
     youtube_credentials_path: Optional[str] = None
     youtube_privacy_status: YouTubePrivacy = YouTubePrivacy.UNLISTED
     youtube_schedule_datetime: Optional[str] = None
+
+    # Cross-platform short-form distribution (Meta APIs first, TikTok API second)
+    social_distribution_enabled: bool = False
+    social_distribution_platforms: str = "instagram,facebook,tiktok"
+    meta_graph_api_version: str = "v25.0"
+    meta_app_id: Optional[str] = None
+    meta_app_secret: Optional[str] = None
+    meta_page_access_token: Optional[str] = None
+    instagram_user_id: Optional[str] = None
+    facebook_page_id: Optional[str] = None
+    social_video_public_base_url: Optional[str] = None
+    tiktok_access_token: Optional[str] = None
+    tiktok_open_id: Optional[str] = None
+    tiktok_privacy_level: str = "SELF_ONLY"
 
     local_llm_base_url: str = "http://localhost:8080/v1/chat/completions"
     local_llm_model: str = "local"

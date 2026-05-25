@@ -3,6 +3,8 @@ export type Job = {
   topic: string;
   status: string;
   created_at: string;
+  channel?: string;
+  channel_name?: string;
   video_path?: string;
   thumbnail_path?: string;
   subtitle_path?: string;
@@ -29,6 +31,10 @@ export type JobDetail = {
   topic: string;
   status: string;
   created_at: string;
+  channel?: string;
+  channel_name?: string;
+  channel_handle?: string;
+  channel_description?: string;
   video_path?: string;
   thumbnail_path?: string;
   subtitle_path?: string;

@@ -5,6 +5,7 @@ import hashlib
 import json
 import random
 import re
+import shutil
 import shlex
 import subprocess
 from datetime import UTC, datetime
@@ -13,7 +14,7 @@ from typing import Any, Optional
 
 import httpx
 
-from src.config import settings
+from src.config import ImageProvider, settings
 from src.models import ImageAsset
 
 # Richer prompt fragments for scene variation and local-LLM bootstrapping
@@ -756,9 +757,9 @@ VISUAL_STYLE_BUCKETS = {
     "symbolic_insert": {
         "modes": {"object_only", "hands_only"},
         "fragments": [
-            "symbolic insert shot",
-            "tight composition around a few meaningful objects",
-            "editorial still-life clarity",
+            "desk-level documentary close-up",
+            "foreground-background separation",
+            "candid tension carried by the objects",
             "high-end documentary texture",
         ],
     },
@@ -792,6 +793,13 @@ VISUAL_STYLE_BUCKETS = {
 }
 
 BOUNDARY_SCENE_TEMPLATES = {
+    "approval pressure": {
+        "object_only": "Anonymous feedback printouts spread across a conference table, red pen capped beside a closed notebook, phone face-down at the table edge, untouched water glass, empty chairs blurred behind, no person visible",
+        "hands_only": "Desk-level close-up of hands sliding a phone face-down beside anonymous feedback pages and a capped pen, laptop half-open in the background, no face visible, no readable text",
+        "over_shoulder": "Over-the-shoulder view of a worker at the end of a glass conference table, phone pushed away, open notebook centered, blurred coworkers beyond a blank whiteboard, no readable text on screens or paper",
+        "environment": "Glass meeting room after a tense disagreement, one chair pulled back, laptop half-open, notebook and water glass left at the near end of the table, coworkers only as soft silhouettes beyond the glass",
+        "person_medium": "Single worker seated at the end of a long conference table after a disagreement, pen gripped beside an open notebook, phone face-down, blurred coworker silhouettes near a blank whiteboard, not looking at camera",
+    },
     "pause first": {
         "object_only": "Phone face-down beside a half-open laptop and a paper notebook on a dark desk, unread notifications reflecting on a second monitor, one chair slightly pulled back, no person visible",
         "hands_only": "Hands leaving a phone face-down beside a laptop, one thumb still near the edge of the case, notebook and pen resting in the foreground, blurred notifications in the distance, no face visible",
@@ -827,6 +835,27 @@ def _normalize_scene_key(overlay: object, scene_prompt: str, narration_segment: 
     combined = " ".join(
         part.strip().lower() for part in [str(overlay or ""), scene_prompt or "", narration_segment or ""] if str(part).strip()
     )
+    if any(
+        term in combined
+        for term in [
+            "approval",
+            "validation",
+            "like you",
+            "likes you",
+            "everyone at work",
+            "not personal",
+            "finance wants",
+            "gain respect",
+            "stop apologizing",
+            "opinion of you",
+            "opinions of you",
+            "agree with you",
+            "disagree",
+            "disagreement",
+            "workplace conflict",
+        ]
+    ):
+        return "approval pressure"
     for key in BOUNDARY_SCENE_TEMPLATES:
         if key in combined:
             return key
@@ -944,8 +973,8 @@ def _generic_mode_prompt(mode: str, subject: str, scene_prompt: str, narration_s
 
     if mode == "object_only":
         return (
-            f"Still-life object shot in a {location}, featuring {details} in the foreground, "
-            f"{background}, no person visible, no hands, no arms, no human body parts in frame, no one using the objects"
+            f"Desk-level photographed moment in a {location}: {details} set in the foreground, "
+            f"{background}, table edges and chair positions showing recent tension, no person visible, no hands, no arms, no human body parts in frame"
         )
     if mode == "hands_only":
         action = rng.choice([
@@ -996,7 +1025,7 @@ def build_narrative_scene_prompt(
     return base
 
 # Scene modes for variety
-SCENE_MODES = ["object_only", "object_only", "object_only", "object_only"]
+SCENE_MODES = ["person_medium", "over_shoulder", "object_only", "hands_only", "environment", "person_medium"]
 
 # Hard-banned abstract words in LLM output
 ABSTRACT_BAN_LIST = [
@@ -1131,27 +1160,32 @@ class ImageGenerationStage:
                 )
             return await self._generate_placeholder_images(scene_plan, style="local")
 
-        # Priority: SD Server > SD CLI > Error
-        if self._sd_server_available():
+        provider = settings.image_provider
+
+        if provider == ImageProvider.CODEX_IMAGE:
+            return await self._codex_generate(scene_plan)
+
+        if provider == ImageProvider.SD_SERVER and self._sd_server_available():
             sd_gen = SdServerImageGeneration(self.job_id, mock=False)
             return await sd_gen.generate(scene_plan)
 
-        if self._sd_cli_available():
+        if provider == ImageProvider.SD_CLI and self._sd_cli_available():
             return await self._real_generate(scene_plan)
 
-        # Determine error message based on what's missing
-        if not self._sd_cli_available():
-            if not self._sd_server_available():
-                raise ImageGenerationError(
-                    "no_image_provider_available: "
-                    "neither SD CLI nor SD server is available; "
-                    "daily Stoic jobs must stop here until a real image provider is restored. "
-                    "Only use placeholders after Rafael explicitly requests them."
-                )
-            raise ImageGenerationError(
-                "sd_cli_unavailable: stable diffusion CLI or model files are missing; "
-                "restore a real image provider instead of falling back to placeholders for Stoic daily jobs"
-            )
+        # Legacy fallback for unset/unknown older environments: SD Server > SD CLI > Error.
+        if provider not in {ImageProvider.SD_SERVER, ImageProvider.SD_CLI, ImageProvider.DALL_E}:
+            if self._sd_server_available():
+                sd_gen = SdServerImageGeneration(self.job_id, mock=False)
+                return await sd_gen.generate(scene_plan)
+            if self._sd_cli_available():
+                return await self._real_generate(scene_plan)
+
+        raise ImageGenerationError(
+            "no_image_provider_available: "
+            f"configured image_provider={provider.value!r} is unavailable; "
+            "daily Stoic jobs must stop here until a real image provider is restored. "
+            "Only use placeholders after Rafael explicitly requests them."
+        )
 
     def _sd_cli_available(self) -> bool:
         return Path(self.sd_cli_path).exists() and Path(self.sd_model_path).exists()
@@ -1232,22 +1266,52 @@ class ImageGenerationStage:
         whiskers_handoff = steering.get("whiskers_handoff") or {}
         ledger_strategy = steering.get("ledger_strategy") or {}
         hints: list[str] = []
-        packaging_angle = str(ledger_packet.get("packaging_angle") or ledger_strategy.get("packaging_angle") or "").strip()
+        packaging_angle = self._concrete_steering_value(
+            ledger_packet.get("packaging_angle") or ledger_strategy.get("packaging_angle")
+        )
         if packaging_angle:
-            hints.append(f"packaging angle: {packaging_angle}")
-        work_scenario = str(whiskers_handoff.get("work_scenario") or whiskers_handoff.get("viewer_problem") or "").strip()
+            hints.append(f"angle cue: {packaging_angle}")
+        work_scenario = self._concrete_steering_value(
+            whiskers_handoff.get("work_scenario") or whiskers_handoff.get("viewer_problem")
+        )
         if work_scenario:
-            hints.append(f"scene focus: {work_scenario}")
-        stoic_move = str(whiskers_handoff.get("stoic_move") or "").strip()
+            hints.append(f"scenario cue: {work_scenario}")
+        stoic_move = self._concrete_steering_value(whiskers_handoff.get("stoic_move"))
         if stoic_move:
-            hints.append(f"stoic move: {stoic_move}")
-        objective = str(ledger_packet.get("objective") or ledger_strategy.get("audience_job") or "").strip()
+            hints.append(f"action cue: {stoic_move}")
+        objective = self._concrete_steering_value(
+            ledger_packet.get("objective") or ledger_strategy.get("audience_job")
+        )
         if objective:
-            hints.append(f"lane: {objective}")
+            hints.append(f"lane cue: {objective}")
         overlay = scene.get("text_overlay") if isinstance(scene, dict) else None
         if overlay:
             hints.append(f"overlay cue: {overlay}")
         return " | ".join(hints)
+
+    def _concrete_steering_value(self, value: object) -> str:
+        """Keep only short, shootable steering hints so prompts do not inherit generic research blurbs."""
+        text = " ".join(str(value or "").split()).strip()
+        if not text:
+            return ""
+        lower = text.lower()
+        generic_markers = [
+            "the article argues",
+            "workplace burnout",
+            "occupation-related syndrome",
+            "chronic workplace stress",
+            "outside their control, such as",
+            "modern professionals can win",
+            "identity-level emotional struggle",
+            "stoic reframe",
+            "bias toward conversion outcomes",
+            "without drifting into generic philosophy",
+        ]
+        if any(marker in lower for marker in generic_markers):
+            return ""
+        if len(text.split()) > 18:
+            return ""
+        return text
 
     def _extract_subject(self, scene_plan: dict) -> str:
         topic = scene_plan.get("topic") if isinstance(scene_plan, dict) else None
@@ -1293,6 +1357,166 @@ class ImageGenerationStage:
             )
 
         return assets
+
+    async def _codex_generate(self, scene_plan: dict) -> list[ImageAsset]:
+        """Generate scene images through the configured Codex/Image tool bridge."""
+        assets = []
+        subject = self._extract_subject(scene_plan)
+
+        for scene in scene_plan.get("scenes", []):
+            scene_num = scene["scene_number"]
+            image_path = self.images_dir / f"scene_{scene_num:03d}.jpg"
+            scene_prompt = scene.get("visual_prompt", "")
+            mode = self._choose_scene_mode(scene_num)
+            narration_segment = scene.get("narration_segment", "")
+            overlay = scene.get("text_overlay")
+            steering_hint = self._steering_prompt_hint(scene_plan, scene)
+            scene_line = build_narrative_scene_prompt(
+                subject=subject,
+                scene_prompt=scene_prompt,
+                narration_segment=narration_segment,
+                overlay=overlay,
+                mode=mode,
+                steering_hint=steering_hint,
+            )
+            style_suffix = build_scene_style_suffix(
+                subject=subject,
+                scene_prompt=scene_prompt,
+                narration_segment=narration_segment,
+                overlay=overlay,
+                mode=mode,
+            )
+            full_prompt = f"{scene_line}, {style_suffix}"
+            try:
+                self._generate_single_codex_image(prompt=full_prompt, output_path=image_path)
+                self._postprocess_generated_image(image_path)
+            except Exception as exc:
+                raise ImageGenerationError(
+                    f"image_generation_failed_for_scene_{scene_num}: {type(exc).__name__}: {exc}"
+                ) from exc
+
+            assets.append(
+                ImageAsset(
+                    scene_number=scene_num,
+                    image_path=str(image_path),
+                    prompt=full_prompt,
+                    seed=None,
+                )
+            )
+
+        return assets
+
+    def _generate_single_codex_image(self, *, prompt: str, output_path: Path) -> None:
+        """Call Hermes' image generation tool and materialize its result at output_path."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        request = (
+            "Use the image_generate tool to generate exactly one high-quality Stoic Modernized scene image. "
+            f"Aspect ratio: {settings.codex_image_aspect_ratio}. "
+            "Create a specific photographed workplace micro-scene, not a generic mood board or abstract office still-life. "
+            "Show concrete location, visible tension, specific props, camera angle, and natural cinematic light. "
+            "No readable text, no logo, no watermark, no fake UI text. "
+            "Return only the generated image URL or MEDIA:/absolute/path on one line; do not add commentary.\n\n"
+            f"Prompt:\n{prompt}"
+        )
+        cmd = [settings.codex_image_command, "-z", request, "-t", "image_gen"]
+        attempt_id = self._append_codex_log_start(output_path=output_path, command=cmd, prompt=prompt)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=settings.codex_image_timeout_seconds,
+        )
+        self._append_codex_log_result(attempt_id=attempt_id, result=result)
+        combined_output = f"{result.stdout or ''}\n{result.stderr or ''}"
+        reference = self._extract_generated_image_reference(combined_output)
+        if result.returncode != 0 and not reference:
+            raise RuntimeError(f"codex-image command failed: {result.stderr or result.stdout}")
+        if not reference:
+            raise RuntimeError(f"codex-image output did not include an image reference: {combined_output[:500]}")
+        self._materialize_generated_image(reference, output_path)
+
+    def _extract_generated_image_reference(self, output: str) -> str:
+        text = output or ""
+        patterns = [
+            r"MEDIA:(/[^\s)]+)",
+            r"!\[[^\]]*\]\(([^)]+)\)",
+            r"(https?://\S+)",
+            r"(/[^\s]+\.(?:png|jpe?g|webp))",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                return match.group(1).strip().strip('"').strip("'")
+        return ""
+
+    def _materialize_generated_image(self, reference: str, output_path: Path) -> None:
+        tmp_path = output_path.with_suffix(".source")
+        if reference.startswith("http://") or reference.startswith("https://"):
+            with httpx.Client(timeout=settings.codex_image_timeout_seconds) as client:
+                response = client.get(reference)
+                response.raise_for_status()
+                tmp_path.write_bytes(response.content)
+        else:
+            source = Path(reference)
+            if not source.exists():
+                raise RuntimeError(f"codex-image source path does not exist: {source}")
+            shutil.copyfile(source, tmp_path)
+
+        subprocess.run(
+            [
+                "convert",
+                str(tmp_path),
+                "-resize",
+                f"{self.sd_width}x{self.sd_height}^",
+                "-gravity",
+                "center",
+                "-extent",
+                f"{self.sd_width}x{self.sd_height}",
+                str(output_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+
+    def _append_codex_log_start(self, *, output_path: Path, command: list[str], prompt: str) -> str:
+        log_path = self.images_dir / "codex-image.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        separator = "\n" + ("=" * 100) + "\n"
+        redacted_command = [command[0], "-z", "<prompt omitted>", "-t", "image_gen"]
+        attempt_id = f"{datetime.now(UTC).isoformat()}::{output_path.name}"
+        entry = (
+            f"{separator}"
+            f"attempt_id: {attempt_id}\n"
+            f"timestamp: {datetime.now(UTC).isoformat()}\n"
+            f"output_image: {output_path}\n"
+            f"command:\n{shlex.join(redacted_command)}\n\n"
+            f"prompt:\n{prompt}\n\n"
+            f"status: started\n"
+        )
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(entry)
+        return attempt_id
+
+    def _append_codex_log_result(
+        self,
+        *,
+        attempt_id: str,
+        result: subprocess.CompletedProcess[str],
+    ) -> None:
+        log_path = self.images_dir / "codex-image.log"
+        entry = (
+            f"return_code: {result.returncode}\n"
+            f"stdout:\n{result.stdout or '<empty>'}\n\n"
+            f"stderr:\n{result.stderr or '<empty>'}\n"
+            f"status: finished ({attempt_id})\n"
+        )
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(entry)
 
     async def _real_generate(self, scene_plan: dict) -> list[ImageAsset]:
         assets = []
@@ -2043,7 +2267,7 @@ GOOD examples (DO this):
         data = {
             "images": [a.model_dump() for a in assets],
             "steering_context": self.last_steering_context,
-            "generated_at": "generated-locally",
+            "generated_at": f"generated-by-{settings.image_provider.value}",
         }
         return save_json(data, self.images_dir / "assets.json")
 

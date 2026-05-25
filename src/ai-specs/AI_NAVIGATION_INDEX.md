@@ -34,6 +34,7 @@ None. All documented features are implemented in the codebase.
 | 012 | Persistence Layer | `src/ai-specs/features/012_persistence.md` |
 | 013 | Cross-Cutting Concerns | `src/ai-specs/features/013_cross_cutting.md` |
 | 014 | Control UI | `src/ai-specs/features/014_control_ui.md` |
+| 015 | Social Distribution | `src/ai-specs/features/015_social_distribution.md` |
 
 ## Feature Quick Lookup
 
@@ -53,6 +54,7 @@ None. All documented features are implemented in the codebase.
 | 012 Persistence | `src/database.py`, `src/models.py` | `job`, `db`, `SQLAlchemy`, `sqlite` |
 | 013 Cross-cutting | `src/utils.py`, `src/logging_config.py` | `utils`, `mock_mode`, `logging`, `TeeTextIO` |
 | 014 Control UI | `frontend/src/`, `src/ui_api.py` | `dashboard`, `ui`, `jobs`, `runs`, `config editor` |
+| 015 Social Distribution | `src/stages/social_distribution.py` | `distribute`, `tiktok`, `instagram`, `facebook`, `reels` |
 
 ## Code Location Map
 
@@ -76,3 +78,4 @@ None. All documented features are implemented in the codebase.
 | `src/logging_config.py` | → 013 |
 | `src/ui_api.py` | → 014 |
 | `frontend/src/` | → 014 |
+| `src/stages/social_distribution.py` | → 015 |

@@ -1,0 +1,281 @@
+{
+  "generated_at": "2026-05-25T05:56:38.701533+00:00",
+  "niche": "stoicism for modern workers",
+  "strategy_generated_at": "2026-05-25T05:56:38.700660+00:00",
+  "source_files": [
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-05-24.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-05-24.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-05-24.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-05-25.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-05-25.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-05-25.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-05-23.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-05-23.json"
+  ],
+  "metric_signals": {
+    "source_count": 9,
+    "platform": {
+      "youtube_shorts_views": 1527.0,
+      "youtube_search_minutes": 105.0,
+      "mobile_view_share": 0.848,
+      "unsubscribed_view_share": 0.939,
+      "subscribers_gained": 4.0,
+      "facebook_video_views": 470.0,
+      "facebook_post_engagements": 14.0,
+      "facebook_reach": 1652.0
+    },
+    "winning_themes": [
+      "approval pressure / disagreement / seeking validation",
+      "deadline rushing / pressure spirals / urgency",
+      "strategic patience / decision pause / restraint",
+      "coworker disrespect / passive aggression / reactivity",
+      "discipline without burnout / sustainable focus",
+      "conflict",
+      "discipline systems",
+      "strategic patience"
+    ],
+    "youtube_top_titles": [
+      "Stop Busy Idleness At Work | Stoic Modernized",
+      "Your Coworkers Disrespect Only Wins If You React | Stoic Modernized",
+      "Use Death to Stop Procrastinating | Stoic Modernized",
+      "Build Discipline Without Burning Out | Stoic Modernized",
+      "How Marcus Aurelius Handles Your 9 AM Meeting | Stoic Modernized"
+    ],
+    "facebook_top_titles": [
+      "Finance wants cost, Marketing wants speed. You panic thinking they hate you, but that's ju…",
+      "Your boss shifts priorities at 4 PM on Friday, sparking deep resentment. Stop dwelling on …",
+      "Why Work Pressure Gets Worse When You Rush | Stoic Modernized",
+      "You think staying calm is a trait you lack, but it's actually a skill anyone can master. L…",
+      "You feel pressure when a colleague disagrees, but they aren't attacking you. Stop letting …"
+    ],
+    "tiktok_top_titles": [
+      "697 views / 25 engagements (3.6%) — Your colleague's disrespect isn't stealing your peace; your judgment of them is. Discover how to stop their chaos from d — https://www.tiktok.com/@stoic_modernized/video/7634819797414448405",
+      "567 views / 20 engagements (3.5%) — Strategic Patience: The Ultimate Workplace Power Move | Stoic Modernized Stop forcing outcomes. Your rush to act is cost — https://www.tiktok.com/@stoic_modernized/video/7637051122150165781",
+      "396 views / 13 engagements (3.3%) — Stop Overexplaining At Work You sent a long Slack message just to prove you were right. Fear is stealing your credibilit — https://www.tiktok.com/@stoic_modernized/video/7639633308141260052",
+      "361 views / 15 engagements (4.2%) — Build Discipline Without Burning Out | Stoic Modernized Willpower is a finite battery that dies when you need it most. T — https://www.tiktok.com/@stoic_modernized/video/7637759093603699989",
+      "347 views / 8 engagements (2.3%) — Stop burning out trying to control outcomes you can't touch. True power isn't forcing results; it's mastering your react — https://www.tiktok.com/@stoic_modernized/video/7634819359688494357"
+    ],
+    "tiktok_weightings": [
+      {
+        "label": "approval pressure / disagreement / seeking validation",
+        "weight": 35.0
+      },
+      {
+        "label": "deadline rushing / pressure spirals / urgency",
+        "weight": 25.0
+      },
+      {
+        "label": "strategic patience / decision pause / restraint",
+        "weight": 20.0
+      },
+      {
+        "label": "coworker disrespect / passive aggression / reactivity",
+        "weight": 15.0
+      },
+      {
+        "label": "discipline without burnout / sustainable focus",
+        "weight": 5.0
+      }
+    ],
+    "format_steering": [
+      "mobile-first 9:16 Shorts framing",
+      "name the concrete work scenario in the first 1-2 seconds",
+      "keep one problem, one Stoic move, one concrete scenario",
+      "optimize for cold/unsubscribed viewers: self-contained hook before channel context",
+      "for TikTok reuse, prefer scenario-first captions and 2-4 focused hashtags",
+      "join Facebook Reels/Page metrics with YouTube and TikTok before choosing the next content batch"
+    ],
+    "manual_tiktok_supported_patterns": [
+      "stoic-modernized-tiktok-analytics-YYYY-MM-DD.md/json/csv",
+      "stoic-modernized-tiktok-metrics-YYYY-MM-DD.md/json/csv"
+    ],
+    "facebook_supported_patterns": [
+      "stoic-modernized-facebook-metrics-YYYY-MM-DD.md",
+      "stoic-modernized-facebook-analytics-YYYY-MM-DD.md",
+      "stoic-modernized-facebook-analytics-snapshot-YYYY-MM-DD.json"
+    ]
+  },
+  "format_steering": [
+    "mobile-first 9:16 Shorts framing",
+    "name the concrete work scenario in the first 1-2 seconds",
+    "keep one problem, one Stoic move, one concrete scenario",
+    "optimize for cold/unsubscribed viewers: self-contained hook before channel context",
+    "for TikTok reuse, prefer scenario-first captions and 2-4 focused hashtags",
+    "join Facebook Reels/Page metrics with YouTube and TikTok before choosing the next content batch"
+  ],
+  "batches": {
+    "discovery": [
+      {
+        "objective": "discovery",
+        "title": "You Do Not Need Everyone at Work to Like You",
+        "recommended_angle": "turn approval-seeking into a disagreement-at-work scenario the viewer can recognize immediately",
+        "why_now": "Ledger metric signals currently favor: approval pressure / disagreement / seeking validation",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "approval pressure / disagreement / seeking validation"
+      },
+      {
+        "objective": "discovery",
+        "title": "Why Rushing Makes Work Pressure Worse",
+        "recommended_angle": "show how deadline pressure hijacks attention and how a short pause restores control",
+        "why_now": "Ledger metric signals currently favor: deadline rushing / pressure spirals / urgency",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "deadline rushing / pressure spirals / urgency"
+      },
+      {
+        "objective": "discovery",
+        "title": "Strategic Patience Is a Workplace Power Move",
+        "recommended_angle": "frame patience as leverage, not passivity",
+        "why_now": "Ledger metric signals currently favor: strategic patience / decision pause / restraint",
+        "experiment_tag": "tiktok_conflict_batch",
+        "metric_signal": "strategic patience / decision pause / restraint"
+      },
+      {
+        "objective": "discovery",
+        "title": "Your Coworker's Disrespect Only Wins If You React",
+        "recommended_angle": "turn passive-aggressive workplace messages into a composure-vs-reactivity scenario",
+        "why_now": "Ledger metric signals currently favor: coworker disrespect / passive aggression / reactivity",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "coworker disrespect / passive aggression / reactivity"
+      },
+      {
+        "objective": "discovery",
+        "title": "Build Discipline Without Burning Out",
+        "recommended_angle": "make discipline a system of friction and boundaries, not self-punishment",
+        "why_now": "Ledger metric signals currently favor: discipline without burnout / sustainable focus",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "discipline without burnout / sustainable focus"
+      },
+      {
+        "objective": "discovery",
+        "title": "Stop Checking Slack Before Thinking",
+        "recommended_angle": "show how notifications hijack focus before real work begins",
+        "why_now": "mobile-first shorts feed rewards immediate workplace pain recognition",
+        "experiment_tag": "discovery_batch"
+      },
+      {
+        "objective": "discovery",
+        "title": "What Marcus Aurelius Would Do Before Your 9 AM Meeting",
+        "recommended_angle": "use a specific work ritual instead of generic philosophy",
+        "why_now": "meeting-specific packaging matches proven concrete-work framing",
+        "experiment_tag": "discovery_batch"
+      }
+    ],
+    "conversion": [
+      {
+        "objective": "conversion",
+        "title": "Why Your Anxiety Wants a Script",
+        "recommended_angle": "frame anxiety as a learned pattern the viewer can catch and interrupt",
+        "why_now": "identity/emotion framing has shown the strongest subscriber conversion on YouTube, but needs sharper scenarios on TikTok",
+        "experiment_tag": "conversion_batch"
+      },
+      {
+        "objective": "conversion",
+        "title": "You Do Not Need Everyone at Work to Like You",
+        "recommended_angle": "approval-seeking at work becomes the central emotional trap",
+        "why_now": "unsubscribed viewers may convert when the struggle feels personally seen",
+        "experiment_tag": "conversion_batch"
+      },
+      {
+        "objective": "conversion",
+        "title": "Calm Is a Skill, Not a Personality",
+        "recommended_angle": "reframe calm as trained self-command under pressure",
+        "why_now": "gives the channel a repeatable emotional-positioning lane",
+        "experiment_tag": "conversion_batch"
+      }
+    ],
+    "balanced": [
+      {
+        "objective": "balanced",
+        "title": "How Stoicism Helps When Stoicism For Modern Workers Feels Heavy",
+        "recommended_angle": "connect a concrete work burden to a calmer inner posture",
+        "why_now": "tests whether mixed packaging can bridge reach and conversion",
+        "experiment_tag": "balanced_batch"
+      }
+    ]
+  },
+  "ideas": [
+    {
+      "objective": "discovery",
+      "title": "You Do Not Need Everyone at Work to Like You",
+      "recommended_angle": "turn approval-seeking into a disagreement-at-work scenario the viewer can recognize immediately",
+      "why_now": "Ledger metric signals currently favor: approval pressure / disagreement / seeking validation",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "approval pressure / disagreement / seeking validation"
+    },
+    {
+      "objective": "discovery",
+      "title": "Why Rushing Makes Work Pressure Worse",
+      "recommended_angle": "show how deadline pressure hijacks attention and how a short pause restores control",
+      "why_now": "Ledger metric signals currently favor: deadline rushing / pressure spirals / urgency",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "deadline rushing / pressure spirals / urgency"
+    },
+    {
+      "objective": "discovery",
+      "title": "Strategic Patience Is a Workplace Power Move",
+      "recommended_angle": "frame patience as leverage, not passivity",
+      "why_now": "Ledger metric signals currently favor: strategic patience / decision pause / restraint",
+      "experiment_tag": "tiktok_conflict_batch",
+      "metric_signal": "strategic patience / decision pause / restraint"
+    },
+    {
+      "objective": "discovery",
+      "title": "Your Coworker's Disrespect Only Wins If You React",
+      "recommended_angle": "turn passive-aggressive workplace messages into a composure-vs-reactivity scenario",
+      "why_now": "Ledger metric signals currently favor: coworker disrespect / passive aggression / reactivity",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "coworker disrespect / passive aggression / reactivity"
+    },
+    {
+      "objective": "discovery",
+      "title": "Build Discipline Without Burning Out",
+      "recommended_angle": "make discipline a system of friction and boundaries, not self-punishment",
+      "why_now": "Ledger metric signals currently favor: discipline without burnout / sustainable focus",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "discipline without burnout / sustainable focus"
+    },
+    {
+      "objective": "discovery",
+      "title": "Stop Checking Slack Before Thinking",
+      "recommended_angle": "show how notifications hijack focus before real work begins",
+      "why_now": "mobile-first shorts feed rewards immediate workplace pain recognition",
+      "experiment_tag": "discovery_batch"
+    },
+    {
+      "objective": "discovery",
+      "title": "What Marcus Aurelius Would Do Before Your 9 AM Meeting",
+      "recommended_angle": "use a specific work ritual instead of generic philosophy",
+      "why_now": "meeting-specific packaging matches proven concrete-work framing",
+      "experiment_tag": "discovery_batch"
+    },
+    {
+      "objective": "conversion",
+      "title": "Why Your Anxiety Wants a Script",
+      "recommended_angle": "frame anxiety as a learned pattern the viewer can catch and interrupt",
+      "why_now": "identity/emotion framing has shown the strongest subscriber conversion on YouTube, but needs sharper scenarios on TikTok",
+      "experiment_tag": "conversion_batch"
+    },
+    {
+      "objective": "conversion",
+      "title": "You Do Not Need Everyone at Work to Like You",
+      "recommended_angle": "approval-seeking at work becomes the central emotional trap",
+      "why_now": "unsubscribed viewers may convert when the struggle feels personally seen",
+      "experiment_tag": "conversion_batch"
+    },
+    {
+      "objective": "conversion",
+      "title": "Calm Is a Skill, Not a Personality",
+      "recommended_angle": "reframe calm as trained self-command under pressure",
+      "why_now": "gives the channel a repeatable emotional-positioning lane",
+      "experiment_tag": "conversion_batch"
+    },
+    {
+      "objective": "balanced",
+      "title": "How Stoicism Helps When Stoicism For Modern Workers Feels Heavy",
+      "recommended_angle": "connect a concrete work burden to a calmer inner posture",
+      "why_now": "tests whether mixed packaging can bridge reach and conversion",
+      "experiment_tag": "balanced_batch"
+    }
+  ]
+}

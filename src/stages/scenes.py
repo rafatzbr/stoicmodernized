@@ -500,28 +500,83 @@ Input scenes:
     def _generate_visual_prompt(
         self, topic: str, line: str, scene_num: int, is_short: bool, label: Optional[str] = None
     ) -> str:
+        specific_prompt = self._specific_workplace_visual_prompt(topic, line, scene_num, label)
+        if specific_prompt:
+            return specific_prompt
+
         scene_subject = self._scene_subject(line, topic)
         setting = self._scene_setting(line)
         action = self._scene_action(line)
         detail = self._scene_symbol(line)
         if is_short:
             prompt_parts = [
-                "vertical 9:16 frame",
+                "vertical 9:16 candid editorial photograph",
                 scene_subject,
                 setting,
                 action,
                 detail,
-                f"workplace context: {topic}",
-                "single focal subject",
-                "modern editorial photo",
-                "no text",
-                "no logo",
+                "one visible workplace moment with concrete props",
+                "shallow depth of field, natural office light",
+                "no readable text, no logos, no watermark",
             ]
             return ", ".join(part for part in prompt_parts if part)
         return (
-            f"cinematic workplace scene for {topic}, {scene_subject}, {action}, {setting}, {detail}, "
-            "grounded modern environment, no text, no logo"
+            f"cinematic workplace photograph for {topic}, {scene_subject}, {action}, {setting}, {detail}, "
+            "specific office props, natural light, no readable text, no logos, no watermark"
         )
+
+    def _specific_workplace_visual_prompt(
+        self, topic: str, line: str, scene_num: int, label: Optional[str] = None
+    ) -> Optional[str]:
+        """Return concrete prompts for recurring workplace-conflict/status beats.
+
+        The generic fallback used to describe a mood ("grounded", "emotionally specific")
+        instead of a shootable situation. These templates anchor each beat in a distinct
+        photographed moment with roles, props, camera angle, and lighting.
+        """
+        text = " ".join(part.lower() for part in [topic, line, label or ""] if part)
+        if not any(term in text for term in ["status", "validation", "one-up", "ego", "applause", "truth game"]):
+            return None
+
+        base_style = "vertical 9:16, candid high-end editorial photograph, shallow depth of field, natural office light, no readable text, no logos, no watermark"
+
+        if any(term in text for term in ["one-up", "meeting", "project", "defend your ego", "heart races"]):
+            return (
+                "tense glass meeting room immediately after a project debate, one coworker blurred in the background near a blank whiteboard, "
+                "seated worker in foreground gripping a pen beside an open notebook and laptop, water glass untouched, chairs slightly askew, "
+                f"{base_style}"
+            )
+        if any(term in text for term in ["opinions", "external", "cannot win", "evolutionary instinct"]):
+            return (
+                "over-the-shoulder view of a worker pushing a phone with blurred reaction badges away from the keyboard, "
+                "open notebook and capped pen kept in the center of the desk, dark monitor glow and city windows behind, "
+                f"{base_style}"
+            )
+        if any(term in text for term in ["validation", "zero-sum", "anxiety", "chasing"]):
+            return (
+                "lone knowledge worker at the end of a long conference table, smartphone screen turned dark beside a half-open laptop, "
+                "one hand resting on a closed notebook instead of reaching for the phone, glass wall reflections and empty chairs behind, "
+                f"{base_style}"
+            )
+        if any(term in text for term in ["challenges", "offering data", "winning the argument", "doing the work"]):
+            return (
+                "worker sorting anonymous feedback printouts into two neat piles beside a laptop, red pen capped, phone face-down near the edge of the desk, "
+                "conference room doorway blurred in the background, posture turned away from the screen, "
+                f"{base_style}"
+            )
+        if any(term in text for term in ["truth game", "integrity", "applause", "urge to react", "craft", "steadiness"]):
+            return (
+                "close desk-level shot of a worker aligning a single draft page beside a laptop while the phone sits face-down beyond reach, "
+                "notification glow blurred on a second monitor, pen placed squarely across the notebook, late-afternoon office light, "
+                f"{base_style}"
+            )
+        if any(term in text for term in ["comments", "subscribe", "let go", "work drama", "today"]):
+            return (
+                "end-of-day desk scene with closed laptop, access badge turned face-down, dark phone screen, jacket draped over chair, "
+                "office windows blue at dusk and hallway lights warming in the background, "
+                f"{base_style}"
+            )
+        return None
 
     def _generate_text_overlay(self, line: str, topic: str, label: Optional[str] = None) -> Optional[str]:
         line_lower = line.lower()
@@ -836,7 +891,7 @@ Input scenes:
             return "worker returning to a single task on a clean desk"
         if "anxiety" in line_lower or "pause" in line_lower:
             return "professional taking one steady breath before responding"
-        return f"modern office professional dealing with {topic.lower()}"
+        return "worker in a photographed workplace moment tied to the concrete scene"
 
     def _scene_setting(self, line: str) -> str:
         line_lower = line.lower()
@@ -850,7 +905,7 @@ Input scenes:
             return "open-plan office with message notifications nearby"
         if "deadline" in line_lower or "task" in line_lower:
             return "focused workstation with notebook and calendar"
-        return "grounded contemporary office environment"
+        return "specific desk, meeting room, or commute location implied by the narration"
 
     def _scene_action(self, line: str) -> str:
         line_lower = line.lower()
@@ -865,8 +920,8 @@ Input scenes:
         if "presentation" in line_lower:
             return "calm posture before delivering the message"
         if "release" in line_lower or "clarity" in line_lower:
-            return "sense of mental release and sharper focus"
-        return "emotionally specific action tied to the narrated moment"
+            return "notebook centered while phone and laptop noise sit out of reach"
+        return "one visible choice in progress: phone pushed away, pen gripped, laptop closed, or notes sorted"
 
     def _scene_symbol(self, line: str) -> str:
         line_lower = line.lower()
@@ -881,8 +936,8 @@ Input scenes:
         if "clarity" in line_lower:
             return "calm desk surface with one open notebook"
         if "subscribe" in line_lower or "daily" in line_lower:
-            return "confident upward motion and renewed momentum"
-        return "small symbolic props that support the idea without text"
+            return "closed laptop, access badge, and bag gathered at the desk edge"
+        return "specific props in frame: face-down phone, capped pen, notebook, water glass, or feedback pages"
 
     def _dedupe_overlays(self, scenes: list[Scene]) -> None:
         seen: set[str] = set()

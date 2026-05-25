@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "notes": "Curated local background music library. Only tracks with approved_for_youtube=true should be eligible for upload.",
+  "version": 3,
+  "notes": "Curated local background music library. Only tracks with approved_for_youtube=true should be eligible for upload. Placeholder tracks are disabled for production; real Pixabay Content License tracks are preferred.",
   "tracks": [
     {
       "id": "stoic-modernized-calm-drone-placeholder",
@@ -9,7 +9,7 @@
       "path": "tracks/ambient/stoic-modernized-calm-drone-placeholder.mp3",
       "license": "Self-generated placeholder",
       "source_url": "local://generated",
-      "approved_for_youtube": true,
+      "approved_for_youtube": false,
       "instrumental": true,
       "low_background": true,
       "attribution_required": false,
@@ -20,7 +20,410 @@
         "minimal",
         "drone"
       ],
-      "duration": 60.029388
+      "duration": 60.029388,
+      "notes": "Disabled after Rafael approved real royalty-free external tracks; not used for production selection."
+    },
+    {
+      "id": "pixabay-tech-corporate-159125",
+      "title": "Background Music",
+      "artist": "The_Mountain",
+      "path": "tracks/royalty-free/tech-corporate-bg.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/?string=tech+ambient+corporate+background+music",
+      "pixabay_id": 159125,
+      "audio_url": "https://cdn.pixabay.com/audio/2023/07/22/audio_79e285e137.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "corporate",
+        "tech",
+        "ambient",
+        "minimal"
+      ],
+      "duration": 148.0
+    },
+    {
+      "id": "stoic-modernized-soft-drone-5min",
+      "title": "Soft Drone Ambient",
+      "artist": "Stoic Modernized",
+      "path": "tracks/ambient/soft-drone-5min.mp3",
+      "license": "Self-generated",
+      "source_url": "local://generated",
+      "approved_for_youtube": false,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "calm",
+        "ambient",
+        "soft",
+        "minimal",
+        "meditative"
+      ],
+      "duration": 300.0,
+      "notes": "Disabled after Rafael approved real royalty-free external tracks; not used for production selection."
+    },
+    {
+      "id": "pixabay-443538",
+      "title": "Instrumental Ambient",
+      "artist": "The_Mountain",
+      "path": "tracks/royalty-free/pixabay-443538-the-mountain-instrumental-ambient.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/instrumental-ambient/",
+      "pixabay_id": 443538,
+      "audio_url": "https://cdn.pixabay.com/audio/2025/12/03/audio_f743a30517.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "ambient",
+        "calm",
+        "serious",
+        "minimal"
+      ],
+      "fits": [
+        "general stoic narration",
+        "work anxiety",
+        "deadline pressure",
+        "approval seeking"
+      ],
+      "duration": 206.02775,
+      "file_size": 6592888,
+      "added_at": "2026-05-21T09:34:39Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-158051",
+      "title": "Ambient Corporate",
+      "artist": "The_Mountain",
+      "path": "tracks/royalty-free/pixabay-158051-the-mountain-ambient-corporate.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/ambient-corporate/",
+      "pixabay_id": 158051,
+      "audio_url": "https://cdn.pixabay.com/audio/2023/07/13/audio_845a1446b4.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "corporate",
+        "ambient",
+        "serious",
+        "minimal"
+      ],
+      "fits": [
+        "AI/workplace topics",
+        "Slack/notifications",
+        "modern work stress"
+      ],
+      "duration": 166.060406,
+      "file_size": 5313933,
+      "added_at": "2026-05-21T09:34:39Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-509385",
+      "title": "Meditative Ambient",
+      "artist": "leberch",
+      "path": "tracks/royalty-free/pixabay-509385-leberch-meditative-ambient.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/meditative-ambient/",
+      "pixabay_id": 509385,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/27/audio_ff2246219f.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "meditative",
+        "ambient",
+        "calm",
+        "slow"
+      ],
+      "fits": [
+        "calm is a skill",
+        "slow down before deciding",
+        "self-control"
+      ],
+      "duration": 308.035906,
+      "file_size": 9857149,
+      "added_at": "2026-05-21T09:34:39Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-510518",
+      "title": "Ambient Cinematic",
+      "artist": "AtlasAudio",
+      "path": "tracks/royalty-free/pixabay-510518-atlasaudio-ambient-cinematic.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/ambient-cinematic/",
+      "pixabay_id": 510518,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/29/audio_72a9ff54fb.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "cinematic",
+        "ambient",
+        "serious"
+      ],
+      "fits": [
+        "pressure",
+        "disrespect",
+        "rumination"
+      ],
+      "duration": 124.029375,
+      "file_size": 3968940,
+      "added_at": "2026-05-21T09:34:39Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-519912",
+      "title": "Tension Documentary",
+      "artist": "AtlasAudio",
+      "path": "tracks/royalty-free/pixabay-519912-atlasaudio-tension-documentary.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/tension-documentary/",
+      "pixabay_id": 519912,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/04/15/audio_e444601d4d.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "documentary",
+        "tension",
+        "serious"
+      ],
+      "fits": [
+        "deadline anxiety",
+        "bad meetings",
+        "psychological paper cuts"
+      ],
+      "duration": 122.044063,
+      "file_size": 3905410,
+      "added_at": "2026-05-21T09:34:40Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-505385",
+      "title": "Dark Ambient Background",
+      "artist": "LemonMusicLab",
+      "path": "tracks/royalty-free/pixabay-505385-lemonmusiclab-dark-ambient-background.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/dark-ambient-background/",
+      "pixabay_id": 505385,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/20/audio_4767f64a64.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "dark",
+        "ambient",
+        "minimal",
+        "serious"
+      ],
+      "fits": [
+        "burnout",
+        "anxiety",
+        "reactivity loops"
+      ],
+      "duration": 322.324875,
+      "file_size": 10314396,
+      "added_at": "2026-05-21T09:34:40Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-524039",
+      "title": "Ambient Piano",
+      "artist": "FreeMusicForVideo",
+      "path": "tracks/royalty-free/pixabay-524039-freemusicforvideo-ambient-piano.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/ambient-piano/",
+      "pixabay_id": 524039,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/05/07/audio_98b252e81c.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "piano",
+        "ambient",
+        "calm",
+        "reflective"
+      ],
+      "fits": [
+        "personal reflection",
+        "approval seeking",
+        "calm focus"
+      ],
+      "duration": 125.857938,
+      "file_size": 4027454,
+      "added_at": "2026-05-21T09:34:40Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-375987",
+      "title": "Dramatic Ambient",
+      "artist": "The_Mountain",
+      "path": "tracks/royalty-free/pixabay-375987-the-mountain-dramatic-ambient.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/dramatic-ambient/",
+      "pixabay_id": 375987,
+      "audio_url": "https://cdn.pixabay.com/audio/2025/07/17/audio_3263f59a28.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "dramatic",
+        "ambient",
+        "serious"
+      ],
+      "fits": [
+        "high-pressure workplace topics",
+        "urgent work",
+        "decision pressure"
+      ],
+      "duration": 133.537938,
+      "file_size": 4273214,
+      "added_at": "2026-05-21T09:34:40Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-524032",
+      "title": "Dark Ambient Soundscape Dreamscape",
+      "artist": "FreeMusicForVideo",
+      "path": "tracks/royalty-free/pixabay-524032-freemusicforvideo-dark-ambient-soundscape-dreamscape.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/dark-ambient-soundscape-dreamscape/",
+      "pixabay_id": 524032,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/04/24/audio_ab6925e595.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "dark",
+        "ambient",
+        "serious",
+        "short"
+      ],
+      "fits": [
+        "shorts",
+        "anxiety",
+        "reaction loops"
+      ],
+      "duration": 98.037531,
+      "file_size": 3137201,
+      "added_at": "2026-05-21T09:34:40Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-517370",
+      "title": "Documentary",
+      "artist": "leberch",
+      "path": "tracks/royalty-free/pixabay-517370-leberch-documentary.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/documentary/",
+      "pixabay_id": 517370,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/04/18/audio_072f2fafd7.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "documentary",
+        "serious",
+        "minimal",
+        "short"
+      ],
+      "fits": [
+        "shorts",
+        "work pressure",
+        "bad meetings"
+      ],
+      "duration": 96.026094,
+      "file_size": 3072835,
+      "added_at": "2026-05-21T09:34:40Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-495568",
+      "title": "Dark Ambient Ambient",
+      "artist": "SOULFULJAMTRACKS",
+      "path": "tracks/royalty-free/pixabay-495568-soulfuljamtracks-dark-ambient-ambient.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/dark-ambient-ambient/",
+      "pixabay_id": 495568,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/05/audio_3dc0b3b4ea.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "dark",
+        "ambient",
+        "serious",
+        "short"
+      ],
+      "fits": [
+        "shorts",
+        "deadline anxiety",
+        "burnout"
+      ],
+      "duration": 109.531406,
+      "file_size": 3505005,
+      "added_at": "2026-05-21T09:34:40Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
+    },
+    {
+      "id": "pixabay-507994",
+      "title": "Calm",
+      "artist": "The_Mountain",
+      "path": "tracks/royalty-free/pixabay-507994-the-mountain-calm.mp3",
+      "license": "Pixabay Content License (Royalty Free)",
+      "source_url": "https://pixabay.com/music/search/calm/",
+      "pixabay_id": 507994,
+      "audio_url": "https://cdn.pixabay.com/audio/2026/03/24/audio_431333f472.mp3",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "calm",
+        "ambient",
+        "minimal",
+        "short"
+      ],
+      "fits": [
+        "shorts",
+        "calm under pressure",
+        "self-control"
+      ],
+      "duration": 100.675906,
+      "file_size": 3221629,
+      "added_at": "2026-05-21T09:34:40Z",
+      "notes": "Approved by Rafael from serious instrumental candidate sampler; selected from local video metadata themes."
     }
   ]
 }

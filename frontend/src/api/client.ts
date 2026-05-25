@@ -1,26 +1,30 @@
 import axios from 'axios';
 
-function resolveBaseUrl() {
-  const configured = import.meta.env.VITE_API_BASE_URL?.trim();
-
-  if (configured) {
-    return configured;
-  }
-
-  if (typeof window === 'undefined') {
-    return 'http://localhost:8000';
-  }
-
-  const { hostname, origin, port } = window.location;
-
-  if (port === '5173' || port === '4173') {
-    return `http://${hostname || 'localhost'}:8000`;
-  }
-
-  return origin;
-}
-
 export const api = axios.create({
-  baseURL: resolveBaseUrl(),
+  baseURL: '',  // relative — Vite proxy handles /api in dev, same-origin in prod
   timeout: 30000,
 });
+
+// ── News dashboard types ──────────────────────────────────────────────────
+
+export interface NewsStory {
+  title: string;
+  url: string;
+  source: string;
+  relevance: number;
+  summary: string | null;
+  snippet: string | null;
+  content: string | null;
+  original_title: string | null;
+}
+
+export interface FetchNewsResponse {
+  stories: NewsStory[];
+  count: number;
+  added_count?: number;
+}
+
+export interface SelectedNewsResponse {
+  stories: NewsStory[];
+  selected_count: number;
+}

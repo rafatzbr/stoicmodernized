@@ -14,6 +14,7 @@ Automate faceless YouTube video creation for the **Stoic Modernized** channel, t
 - **Firefox-friendlier MP4 output** with browser-safe H.264/AAC settings
 - **Structured logging** per job
 - **OAuth2 YouTube upload** - Upload videos directly to your channel
+- **API-first social distribution scaffold** - Prepare/publish TikTok, Instagram Reels, and Facebook Reels via official APIs with mock dry-runs
 
 ## Image Prompt Generation
 
@@ -200,6 +201,31 @@ If SD server is available, it will be used automatically. Otherwise, SD CLI is u
 - `YOUTUBE_CREDENTIALS_PATH` - Path to OAuth2 credentials JSON file (optional)
 - `YOUTUBE_PRIVACY_STATUS` - Upload privacy (`public`, `unlisted`, or `private`)
 - `YOUTUBE_SCHEDULE_DATETIME` - Schedule upload in ISO 8601 format (optional)
+
+### Social Distribution Configuration
+
+The `distribute` stage prepares platform-specific captions and writes an auditable manifest at `output/jobs/<job-id>/distribution/social_uploads.json`.
+
+- `SOCIAL_DISTRIBUTION_ENABLED` - Opt-in gate for automatic social distribution
+- `SOCIAL_DISTRIBUTION_PLATFORMS` - Comma-separated platforms: `instagram,facebook,tiktok`
+- `META_GRAPH_API_VERSION` - Meta Graph API version
+- `META_APP_ID` / `META_APP_SECRET` - Optional Meta app credentials for automatic long-lived token refresh before publishing
+- `META_PAGE_ACCESS_TOKEN` - Page access token for Meta publishing
+- `INSTAGRAM_USER_ID` - Instagram Professional account ID
+- `FACEBOOK_PAGE_ID` - Facebook Page ID
+- `SOCIAL_VIDEO_PUBLIC_BASE_URL` - Public HTTPS base URL for MP4 pull-from-URL flows
+- `TIKTOK_ACCESS_TOKEN` - TikTok Content Posting API OAuth token
+- `TIKTOK_PRIVACY_LEVEL` - TikTok privacy level, default `SELF_ONLY`
+
+Dry-run:
+```bash
+python -m src.main distribute <job_id> --mock
+```
+
+Real run after credentials/app-review:
+```bash
+python -m src.main distribute <job_id>
+```
 
 ### Other Settings
 

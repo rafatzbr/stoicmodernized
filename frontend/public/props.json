@@ -1,145 +1,205 @@
 {
-  "title": "Stay Calm During Layoff Anxiety",
+  "title": "You Do Not Need Approval To Stay Steady",
   "topic": "",
   "channelName": "Stoic Modernized",
   "channelDescription": "Ancient logic for the high-performance digital age",
   "mode": "portrait",
   "platform": "tiktok",
   "fps": 30,
-  "durationInSeconds": 60.792,
+  "durationInSeconds": 63.264,
   "audioSrc": "audio/narration.mp3",
   "backgroundMusicSrc": "audio/background_music.mp3",
-  "backgroundMusicVolume": 0.15,
+  "backgroundMusicVolume": 0.03,
   "logoSrc": "branding/logo_transparent.png",
   "scenes": [
     {
       "sceneNumber": 1,
       "imageSrc": "images/scene_001.jpg",
       "startTime": 0.1,
-      "endTime": 14.887,
-      "narrationSegment": "The fear of losing your job can paralyze your best work. Stop trying to control the outcome of layoffs and start controlling your response. Uncertainty breeds anxiety, but you can choose to meet it with clarity instead of panic.",
-      "textOverlay": "What You Control",
-      "animationStyle": "zoom"
+      "endTime": 9.8,
+      "narrationSegment": "Finance wants cost, Marketing wants speed. They disagree. You panic and think they hate you. They don't.",
+      "textOverlay": "Finance Wants",
+      "animationStyle": "zoom",
+      "sceneType": null,
+      "titleText": null
     },
     {
       "sceneNumber": 2,
       "imageSrc": "images/scene_002.jpg",
-      "startTime": 14.887,
-      "endTime": 24.537,
-      "narrationSegment": "Marcus Aurelius taught that external events are beyond our command, but our judgments and actions remain ours. This is the dichotomy of control.",
-      "textOverlay": "Control Your Part",
-      "animationStyle": "zoom"
+      "startTime": 9.8,
+      "endTime": 15.112,
+      "narrationSegment": "That friction isn't personal rejection. It's just role conflict.",
+      "textOverlay": "Not Personal",
+      "animationStyle": "zoom",
+      "sceneType": null,
+      "titleText": null
     },
     {
       "sceneNumber": 3,
       "imageSrc": "images/scene_003.jpg",
-      "startTime": 24.537,
-      "endTime": 34.925,
-      "narrationSegment": "When you worry about a layoff, you are fighting a battle you cannot win. Redirect that energy toward what you can actually influence: your preparation and your composure.",
-      "textOverlay": "Worry Layoff",
-      "animationStyle": "zoom"
+      "startTime": 15.112,
+      "endTime": 28.675,
+      "narrationSegment": "Finance is paid to cut costs; Marketing is paid to grow. If you try to please both, you burn out trying to control the uncontrollable. The Stoic move? Stop apologizing.",
+      "textOverlay": "Stop Apologizing",
+      "animationStyle": "zoom",
+      "sceneType": null,
+      "titleText": null
     },
     {
       "sceneNumber": 4,
       "imageSrc": "images/scene_004.jpg",
-      "startTime": 34.925,
-      "endTime": 43.225,
-      "narrationSegment": "Turn this philosophy into a daily routine. Update your resume and reach out to your network as concrete acts of agency.",
-      "textOverlay": "Turn Philosophy",
-      "animationStyle": "fade"
+      "startTime": 28.675,
+      "endTime": 39.712,
+      "narrationSegment": "Stop over-explaining. Your job is to do the right thing for your role, not to be everyone's friend. When you stop seeking validation, you gain respect.",
+      "textOverlay": "Do The Job",
+      "animationStyle": "fade",
+      "sceneType": null,
+      "titleText": null
     },
     {
       "sceneNumber": 5,
       "imageSrc": "images/scene_005.jpg",
-      "startTime": 43.225,
-      "endTime": 56.337,
-      "narrationSegment": "In stressful meetings, practice the pause-before-response technique to maintain professional judgment. Treat every task as an opportunity to demonstrate resilience and keep your mind sharp regardless of external noise.",
-      "textOverlay": "After The Meeting",
-      "animationStyle": "zoom"
+      "startTime": 39.712,
+      "endTime": 53.05,
+      "narrationSegment": "Your leaders will say, 'We need more people like him,' even if you never asked for the spotlight. Calm isn't avoiding conflict. It's knowing the disagreement isn't about you. It's about the job.",
+      "textOverlay": "Gain Respect",
+      "animationStyle": "zoom",
+      "sceneType": null,
+      "titleText": null
     },
     {
       "sceneNumber": 6,
       "imageSrc": "images/scene_006.jpg",
-      "startTime": 56.337,
-      "endTime": 60.792,
-      "narrationSegment": "Subscribe for more practical Stoic tools for modern stress.",
-      "textOverlay": "Use This Today",
-      "animationStyle": "zoom"
+      "startTime": 53.05,
+      "endTime": 63.264,
+      "narrationSegment": "Where do you feel this approval pressure most? Tell me below. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+      "textOverlay": "Stay Steady",
+      "animationStyle": "zoom",
+      "sceneType": null,
+      "titleText": null
     }
   ],
   "subtitles": [
     {
       "startTime": 0.1,
-      "endTime": 4.087,
-      "text": "The fear of losing your job can paralyze your best work.",
+      "endTime": 3.85,
+      "text": "Finance wants cost, Marketing wants speed.",
       "words": null
     },
     {
-      "startTime": 4.087,
-      "endTime": 9.212,
-      "text": "Stop trying to control the outcome of layoffs and start controlling your response.",
+      "startTime": 3.85,
+      "endTime": 5.6,
+      "text": "They disagree.",
       "words": null
     },
     {
-      "startTime": 9.212,
-      "endTime": 14.887,
-      "text": "Uncertainty breeds anxiety, but you can choose to meet it with clarity instead of panic.",
+      "startTime": 5.6,
+      "endTime": 8.2,
+      "text": "You panic and think they hate you.",
       "words": null
     },
     {
-      "startTime": 14.887,
-      "endTime": 21.787,
-      "text": "Marcus Aurelius taught that external events are beyond our command, but our judgments and actions remain ours.",
+      "startTime": 8.2,
+      "endTime": 9.8,
+      "text": "They don't.",
       "words": null
     },
     {
-      "startTime": 21.787,
-      "endTime": 24.537,
-      "text": "This is the dichotomy of control.",
+      "startTime": 9.8,
+      "endTime": 12.737,
+      "text": "That friction isn't personal rejection.",
       "words": null
     },
     {
-      "startTime": 24.537,
-      "endTime": 28.987,
-      "text": "When you worry about a layoff, you are fighting a battle you cannot win.",
+      "startTime": 12.737,
+      "endTime": 15.112,
+      "text": "It's just role conflict.",
       "words": null
     },
     {
-      "startTime": 28.987,
-      "endTime": 34.925,
-      "text": "Redirect that energy toward what you can actually influence: your preparation and your composure.",
+      "startTime": 15.112,
+      "endTime": 19.537,
+      "text": "Finance is paid to cut costs; Marketing is paid to grow.",
       "words": null
     },
     {
-      "startTime": 34.925,
-      "endTime": 38.237,
-      "text": "Turn this philosophy into a daily routine.",
+      "startTime": 19.537,
+      "endTime": 24.425,
+      "text": "If you try to please both, you burn out trying to control the uncontrollable.",
       "words": null
     },
     {
-      "startTime": 38.237,
-      "endTime": 43.225,
-      "text": "Update your resume and reach out to your network as concrete acts of agency.",
+      "startTime": 24.425,
+      "endTime": 26.375,
+      "text": "The Stoic move?",
       "words": null
     },
     {
-      "startTime": 43.225,
-      "endTime": 49.412,
-      "text": "In stressful meetings, practice the pause-before-response technique to maintain professional judgment.",
+      "startTime": 26.375,
+      "endTime": 28.675,
+      "text": "Stop apologizing.",
       "words": null
     },
     {
-      "startTime": 49.412,
-      "endTime": 56.337,
-      "text": "Treat every task as an opportunity to demonstrate resilience and keep your mind sharp regardless of external noise.",
+      "startTime": 28.675,
+      "endTime": 30.962,
+      "text": "Stop over-explaining.",
       "words": null
     },
     {
-      "startTime": 56.337,
-      "endTime": 60.792,
-      "text": "Subscribe for more practical Stoic tools for modern stress.",
+      "startTime": 30.962,
+      "endTime": 35.825,
+      "text": "Your job is to do the right thing for your role, not to be everyone's friend.",
+      "words": null
+    },
+    {
+      "startTime": 35.825,
+      "endTime": 39.712,
+      "text": "When you stop seeking validation, you gain respect.",
+      "words": null
+    },
+    {
+      "startTime": 39.712,
+      "endTime": 45.412,
+      "text": "Your leaders will say, 'We need more people like him,' even if you never asked for the spotlight.",
+      "words": null
+    },
+    {
+      "startTime": 45.412,
+      "endTime": 48.1,
+      "text": "Calm isn't avoiding conflict.",
+      "words": null
+    },
+    {
+      "startTime": 48.1,
+      "endTime": 51.112,
+      "text": "It's knowing the disagreement isn't about you.",
+      "words": null
+    },
+    {
+      "startTime": 51.112,
+      "endTime": 53.05,
+      "text": "It's about the job.",
+      "words": null
+    },
+    {
+      "startTime": 53.05,
+      "endTime": 56.1,
+      "text": "Where do you feel this approval pressure most?",
+      "words": null
+    },
+    {
+      "startTime": 56.1,
+      "endTime": 57.8,
+      "text": "Tell me below.",
+      "words": null
+    },
+    {
+      "startTime": 57.8,
+      "endTime": 63.264,
+      "text": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
       "words": null
     }
   ],
-  "ctaText": "subscribe to @stoic-modernized"
+  "ctaText": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
 }

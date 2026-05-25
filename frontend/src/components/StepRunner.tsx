@@ -1,19 +1,5 @@
-import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
-import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
-import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
-import {
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Collapse,
-  FormControlLabel,
-  IconButton,
-  Stack,
-  Switch,
-  Typography,
-} from '@mui/material';
-import { useState } from 'react';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+import { Button, Stack, Typography } from '@mui/material';
 
 const DEFAULT_STEPS = ['research', 'script', 'scene', 'tts', 'music', 'images', 'subtitles', 'render', 'metadata'];
 
@@ -27,71 +13,46 @@ type Props = {
 
 export function StepRunner({ selectedJobId, selectedSteps, isRunning, onToggleStep, onRunSteps }: Props) {
   const hasSteps = selectedSteps.length > 0;
-  const [expanded, setExpanded] = useState(false);
 
   return (
-    <Card>
-      <CardContent>
-        <Stack spacing={2.5}>
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
-            <div>
-              <Typography variant="overline" color="secondary.main">
-                Partial runs
-              </Typography>
-              <Typography variant="h6">Run selected steps</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {selectedJobId
-                  ? `Continuing job ${selectedJobId}`
-                  : 'No job selected. Including research will create a new job chain.'}
-              </Typography>
-            </div>
-            <IconButton
-              size="small"
-              onClick={() => setExpanded((value) => !value)}
-              aria-label={expanded ? 'Collapse partial runs' : 'Expand partial runs'}
+    <Stack spacing={3}>
+      <Stack spacing={1}>
+        <Typography variant="overline" color="text.secondary">
+          PARTIAL RUNS
+        </Typography>
+        <Typography variant="h5">Run only what needs rerunning</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {selectedJobId
+            ? `Continuing ${selectedJobId}. Leave research off unless you want a new chain.`
+            : 'No job selected yet. Include research if you want this to create a new job.'}
+        </Typography>
+      </Stack>
+
+      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+        {DEFAULT_STEPS.map((step) => {
+          const active = selectedSteps.includes(step);
+          return (
+            <Button
+              key={step}
+              variant={active ? 'contained' : 'outlined'}
+              color={active ? 'primary' : 'inherit'}
+              onClick={() => onToggleStep(step)}
+              sx={{ minWidth: 0 }}
             >
-              {expanded ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
-            </IconButton>
-          </Stack>
+              {step.toUpperCase()}
+            </Button>
+          );
+        })}
+      </Stack>
 
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-            <Chip label={`Selected: ${selectedSteps.length}`} size="small" color={hasSteps ? 'secondary' : 'default'} />
-            <Chip label={selectedJobId ? 'Existing job' : 'New job path'} size="small" variant="outlined" />
-          </Stack>
-
-          <Collapse in={expanded} unmountOnExit>
-            <Stack spacing={2.5}>
-              <Stack spacing={0.5}>
-                {DEFAULT_STEPS.map((step) => (
-                  <FormControlLabel
-                    key={step}
-                    control={<Switch checked={selectedSteps.includes(step)} onChange={() => onToggleStep(step)} />}
-                    label={step}
-                    sx={{
-                      m: 0,
-                      px: 1.5,
-                      py: 0.5,
-                      borderRadius: 2,
-                      border: '1px solid',
-                      borderColor: selectedSteps.includes(step) ? 'secondary.main' : 'divider',
-                      bgcolor: selectedSteps.includes(step) ? 'action.selected' : 'transparent',
-                    }}
-                  />
-                ))}
-              </Stack>
-
-              <Button
-                variant="outlined"
-                startIcon={<ChecklistRoundedIcon />}
-                onClick={onRunSteps}
-                disabled={!hasSteps || isRunning}
-              >
-                {isRunning ? 'Run in progress…' : 'Run selected steps'}
-              </Button>
-            </Stack>
-          </Collapse>
-        </Stack>
-      </CardContent>
-    </Card>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} alignItems={{ xs: 'stretch', sm: 'center' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ minWidth: 120 }}>
+          {selectedSteps.length} STEP{selectedSteps.length === 1 ? '' : 'S'} SELECTED
+        </Typography>
+        <Button variant="contained" startIcon={<PlayArrowRoundedIcon />} onClick={onRunSteps} disabled={!hasSteps || isRunning}>
+          {isRunning ? 'RUN IN PROGRESS…' : 'RUN SELECTED STEPS'}
+        </Button>
+      </Stack>
+    </Stack>
   );
 }

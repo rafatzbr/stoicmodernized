@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import typer
 
 import src.main as main
 from src.config import Channel
@@ -412,6 +413,89 @@ def test_research_topic_validation_blocks_same_month_subject(monkeypatch, tmp_pa
 
     assert error is not None
     assert "same-month subject guardrail" in error
+
+
+def test_script_subject_validation_blocks_before_expensive_generation(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_script_dir = current_job / "script"
+    current_script_dir.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Why Deadline Anxiety Runs Your Work Life",
+                "short_version": "Deadline anxiety makes every work deadline feel like a threat.",
+                "narration": "Deadline anxiety makes every work deadline feel like a threat.",
+                "chapters": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prior_job = jobs_dir / "prior-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "How To Stay Calm When Work Deadlines Are Uncontrollable | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps({"short_version": "An uncontrollable deadline can trigger anxiety before the work even starts."}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_script_for_generation(
+        metadata={"title": "Why Deadline Anxiety Runs Your Work Life | Stoic Modernized"},
+        job_dir=str(current_job),
+    )
+
+    assert error is not None
+    assert "same-month subject guardrail" in error
+
+
+def test_scene_command_blocks_when_script_subject_validation_fails(monkeypatch, tmp_path: Path) -> None:
+    script_path = tmp_path / "script.json"
+    script_path.write_text(
+        json.dumps(
+            {
+                "title": "Why Deadline Anxiety Runs Your Work Life",
+                "short_version": "Deadline anxiety makes every work deadline feel like a threat.",
+                "narration": "Deadline anxiety makes every work deadline feel like a threat.",
+                "chapters": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    job_record = SimpleNamespace(script_path=str(script_path))
+    scene_run_called = False
+    updates: list[tuple[tuple, dict]] = []
+
+    def fail_validation(*args, **kwargs):
+        raise typer.Exit(code=1)
+
+    async def fake_scene_run(*args, **kwargs):
+        nonlocal scene_run_called
+        scene_run_called = True
+        return None
+
+    monkeypatch.setattr(main, "_load_job_record", lambda job_id: job_record)
+    monkeypatch.setattr(main, "_resolve_video_mode", lambda job_id=None, explicit=None: main.VideoMode.SHORT)
+    monkeypatch.setattr(main, "_resolve_channel", lambda channel, job_id=None: Channel.STOIC_MODERNIZED)
+    monkeypatch.setattr(main, "_validate_script_subject_before_generation", fail_validation)
+    monkeypatch.setattr(main.SceneStage, "run", fake_scene_run)
+    monkeypatch.setattr(main.db, "update_job", lambda *args, **kwargs: updates.append((args, kwargs)))
+
+    with pytest.raises(typer.Exit):
+        main.scene(job_id="current-job", mock=True, channel=None)
+
+    assert scene_run_called is False
 
 
 def test_topic_cooldown_guardrail_allows_distinct_conflict_angle(monkeypatch, tmp_path: Path) -> None:

@@ -8,3 +8,6 @@ mkdir -p "$LOG_DIR"
 cd "$PROJECT_ROOT"
 source .venv/bin/activate
 python -m src.refresh_youtube_analytics --lookback-days 28 >> "$LOG_DIR/weekly_ledger_analytics_refresh.log" 2>&1
+if ! python -m src.refresh_facebook_metrics --lookback-days 28 >> "$LOG_DIR/weekly_ledger_analytics_refresh.log" 2>&1; then
+  echo "$(date -Is) facebook metrics refresh failed; continuing with available YouTube/TikTok artifacts" >> "$LOG_DIR/weekly_ledger_analytics_refresh.log"
+fi

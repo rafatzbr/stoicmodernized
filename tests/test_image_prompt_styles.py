@@ -40,9 +40,34 @@ def test_build_scene_style_suffix_is_deterministic_and_contextual() -> None:
     assert any(
         fragment in first
         for fragment in [
-            "symbolic insert shot",
-            "tight composition around a few meaningful objects",
-            "editorial still-life clarity",
+            "desk-level documentary close-up",
+            "foreground-background separation",
+            "candid tension carried by the objects",
             "high-end documentary texture",
         ]
     )
+
+
+def test_approval_pressure_prompt_is_specific_not_generic() -> None:
+    prompt = build_narrative_scene_prompt(
+        subject="You Do Not Need Everyone at Work to Like You",
+        scene_prompt="approval pressure after disagreement",
+        narration_segment="Finance wants cost efficiency and marketing wants responsiveness; disagreement is not personal.",
+        overlay="Not Personal",
+        mode="person_medium",
+        steering_hint="overlay cue: Not Personal",
+    )
+
+    prompt_lower = prompt.lower()
+    assert "conference table" in prompt_lower or "glass meeting room" in prompt_lower
+    assert any(token in prompt_lower for token in ["pen gripped", "phone face-down", "blank whiteboard"])
+    banned = [
+        "modern office professional",
+        "grounded contemporary office",
+        "emotionally specific action",
+        "small symbolic props",
+        "workplace context:",
+        "still-life object shot",
+        "symbolic insert shot",
+    ]
+    assert not any(phrase in prompt_lower for phrase in banned)

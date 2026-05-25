@@ -1,28 +1,17 @@
-import ArticleRoundedIcon from '@mui/icons-material/ArticleRounded';
 import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
-import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded';
 import LaunchRoundedIcon from '@mui/icons-material/LaunchRounded';
-import MovieRoundedIcon from '@mui/icons-material/MovieRounded';
-import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import UploadRoundedIcon from '@mui/icons-material/UploadRounded';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   IconButton,
   Link,
-  List,
-  ListItem,
-  ListItemText,
   Stack,
   Typography,
 } from '@mui/material';
@@ -34,14 +23,6 @@ function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
-
-function renderAssetIcon(relativePath: string) {
-  if (/\.(mp4|mov|mkv)$/i.test(relativePath)) {
-    return <MovieRoundedIcon color="secondary" fontSize="small" />;
-  }
-
-  return <ArticleRoundedIcon color="action" fontSize="small" />;
 }
 
 function isImage(asset: JobAsset) {
@@ -61,18 +42,11 @@ function isJson(asset: JobAsset) {
 }
 
 function isTextLike(asset: JobAsset) {
-  return (
-    asset.mime?.startsWith('text/') ||
-    isJson(asset) ||
-    /\.(txt|json|md|py|yaml|yml|srt|log)$/i.test(asset.relative)
-  );
+  return asset.mime?.startsWith('text/') || isJson(asset) || /\.(txt|json|md|py|yaml|yml|srt|log)$/i.test(asset.relative);
 }
 
 function formatPreviewText(asset: JobAsset, rawText: string) {
-  if (!rawText) {
-    return rawText;
-  }
-
+  if (!rawText) return rawText;
   if (isJson(asset)) {
     try {
       return JSON.stringify(JSON.parse(rawText), null, 2);
@@ -80,64 +54,36 @@ function formatPreviewText(asset: JobAsset, rawText: string) {
       return rawText;
     }
   }
-
   return rawText;
 }
 
 function PreviewText({ content }: { content: string }) {
-  const lines = useMemo(() => content.split('\n'), [content]);
-
   return (
     <Box
+      component="pre"
       sx={{
+        m: 0,
+        p: 2,
         maxHeight: '70vh',
         overflow: 'auto',
-        borderRadius: 2,
-        bgcolor: 'rgba(7, 10, 19, 0.92)',
-        color: '#d8e1ff',
         border: '1px solid',
         borderColor: 'divider',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-        fontSize: 13,
-        lineHeight: 1.6,
+        bgcolor: '#050505',
+        color: '#f5f5f5',
+        fontFamily: 'Space Mono, ui-monospace, monospace',
+        fontSize: 12,
+        lineHeight: 1.75,
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
       }}
     >
-      <Box sx={{ width: '100%' }}>
-        {lines.map((line, index) => (
-          <Box
-            key={`${index + 1}-${line.slice(0, 12)}`}
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: '56px minmax(0, 1fr)',
-              alignItems: 'start',
-            }}
-          >
-            <Box
-              sx={{
-                userSelect: 'none',
-                px: 1.5,
-                py: 0.1,
-                textAlign: 'right',
-                color: 'rgba(216, 225, 255, 0.45)',
-                borderRight: '1px solid rgba(216, 225, 255, 0.08)',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              {index + 1}
-            </Box>
-            <Box sx={{ px: 2, py: 0.1, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: 0 }}>
-              {line || ' '}
-            </Box>
-          </Box>
-        ))}
-      </Box>
+      {content}
     </Box>
   );
 }
 
 function AssetPreview({ asset }: { asset: JobAsset }) {
-  const [textContent, setTextContent] = useState<string>('');
+  const [textContent, setTextContent] = useState('');
   const [loadingText, setLoadingText] = useState(false);
   const [textError, setTextError] = useState<string | null>(null);
 
@@ -185,52 +131,27 @@ function AssetPreview({ asset }: { asset: JobAsset }) {
   }
 
   if (isImage(asset)) {
-    return (
-      <Box
-        component="img"
-        src={asset.url}
-        alt={asset.relative}
-        sx={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)' }}
-      />
-    );
+    return <Box component="img" src={asset.url} alt={asset.relative} sx={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }} />;
   }
 
   if (isVideo(asset)) {
-    return <Box component="video" src={asset.url} controls sx={{ width: '100%', maxHeight: '70vh', borderRadius: 2, bgcolor: '#000' }} />;
+    return <Box component="video" src={asset.url} controls sx={{ width: '100%', maxHeight: '70vh', bgcolor: '#000' }} />;
   }
 
   if (isAudio(asset)) {
-    return (
-      <Stack spacing={2}>
-        <Typography variant="body2" color="text.secondary">
-          Audio preview
-        </Typography>
-        <Box component="audio" src={asset.url} controls sx={{ width: '100%' }} />
-      </Stack>
-    );
+    return <Box component="audio" src={asset.url} controls sx={{ width: '100%' }} />;
   }
 
   if (isTextLike(asset)) {
-    if (loadingText) {
-      return <Typography color="text.secondary">Loading preview…</Typography>;
-    }
-
-    if (textError) {
-      return <Typography color="error.main">{textError}</Typography>;
-    }
-
+    if (loadingText) return <Typography color="text.secondary">Loading preview…</Typography>;
+    if (textError) return <Typography color="error.main">{textError}</Typography>;
     return <PreviewText content={textContent || 'File is empty.'} />;
   }
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
-        Inline preview is not available for this file type.
-      </Typography>
-      <Button component={Link} href={asset.url} target="_blank" rel="noreferrer" startIcon={<LaunchRoundedIcon />}>
-        Open in new tab
-      </Button>
-    </Stack>
+    <Button component={Link} href={asset.url} target="_blank" rel="noreferrer" startIcon={<LaunchRoundedIcon />}>
+      Open in new tab
+    </Button>
   );
 }
 
@@ -253,37 +174,27 @@ export function JobAssets({
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
   const assetSummary = useMemo(() => {
-    if (!jobDetail) {
-      return null;
-    }
-
-    const images = jobDetail.assets.filter(isImage).length;
-    const videos = jobDetail.assets.filter(isVideo).length;
-    const audio = jobDetail.assets.filter(isAudio).length;
-
-    return { images, videos, audio };
+    if (!jobDetail) return null;
+    return {
+      images: jobDetail.assets.filter(isImage).length,
+      videos: jobDetail.assets.filter(isVideo).length,
+      audio: jobDetail.assets.filter(isAudio).length,
+    };
   }, [jobDetail]);
 
   const uploadableVideos = useMemo(() => {
-    if (!jobDetail) {
-      return [];
-    }
-
+    if (!jobDetail) return [];
     const score = (asset: JobAsset) => {
       const relative = asset.relative.toLowerCase();
       if (relative.includes('remotion')) return 0;
       if (relative.includes('final.mp4')) return 1;
       return 2;
     };
-
     return jobDetail.assets.filter(isVideo).sort((a, b) => score(a) - score(b) || a.relative.localeCompare(b.relative));
   }, [jobDetail]);
 
   const normalizedPreviewIndex = useMemo(() => {
-    if (previewIndex === null || !jobDetail || jobDetail.assets.length === 0) {
-      return null;
-    }
-
+    if (previewIndex === null || !jobDetail || jobDetail.assets.length === 0) return null;
     return Math.min(previewIndex, jobDetail.assets.length - 1);
   }, [jobDetail, previewIndex]);
 
@@ -293,194 +204,122 @@ export function JobAssets({
 
   return (
     <>
-      <Card>
-        <CardContent>
-          <Stack spacing={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
-              <div>
-                <Typography variant="overline" color="secondary.main">
-                  Output inspection
+      <Stack spacing={3}>
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'flex-end' }} spacing={2}>
+          <Box>
+            <Typography variant="overline" color="text.secondary">
+              INSPECTOR
+            </Typography>
+            <Typography variant="h5">Selected job</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Review outputs, rerun the right slice, or push the final video.
+            </Typography>
+          </Box>
+          <Button variant="outlined" size="small" onClick={onRefresh}>
+            REFRESH
+          </Button>
+        </Stack>
+
+        {!jobDetail ? (
+          <Typography variant="body2" color="text.secondary">
+            Pick a job on the left to inspect outputs.
+          </Typography>
+        ) : (
+          <Stack spacing={2.5}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
+              <Stack spacing={0.5}>
+                <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                  {jobDetail.topic}
                 </Typography>
-                <Typography variant="h6">Selected job assets</Typography>
-              </div>
-              <Button size="small" startIcon={<RefreshRoundedIcon />} onClick={onRefresh}>
-                Refresh
+                <Typography variant="caption" color="text.secondary">
+                  {(jobDetail.channel_name ?? jobDetail.channel ?? 'channel').toUpperCase()} · {(jobDetail.channel_handle ?? '').toUpperCase()}
+                </Typography>
+                <Typography variant="caption" color="text.disabled">
+                  {jobDetail.job_id}
+                </Typography>
+              </Stack>
+              <Stack spacing={0.5} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+                <Typography variant="caption" color="text.secondary">
+                  STATUS
+                </Typography>
+                <Typography variant="body2">{jobDetail.status.toUpperCase()}</Typography>
+                {assetSummary ? (
+                  <Typography variant="caption" color="text.secondary">
+                    {jobDetail.assets.length} files · {assetSummary.images} images · {assetSummary.audio} audio · {assetSummary.videos} videos
+                  </Typography>
+                ) : null}
+              </Stack>
+            </Stack>
+
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              <Button variant="outlined" disabled={rerunBusy} onClick={() => onRerunSteps(['tts', 'subtitles', 'render', 'metadata'])}>RERUN TTS→RENDER</Button>
+              <Button variant="outlined" disabled={rerunBusy} onClick={() => onRerunSteps(['images', 'subtitles', 'render', 'metadata'])}>RERUN IMAGES→RENDER</Button>
+              <Button variant="outlined" disabled={rerunBusy} onClick={() => onRerunSteps(['subtitles', 'render', 'metadata'])}>RERUN SUBTITLES→RENDER</Button>
+              <Button variant="outlined" disabled={rerunBusy} onClick={() => onRerunSteps(['render', 'metadata'])}>RERENDER</Button>
+              <Button variant="outlined" disabled={rerunBusy} onClick={() => onRerunSteps(['render', 'metadata'], 'remotion')}>REMOTION ONLY</Button>
+              <Button variant="outlined" disabled={rerunBusy} onClick={() => onRerunSteps(['render', 'metadata'], 'ffmpeg')}>FFMPEG ONLY</Button>
+            </Stack>
+
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              <Button variant="contained" disabled={rerunBusy} onClick={onFullRerun}>RERUN ENTIRE PIPELINE</Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<UploadRoundedIcon />}
+                disabled={rerunBusy || uploadableVideos.length === 0}
+                onClick={() => setUploadDialogOpen(true)}
+              >
+                UPLOAD TO YOUTUBE
               </Button>
             </Stack>
 
-            <Stack spacing={1.5}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap" alignItems={{ xs: 'stretch', sm: 'center' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mr: { sm: 1 } }}>
-                  Quick reruns
+            <Stack spacing={1}>
+              {jobDetail.assets.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No files found for this job yet.
                 </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!jobDetail || rerunBusy}
-                  onClick={() => onRerunSteps(['tts', 'subtitles', 'render', 'metadata'])}
-                >
-                  Rerun TTS→Render
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!jobDetail || rerunBusy}
-                  onClick={() => onRerunSteps(['images', 'subtitles', 'render', 'metadata'])}
-                >
-                  Rerun Images→Render
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!jobDetail || rerunBusy}
-                  onClick={() => onRerunSteps(['subtitles', 'render', 'metadata'])}
-                >
-                  Rerun Subtitles→Render
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!jobDetail || rerunBusy}
-                  onClick={() => onRerunSteps(['render', 'metadata'])}
-                >
-                  Rerun Render
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!jobDetail || rerunBusy}
-                  onClick={() => onRerunSteps(['render', 'metadata'], 'ffmpeg')}
-                >
-                  Rerender in FFmpeg
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!jobDetail || rerunBusy}
-                  onClick={() => onRerunSteps(['render', 'metadata'], 'remotion')}
-                >
-                  Rerender in Remotion
-                </Button>
-              </Stack>
-
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap" alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ mt: 0.5 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mr: { sm: 1 } }}>
-                  Full rerun
-                </Typography>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="secondary"
-                  disabled={!jobDetail || rerunBusy}
-                  onClick={onFullRerun}
-                >
-                  Rerun entire pipeline
-                </Button>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="primary"
-                  startIcon={<UploadRoundedIcon />}
-                  disabled={!jobDetail || rerunBusy || uploadableVideos.length === 0}
-                  onClick={() => setUploadDialogOpen(true)}
-                >
-                  Upload to YouTube
-                </Button>
-              </Stack>
-
-              {!jobDetail ? (
-                <Stack spacing={1} alignItems="center" sx={{ py: 5, textAlign: 'center' }}>
-                  <FolderOpenRoundedIcon color="disabled" />
-                  <Typography variant="body1">No job selected</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Pick a job from the list to inspect generated files and enable quick reruns.
-                  </Typography>
-                </Stack>
               ) : (
-                <>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
-                    <Chip label={jobDetail.status} color={jobDetail.status === 'completed' ? 'success' : 'default'} size="small" />
-                    <Chip label={jobDetail.job_id} size="small" variant="outlined" />
-                    <Chip label={`${jobDetail.assets.length} assets`} size="small" variant="outlined" />
-                    {assetSummary ? <Chip label={`${assetSummary.images} images • ${assetSummary.audio} audio • ${assetSummary.videos} video`} size="small" variant="outlined" /> : null}
-                  </Stack>
-
-                  <Divider />
-
-                  <List disablePadding sx={{ display: 'grid', gap: 1 }}>
-                  {jobDetail.assets.length === 0 ? (
-                    <Box sx={{ py: 2 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No files found for this job yet.
+                jobDetail.assets.map((asset, index) => (
+                  <Stack
+                    key={asset.path}
+                    direction={{ xs: 'column', sm: 'row' }}
+                    justifyContent="space-between"
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    spacing={1}
+                    sx={{ border: '1px solid', borderColor: 'divider', px: 1.5, py: 1.25 }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Link
+                        component="button"
+                        type="button"
+                        underline="hover"
+                        color="inherit"
+                        onClick={() => setPreviewIndex(index)}
+                        sx={{ textAlign: 'left', fontWeight: 600 }}
+                      >
+                        {asset.relative}
+                      </Link>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                        {formatBytes(asset.size)}{asset.mime ? ` · ${asset.mime}` : ''}
                       </Typography>
                     </Box>
-                  ) : (
-                    jobDetail.assets.map((asset, index) => (
-                      <ListItem
-                        key={asset.path}
-                        divider={false}
-                        secondaryAction={
-                          asset.url ? (
-                            <Button
-                              size="small"
-                              component={Link}
-                              href={asset.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              startIcon={<DownloadRoundedIcon />}
-                            >
-                              Open
-                            </Button>
-                          ) : null
-                        }
-                        sx={{
-                          px: 1.5,
-                          py: 1,
-                          borderRadius: 2,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                        }}
-                      >
-                        <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ pr: 10, minWidth: 0 }}>
-                          {renderAssetIcon(asset.relative)}
-                          <ListItemText
-                            primary={
-                              asset.url ? (
-                                <Link
-                                  component="button"
-                                  type="button"
-                                  underline="hover"
-                                  color="inherit"
-                                  onClick={() => setPreviewIndex(index)}
-                                  sx={{ textAlign: 'left', fontWeight: 600 }}
-                                >
-                                  {asset.relative}
-                                </Link>
-                              ) : (
-                                asset.relative
-                              )
-                            }
-                            secondary={`${formatBytes(asset.size)}${asset.mime ? ` • ${asset.mime}` : ''}`}
-                          />
-                        </Stack>
-                      </ListItem>
-                    ))
-                  )}
-                </List>
-              </>
-            )}
+                    {asset.url ? (
+                      <Button size="small" component={Link} href={asset.url} target="_blank" rel="noreferrer" startIcon={<DownloadRoundedIcon />}>
+                        OPEN
+                      </Button>
+                    ) : null}
+                  </Stack>
+                ))
+              )}
+            </Stack>
           </Stack>
-        </Stack>
-      </CardContent>
-      </Card>
+        )}
+      </Stack>
 
       <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Choose a video to upload</DialogTitle>
         <DialogContent dividers>
-          <Stack spacing={1.5}>
-            <Typography variant="body2" color="text.secondary">
-              Pick which rendered video should be sent to YouTube.
-            </Typography>
+          <Stack spacing={1.25}>
             {uploadableVideos.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 No video files are available for this job yet.
@@ -494,14 +333,18 @@ export function JobAssets({
                     onUploadAsset(asset.relative);
                     setUploadDialogOpen(false);
                   }}
-                  sx={{ justifyContent: 'space-between', textTransform: 'none', py: 1.25 }}
+                  sx={{ justifyContent: 'space-between', py: 1.25 }}
                 >
                   <Stack alignItems="flex-start" sx={{ textAlign: 'left' }}>
-                    <Typography variant="body2" fontWeight={700}>
-                      {asset.relative.toLowerCase().includes('remotion') ? 'Remotion render' : asset.relative.toLowerCase().includes('final.mp4') ? 'FFmpeg render' : 'Video file'}
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {asset.relative.toLowerCase().includes('remotion')
+                        ? 'REMOTION RENDER'
+                        : asset.relative.toLowerCase().includes('final.mp4')
+                          ? 'FINAL VIDEO'
+                          : 'VIDEO FILE'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {asset.relative} • {formatBytes(asset.size)}
+                      {asset.relative} · {formatBytes(asset.size)}
                     </Typography>
                   </Stack>
                 </Button>
@@ -523,7 +366,7 @@ export function JobAssets({
               </Typography>
               {previewAsset && jobDetail ? (
                 <Typography variant="caption" color="text.secondary">
-                  Asset {normalizedPreviewIndex! + 1} of {jobDetail.assets.length}
+                  {normalizedPreviewIndex! + 1} / {jobDetail.assets.length}
                 </Typography>
               ) : null}
             </Stack>
@@ -537,16 +380,10 @@ export function JobAssets({
             </Stack>
           </Stack>
         </DialogTitle>
-        <DialogContent dividers>
-          {previewAsset ? <AssetPreview asset={previewAsset} /> : null}
-        </DialogContent>
+        <DialogContent dividers>{previewAsset ? <AssetPreview asset={previewAsset} /> : null}</DialogContent>
         <DialogActions>
-          <Button onClick={() => canGoPrevious && setPreviewIndex((value) => (value === null ? value : value - 1))} disabled={!canGoPrevious}>
-            Previous
-          </Button>
-          <Button onClick={() => canGoNext && setPreviewIndex((value) => (value === null ? value : value + 1))} disabled={!canGoNext}>
-            Next
-          </Button>
+          <Button onClick={() => canGoPrevious && setPreviewIndex((value) => (value === null ? value : value - 1))} disabled={!canGoPrevious}>Previous</Button>
+          <Button onClick={() => canGoNext && setPreviewIndex((value) => (value === null ? value : value + 1))} disabled={!canGoNext}>Next</Button>
           <Button onClick={() => setPreviewIndex(null)}>Close</Button>
           {previewAsset?.url ? (
             <Button component={Link} href={previewAsset.url} target="_blank" rel="noreferrer" startIcon={<LaunchRoundedIcon />}>

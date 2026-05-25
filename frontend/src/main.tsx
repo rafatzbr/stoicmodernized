@@ -8,49 +8,76 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#7dd3fc',
+      main: '#f5f5f5',
+      contrastText: '#050505',
     },
     secondary: {
-      main: '#c084fc',
+      main: '#d71921',
+      contrastText: '#f5f5f5',
     },
     background: {
-      default: '#0b1020',
-      paper: '#121a2b',
+      default: '#000000',
+      paper: '#050505',
     },
+    text: {
+      primary: '#f5f5f5',
+      secondary: 'rgba(245,245,245,0.62)',
+      disabled: 'rgba(245,245,245,0.36)',
+    },
+    divider: 'rgba(245,245,245,0.14)',
     success: {
-      main: '#34d399',
+      main: '#5fcf80',
     },
     warning: {
-      main: '#fbbf24',
+      main: '#ffb020',
     },
     error: {
-      main: '#f87171',
+      main: '#d71921',
     },
-    divider: 'rgba(148, 163, 184, 0.16)',
   },
   shape: {
-    borderRadius: 16,
+    borderRadius: 0,
   },
   typography: {
-    fontFamily: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontFamily: 'Space Grotesk, Inter, system-ui, sans-serif',
     h4: {
-      fontWeight: 700,
-      letterSpacing: '-0.03em',
+      fontWeight: 500,
+      letterSpacing: '-0.06em',
     },
     h5: {
-      fontWeight: 700,
+      fontWeight: 500,
+      letterSpacing: '-0.04em',
     },
     h6: {
-      fontWeight: 700,
+      fontWeight: 500,
+      letterSpacing: '-0.03em',
+    },
+    overline: {
+      fontFamily: 'Space Mono, ui-monospace, monospace',
+      fontSize: '0.72rem',
+      letterSpacing: '0.16em',
+      fontWeight: 400,
+    },
+    button: {
+      fontFamily: 'Space Mono, ui-monospace, monospace',
+      fontSize: '0.76rem',
+      letterSpacing: '0.08em',
+      fontWeight: 400,
+    },
+    caption: {
+      fontFamily: 'Space Mono, ui-monospace, monospace',
+      letterSpacing: '0.04em',
     },
   },
   components: {
-    MuiCard: {
+    MuiCssBaseline: {
       styleOverrides: {
-        root: {
+        body: {
           backgroundImage: 'none',
-          border: '1px solid rgba(148, 163, 184, 0.12)',
-          boxShadow: '0 16px 50px rgba(2, 6, 23, 0.32)',
+        },
+        '::selection': {
+          backgroundColor: '#d71921',
+          color: '#f5f5f5',
         },
       },
     },
@@ -58,6 +85,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
+          border: '1px solid rgba(245,245,245,0.14)',
+          boxShadow: 'none',
         },
       },
     },
@@ -67,16 +96,70 @@ const theme = createTheme({
       },
       styleOverrides: {
         root: {
-          textTransform: 'none',
-          borderRadius: 12,
-          fontWeight: 600,
+          borderRadius: 999,
+          paddingInline: 14,
+        },
+        containedPrimary: {
+          backgroundColor: '#f5f5f5',
+          color: '#050505',
+        },
+        containedSecondary: {
+          backgroundColor: '#d71921',
+          color: '#f5f5f5',
+        },
+        outlined: {
+          borderColor: 'rgba(245,245,245,0.2)',
         },
       },
     },
-    MuiChip: {
+    MuiTextField: {
+      defaultProps: {
+        variant: 'outlined',
+        size: 'small',
+      },
+    },
+    MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: 16,
+          backgroundColor: 'rgba(255,255,255,0.02)',
+        },
+      },
+    },
+    MuiSelect: {
+      defaultProps: {
+        size: 'small',
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          backgroundColor: '#f5f5f5',
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          fontFamily: 'Space Mono, ui-monospace, monospace',
+          letterSpacing: '0.08em',
+          fontSize: '0.76rem',
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#050505',
+          backgroundImage: 'none',
+          border: '1px solid rgba(245,245,245,0.14)',
         },
       },
     },

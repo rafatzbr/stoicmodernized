@@ -2,7 +2,7 @@
 
 ## Overview
 
-The image generation stage creates visual assets for each video scene. It supports multiple providers: `sd_cli` (stable diffusion CLI), `sd_server` (stable diffusion web UI / ComfyUI), `dall_e` (OpenAI DALL-E). Each scene gets a unique image based on a visual prompt from the scene plan.
+The image generation stage creates visual assets for each video scene. The default provider is `codex_image`, which bridges through Hermes' configured image generation tool (OpenAI Codex/image backend in Rafael's setup). It also supports legacy providers: `sd_cli` (stable diffusion CLI), `sd_server` (stable diffusion web UI / ComfyUI), and `dall_e` (reserved legacy enum). Each scene gets a unique image based on a visual prompt from the scene plan.
 
 ## Architecture
 
@@ -23,9 +23,9 @@ The image generation stage creates visual assets for each video scene. It suppor
 │                                                  │
 │  ┌────────────────────────────────────────────┐  │
 │  │  Providers (selected by type):             │  │
+│  │  - Codex/Image  (Hermes image_generate)    │  │
 │  │  - ImageSDCLI    (local, stable-diffusion) │  │
 │  │  - ImageSDServer (local/remote web UI)     │  │
-│  │  - ImageDALL_E   (OpenAI API)              │  │
 │  └────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────┘
 ```
@@ -45,6 +45,7 @@ The image generation stage creates visual assets for each video scene. It suppor
 
 | Class | Provider Enum | Description |
 |-------|--------------|-------------|
+| Codex/Image bridge | `ImageProvider.CODEX_IMAGE` | Default; calls Hermes image generation and materializes result locally |
 | `ImageSDCLI` | `ImageProvider.SD_CLI` | Local stable diffusion via CLI |
 | `ImageSDServer` | `ImageProvider.SD_SERVER` | SD WebUI / ComfyUI via API |
 | `ImageDALLE` | `ImageProvider.DALL_E` | OpenAI DALL-E API |
@@ -53,7 +54,7 @@ The image generation stage creates visual assets for each video scene. It suppor
 
 1. **Input**: `ScenePlan` with `Scene.visual_prompt` for each scene
 2. **Prompt assembly**: Base prompt + scene-specific visual prompt
-3. **Provider dispatch**: Select provider based on `settings.image_provider` (note: this setting is NOT defined in config — it uses a hardcoded fallback to `sd_cli`)
+3. **Provider dispatch**: Select provider based on `settings.image_provider` (default: `codex_image`)
 4. **Generation**: Each scene generates one image: `scene_XXX.jpg`
 5. **Seeding**: Persistent seed management per scene for reproducibility
 6. **Output**: Images saved to `output/jobs/{job_id}/images/` as `scene_001.jpg`, `scene_002.jpg`, etc.
@@ -88,6 +89,10 @@ The image generation stage creates visual assets for each video scene. It suppor
 | `settings.sd_steps` | int | `20` | Denoising steps |
 | `settings.sd_sampling_method` | str | `"euler"` | Sampling method |
 | `settings.sd_negative_prompt` | str | `"blurry, low quality..."` | Negative prompt |
+| `settings.image_provider` | ImageProvider | `codex_image` | Default provider selector |
+| `settings.codex_image_command` | str | `hermes` | Command used by the Codex/Image bridge |
+| `settings.codex_image_timeout_seconds` | float | `900.0` | Per-image bridge timeout |
+| `settings.codex_image_aspect_ratio` | str | `portrait` | Aspect passed to Hermes image_generate |
 | `settings.force_placeholder_images` | bool | `False` | Skip real generation |
 | `settings.sd_server_url` | str | `"http://localhost:1234"` | SD Server URL |
 | `settings.sd_server_api_path` | str | `"/sdapi/v1/txt2img"` | SD Server API |
@@ -98,7 +103,8 @@ The image generation stage creates visual assets for each video scene. It suppor
 
 | External | Integration |
 |----------|-------------|
-| stable-diffusion.cpp CLI | Local image generation |
+| Hermes `image_generate` / codex-image backend | Default image generation |
+| stable-diffusion.cpp CLI | Legacy local image generation |
 | SD WebUI / ComfyUI API | Remote/local SD server |
 | OpenAI DALL-E API | Cloud image generation |
 | SQLite | Persist job state |

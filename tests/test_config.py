@@ -27,6 +27,10 @@ class TestTTSProvider:
 class TestImageProvider:
     """Tests for ImageProvider enum."""
 
+    def test_codex_image_value(self) -> None:
+        """Should have correct codex_image value."""
+        assert ImageProvider.CODEX_IMAGE.value == "codex_image"
+
     def test_sd_cli_value(self) -> None:
         """Should have correct sd_cli value."""
         assert ImageProvider.SD_CLI.value == "sd_cli"
@@ -67,6 +71,8 @@ class TestSettings:
         assert test_settings.default_video_mode == VideoMode.SHORT
         assert test_settings.video_fps == 30
         assert test_settings.tts_provider == TTSProvider.EDGE
+        assert test_settings.image_provider == ImageProvider.CODEX_IMAGE
+        assert test_settings.codex_image_command == "hermes"
         assert test_settings.tts_voice == "en-US-GuyNeural"
         assert test_settings.tts_speed == 1.0
         assert test_settings.sd_image_width == 544

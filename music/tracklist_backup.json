@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "notes": "Curated local background music library. Only tracks with approved_for_youtube=true should be eligible for upload.",
+  "tracks": [
+    {
+      "id": "stoic-modernized-calm-drone-placeholder",
+      "title": "Calm Drone Placeholder",
+      "artist": "Stoic Modernized",
+      "path": "tracks/ambient/stoic-modernized-calm-drone-placeholder.mp3",
+      "license": "Self-generated placeholder",
+      "source_url": "local://generated",
+      "approved_for_youtube": true,
+      "instrumental": true,
+      "low_background": true,
+      "attribution_required": false,
+      "attribution_text": null,
+      "moods": [
+        "calm",
+        "ambient",
+        "minimal",
+        "drone"
+      ],
+      "duration": 60.029388
+    }
+  ]
+}

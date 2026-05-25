@@ -32,6 +32,7 @@ from src.stages.research import ResearchStage
 from src.stages.scenes import SceneStage
 from src.stages.script import ScriptGenerationError, ScriptStage
 from src.stages.subtitles import SubtitleStage
+from src.stages.social_distribution import SocialDistributionStage
 from src.stages.tts import TTSStage
 from src.stages.narration_prep import NarrationPreparationStage
 from src.stages.upload import YouTubeUploader
@@ -310,6 +311,43 @@ def _persist_job_context(
     return save_json(payload, _job_context_path(job_id))
 
 
+def _validate_script_subject_before_generation(
+    job_id: str,
+    job_record,
+    channel: Optional[Channel] = None,
+    mock: bool = False,
+) -> None:
+    """Block duplicate/repeated subjects as soon as a script exists.
+
+    Upload still runs the same guardrail as a final safety net, but this prevents
+    wasting TTS/image/render work on a script that cannot be published.
+    """
+    if not getattr(job_record, "script_path", None):
+        return
+
+    resolved_channel = _resolve_channel(channel, job_id)
+    metadata_payload = _generate_metadata_payload_for_job(
+        job_id=job_id,
+        job_record=job_record,
+        channel=resolved_channel,
+        mock=mock,
+    )
+    uploader = YouTubeUploader(mock=True, channel=resolved_channel)
+    error = uploader.validate_script_for_generation(
+        metadata=metadata_payload,
+        job_dir=str(get_job_dir(job_id)),
+    )
+    if not error:
+        return
+
+    db.update_job(job_id, status="script_blocked", error_message=error)
+    console.print()
+    console.print("[bold red]Script Subject Validation Failed![/bold red]")
+    console.print(f"[dim]Reason:[/dim] {error}")
+    console.print("[dim]Pipeline halted before scene/TTS/images/render generation.[/dim]")
+    raise typer.Exit(code=1)
+
+
 @app.command("ui-dev")
 def ui_dev(
     host: str = typer.Option("0.0.0.0", "--host", help="Host for both the API and Vite dev server"),
@@ -538,6 +576,13 @@ def script(
     report = load_json(report_path) if report_path.exists() else None
 
     db.update_job(job_id, status="script_complete", script_path=str(script_path), error_message=None)
+    validated_job_record = _load_job_record(job_id)
+    _validate_script_subject_before_generation(
+        job_id=job_id,
+        job_record=validated_job_record,
+        channel=resolved_channel,
+        mock=mock,
+    )
 
     console.print()
     console.print("[bold green]Script Complete![/bold green]")
@@ -567,6 +612,12 @@ def scene(
         raise typer.Exit(code=1)
 
     video_mode = _resolve_video_mode(job_id=job_id)
+    _validate_script_subject_before_generation(
+        job_id=job_id,
+        job_record=job_record,
+        channel=channel,
+        mock=mock,
+    )
     script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), video_mode)
     console.print(f"[bold]Creating scene plan for:[/bold] {script_data['title']}")
 
@@ -604,6 +655,12 @@ def tts(
     if not job_record.scene_plan_path:
         console.print("[red]Error: No scene plan found for this job[/red]")
         raise typer.Exit(code=1)
+    _validate_script_subject_before_generation(
+        job_id=job_id,
+        job_record=job_record,
+        channel=channel,
+        mock=mock,
+    )
 
     scene_plan = load_json(Path(job_record.scene_plan_path))
     console.print(f"[bold]Generating TTS with provider:[/bold] {provider}")
@@ -659,6 +716,12 @@ def images(
     if not job_record.scene_plan_path:
         console.print("[red]Error: No scene plan found for this job[/red]")
         raise typer.Exit(code=1)
+    _validate_script_subject_before_generation(
+        job_id=job_id,
+        job_record=job_record,
+        channel=channel,
+        mock=mock,
+    )
 
     scene_plan = load_json(Path(job_record.scene_plan_path))
     console.print(f"[bold]Generating {len(scene_plan['scenes'])} images for scenes...[/bold]")
@@ -703,6 +766,12 @@ def subtitles(
         console.print("[red]Error: No script found for this job[/red]")
         raise typer.Exit(code=1)
 
+    _validate_script_subject_before_generation(
+        job_id=job_id,
+        job_record=job_record,
+        channel=None,
+        mock=mock,
+    )
     video_mode = _resolve_video_mode(job_id=job_id)
     script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), video_mode)
     stage = SubtitleStage(job_id=job_id, mock=mock)
@@ -743,6 +812,12 @@ def render(
     if not job_record.audio_path:
         console.print("[red]Error: No audio file found. Run TTS stage first.[/red]")
         raise typer.Exit(code=1)
+    _validate_script_subject_before_generation(
+        job_id=job_id,
+        job_record=job_record,
+        channel=channel,
+        mock=mock,
+    )
 
     audio_vtt_path = get_job_dir(job_id) / "audio" / "narration.vtt"
     subtitle_json_path = get_job_dir(job_id) / "subtitles" / "subtitles.json"
@@ -1090,11 +1165,46 @@ def upload(
 
 
 @app.command()
+def distribute(
+    job_id: str = typer.Argument(..., help="Job ID from metadata/upload stage"),
+    mock: bool = typer.Option(False, "--mock", "-m", help="Write a dry-run social distribution manifest without external API calls"),
+    platforms: str = typer.Option("instagram,facebook,tiktok", "--platforms", help="Comma-separated platforms: instagram,facebook,tiktok"),
+) -> None:
+    """Distribute rendered video to TikTok, Instagram Reels, and Facebook Reels."""
+    print_header()
+    _load_job_record(job_id)
+    selected_platforms = [item.strip().lower() for item in platforms.split(",") if item.strip()]
+    stage = SocialDistributionStage(job_id=job_id, mock=mock, platforms=selected_platforms)
+    result = stage.run()
+    manifest_path = settings.jobs_dir / job_id / "distribution" / "social_uploads.json"
+
+    status_value = "social_distributed" if result["status"] in {"completed", "mock_completed"} else result["status"]
+    db.update_job(job_id, status=status_value)
+
+    console.print()
+    if result["status"] in {"completed", "mock_completed"}:
+        console.print("[bold green]✓ Social Distribution Complete![/bold green]")
+    else:
+        console.print("[bold yellow]Social Distribution needs attention.[/bold yellow]")
+    console.print(f"[dim]Status:[/dim] {result['status']}")
+    console.print(f"[dim]Manifest:[/dim] {manifest_path}")
+    for platform in result.get("platforms", []):
+        line = f"{platform.get('platform')}: {platform.get('status')}"
+        if platform.get("url"):
+            line += f" ({platform['url']})"
+        if platform.get("error"):
+            line += f" — {platform['error']}"
+        console.print(f"[dim]{line}[/dim]")
+
+
+@app.command()
 def run(
     topic: str = typer.Argument(..., help="Topic for the video"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data for all stages"),
     provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (edge only)"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
+    distribute_social: bool = typer.Option(False, "--distribute-social", help="After upload, distribute to configured TikTok/Instagram/Facebook destinations"),
+    social_mock: bool = typer.Option(False, "--social-mock", help="Dry-run social distribution even when the main pipeline is real"),
     video_mode: VideoMode = typer.Option(settings.default_video_mode, "--video-mode", help="Video mode: short or long"),
     renderer: str = typer.Option("remotion", "--renderer", "-r", help="Renderer to use: remotion, ffmpeg, or both"),
     placeholder_images: bool = typer.Option(False, "--placeholder-images", help="Skip sd-cli and generate local placeholder scene cards"),
@@ -1197,6 +1307,9 @@ def run(
         else:
             db.update_job(job_id, status="ready_for_upload")
 
+        if distribute_social:
+            distribute(job_id=job_id, mock=(social_mock or mock), platforms=settings.social_distribution_platforms)
+
         console.print()
         console.print("[bold green]Pipeline Complete![/bold green]")
         console.print(f"[dim]Job ID:[/dim] {job_id}")
@@ -1246,6 +1359,7 @@ def retry(
             "render": lambda: render(job_id=job_id, mock=mock),
             "metadata": lambda: metadata(job_id=job_id, mock=mock),
             "upload": lambda: upload(job_id=job_id, mock=mock),
+            "distribute": lambda: distribute(job_id=job_id, mock=mock),
         }
         runner = stage_map.get(stage)
         if not runner:
