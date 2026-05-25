@@ -28,6 +28,31 @@ async def test_short_mode_script_is_shorter(tmp_path: Path, monkeypatch: pytest.
 
 
 @pytest.mark.asyncio
+async def test_short_scene_plan_appends_separate_spoken_cta_when_script_cta_is_not_in_narration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+
+    stage = SceneStage(job_id="short-cta-job", mock=True)
+    script = {
+        "title": "The Four PM Priority Change",
+        "narration": "When the priority changes at four, the test is not speed. It is ownership. Choose the smallest honest next action.",
+        "chapters": [{"title": "Practice", "timestamp": 0.0}],
+        "cta": "Use this at work today.",
+        "video_mode": "short",
+    }
+
+    scene_plan = await stage.run(script)
+
+    assert scene_plan.scenes[-1].narration_segment == "Use this at work today."
+    assert scene_plan.scenes[-1].scene_type == "cta"
+    assert scene_plan.scenes[-1].text_overlay == "CTA"
+    assert scene_plan.total_duration <= 60.0
+
+
+@pytest.mark.asyncio
 async def test_short_mode_scene_plan_stays_within_short_limit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -53,6 +78,36 @@ async def test_short_mode_scene_plan_stays_within_short_limit(
         any(term in scene.visual_prompt for term in ["workplace", "office", "conference", "desk"])
         for scene in scene_plan.scenes
     )
+
+
+@pytest.mark.asyncio
+async def test_subtitles_alignment_transcript_prefers_scene_plan_with_appended_cta(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+
+    job_dir = tmp_path / "jobs" / "cta-transcript"
+    scenes_dir = job_dir / "scenes"
+    scenes_dir.mkdir(parents=True)
+    (scenes_dir / "scenes.json").write_text(
+        '{"scenes":['
+        '{"scene_number":1,"narration_segment":"Keep moving."},'
+        '{"scene_number":2,"narration_segment":"Use this at work today."}'
+        ']}',
+        encoding="utf-8",
+    )
+
+    stage = SubtitleStage(job_id="cta-transcript", mock=False)
+    stage.job_dir = job_dir
+    stage.scenes_dir = scenes_dir
+
+    transcript = stage._alignment_transcript(
+        {"narration": "Keep moving.", "cta": "Use this at work today."}
+    )
+
+    assert transcript == "Keep moving. Use this at work today."
 
 
 @pytest.mark.asyncio

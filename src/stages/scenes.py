@@ -75,24 +75,33 @@ class SceneStage:
         self._append_scene_stage_debug_log(f"Initial scene specs count: {len(scene_specs)}")
         if is_short and scene_specs:
             # Preserve coherent spoken chunks for shorts, aiming for the older 5-6 scene rhythm.
+            # Keep one final slot available when the script carries a separate CTA so it is
+            # narrated as its own ending instead of becoming a silent visual overlay.
+            has_separate_cta = self._should_append_cta_scene(script_data, scene_specs)
             avg_words = sum(max(1, len(str(item.get('text') or '').split())) for item in scene_specs) / max(1, len(scene_specs))
             target_count = min(6, settings.short_target_scene_count)
+            expansion_target = max(1, target_count - 1) if has_separate_cta else target_count
             if len(scene_specs) == 1 and avg_words > 45:
                 self._append_scene_stage_debug_log(
-                    f"Expanding single oversized short scene spec toward target_count={target_count}"
+                    f"Expanding single oversized short scene spec toward target_count={expansion_target}"
                 )
-                scene_specs = self._expand_short_scene_specs(scene_specs, target_count)
+                scene_specs = self._expand_short_scene_specs(scene_specs, expansion_target)
                 self._append_scene_stage_debug_log(f"Expanded short scene specs count: {len(scene_specs)}")
             elif len(scene_specs) == 2 and avg_words > 18:
                 self._append_scene_stage_debug_log("Expanding 2 short scene specs into older 5-6 scene rhythm")
-                scene_specs = self._expand_short_scene_specs(scene_specs, target_count)
+                scene_specs = self._expand_short_scene_specs(scene_specs, expansion_target)
                 self._append_scene_stage_debug_log(f"Expanded short scene specs count: {len(scene_specs)}")
             elif len(scene_specs) == 4 and avg_words > 10:
                 self._append_scene_stage_debug_log("Expanding 4 timed short sections into ~6 coherent scenes")
-                scene_specs = self._expand_short_scene_specs(scene_specs, target_count)
+                scene_specs = self._expand_short_scene_specs(scene_specs, expansion_target)
                 self._append_scene_stage_debug_log(f"Expanded short scene specs count: {len(scene_specs)}")
             else:
                 self._append_scene_stage_debug_log("Preserving short scene specs without extra expansion")
+
+        if is_short and self._should_append_cta_scene(script_data, scene_specs):
+            cta_text = str(script_data.get("cta") or "").strip()
+            self._append_scene_stage_debug_log(f"Appending separate narrated CTA scene: {cta_text!r}")
+            scene_specs.append({"text": cta_text, "label": "CTA", "scene_type": "cta"})
 
         total_words = sum(max(1, len(item["text"].split())) for item in scene_specs) or 1
         target_duration = 54.0 if is_short else None
@@ -651,6 +660,21 @@ Input scenes:
                 }
             )
         return sections
+
+    def _should_append_cta_scene(self, script_data: dict, scene_specs: list[dict[str, object]]) -> bool:
+        cta_text = str(script_data.get("cta") or "").strip()
+        if not cta_text:
+            return False
+        normalized_cta = self._normalize_spoken_text(cta_text)
+        if not normalized_cta:
+            return False
+        existing = self._normalize_spoken_text(
+            " ".join(str(spec.get("text") or "") for spec in scene_specs)
+        )
+        return normalized_cta not in existing
+
+    def _normalize_spoken_text(self, text: str) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
     def _build_scene_specs_from_lines(self, lines: list[str], *, is_short: bool) -> list[dict[str, object]]:
         if not lines:

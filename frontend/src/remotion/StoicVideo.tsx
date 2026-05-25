@@ -298,9 +298,18 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
     zIndex: 5,
   };
 
+  const ctaScene = useMemo(
+    () => scenes.find((scene) => (scene.sceneType || '').toLowerCase() === 'cta') || null,
+    [scenes],
+  );
+  const ctaStartFrame = ctaScene
+    ? Math.max(0, Math.round(ctaScene.startTime * fps))
+    : Math.max(0, totalFrames - Math.round(3 * fps));
+  const ctaDurationFrames = Math.max(1, totalFrames - ctaStartFrame);
+
   const ctaPulse = spring({
     fps,
-    frame: Math.max(0, frame - Math.max(0, totalFrames - Math.round(2.4 * fps))),
+    frame: Math.max(0, frame - ctaStartFrame),
     config: {damping: 200, stiffness: 120},
   });
 
@@ -397,8 +406,8 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
 
       {ctaText ? (
         <Sequence
-          from={Math.max(0, totalFrames - Math.round(3 * fps))}
-          durationInFrames={Math.round(3 * fps)}
+          from={ctaStartFrame}
+          durationInFrames={ctaDurationFrames}
         >
           <AbsoluteFill
             style={{

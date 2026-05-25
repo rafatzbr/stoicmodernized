@@ -152,15 +152,24 @@ class SubtitleStage:
         return segments
 
     def _alignment_transcript(self, script_data: dict) -> str:
+        scene_transcript = self._scene_plan_transcript()
+        if scene_transcript:
+            return scene_transcript
+
         narration = script_data.get("narration", "")
+        parts: list[str] = []
         if isinstance(narration, str) and narration.strip():
-            lines = [
+            parts.extend(
                 line.strip()
                 for line in narration.splitlines()
                 if line.strip() and not line.strip().startswith("[")
-            ]
-            return self._clean_subtitle_text(" ".join(lines))
+            )
+        cta = str(script_data.get("cta") or "").strip()
+        if cta and self._match_key(cta) not in self._match_key(" ".join(parts)):
+            parts.append(cta)
+        return self._clean_subtitle_text(" ".join(parts))
 
+    def _scene_plan_transcript(self) -> str:
         scene_plan = self._load_scene_plan()
         if not isinstance(scene_plan, dict):
             return ""
