@@ -47,7 +47,12 @@ async def test_short_mode_scene_plan_stays_within_short_limit(
     assert len(set(overlays)) == len(overlays)
     assert not any(overlay in {"Time", "Overthinking"} for overlay in overlays if overlay)
     assert all("gold accents" not in scene.visual_prompt for scene in scene_plan.scenes)
-    assert all("modern editorial photo" in scene.visual_prompt for scene in scene_plan.scenes)
+    assert all("vertical 9:16" in scene.visual_prompt for scene in scene_plan.scenes)
+    assert all("no readable text" in scene.visual_prompt for scene in scene_plan.scenes)
+    assert all(
+        any(term in scene.visual_prompt for term in ["workplace", "office", "conference", "desk"])
+        for scene in scene_plan.scenes
+    )
 
 
 @pytest.mark.asyncio

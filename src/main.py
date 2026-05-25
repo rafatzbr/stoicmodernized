@@ -644,7 +644,7 @@ def scene(
 @app.command()
 def tts(
     job_id: str = typer.Argument(..., help="Job ID from scene stage"),
-    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (edge only)"),
+    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider: edge or kokoro"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data"),
     channel: Optional[Channel] = typer.Option(None, "--channel", help="Channel pipeline override", show_default=False),
 ) -> None:
@@ -1201,7 +1201,7 @@ def distribute(
 def run(
     topic: str = typer.Argument(..., help="Topic for the video"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Use mock data for all stages"),
-    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider (edge only)"),
+    provider: str = typer.Option(settings.tts_provider.value, "--provider", "-p", help="TTS provider: edge or kokoro"),
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Run the full pipeline but skip the upload stage"),
     distribute_social: bool = typer.Option(False, "--distribute-social", help="After upload, distribute to configured TikTok/Instagram/Facebook destinations"),
     social_mock: bool = typer.Option(False, "--social-mock", help="Dry-run social distribution even when the main pipeline is real"),

@@ -48,7 +48,7 @@ Key properties:
 
 | Enum | Values | Usage |
 |------|--------|-------|
-| `TTSProvider` | `edge` | TTS provider selection |
+| `TTSProvider` | `edge`, `kokoro` | TTS provider selection |
 | `ImageProvider` | `sd_cli`, `sd_server`, `dall_e` | Image generation provider |
 | `YouTubePrivacy` | `public`, `unlisted`, `private` | YouTube video privacy |
 | `VideoMode` | `short`, `long` | Output video mode |
@@ -96,7 +96,11 @@ Key properties:
 | `settings.short_video_height` | int | `1920` | Portrait video |
 | `settings.video_fps` | int | `30` | Video framerate |
 | `settings.mock_mode` | bool | `False` | Mock mode gate |
-| `settings.tts_provider` | TTSProvider | `local` | TTS provider |
+| `settings.tts_provider` | TTSProvider | `edge` | TTS provider |
+| `settings.kokoro_command` | str | `kokoro-tts` | Local Kokoro TTS command |
+| `settings.kokoro_voice` | str | `bm_lewis` | Kokoro voice ID |
+| `settings.kokoro_format` | str | `mp3` | Kokoro output extension |
+| `settings.kokoro_timeout_seconds` | float | `300.0` | Kokoro command timeout |
 | `settings.youtube_privacy_status` | YouTubePrivacy | `unlisted` | YouTube privacy |
 | `settings.background_music_volume` | float | `0.08` | Music volume (8%) |
 | `settings.background_music_enabled` | bool | `True` | Music gate |

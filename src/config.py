@@ -16,6 +16,7 @@ class TTSProvider(str, Enum):
     """Supported TTS providers."""
 
     EDGE = "edge"
+    KOKORO = "kokoro"
 
 
 class ImageProvider(str, Enum):
@@ -97,11 +98,26 @@ class Settings(BaseSettings):
     tts_speed: float = 1.0
     narration_prep_enabled: bool = False  # Enable narration preparation for natural TTS delivery
     tts_api_key: Optional[str] = None
+    kokoro_command: str = "kokoro-tts"
+    kokoro_voice: str = "bm_lewis"
+    kokoro_format: str = "wav"
+    kokoro_timeout_seconds: float = 300.0
+    kokoro_model_path: Optional[Path] = Path.home() / ".cache" / "kokoro-onnx" / "kokoro-v1.0.onnx"
+    kokoro_voices_path: Optional[Path] = Path.home() / ".cache" / "kokoro-onnx" / "voices-v1.0.bin"
+    kokoro_language: str = "en-gb"
 
     subtitle_asr_enabled: bool = True
     subtitle_asr_model: str = "openai/whisper-tiny.en"
     subtitle_asr_language: str = "english"
     subtitle_asr_chunk_length_s: int = 20
+    tts_subtitles_enabled: bool = True
+    tts_subtitles_format: str = "vtt"
+    tts_subtitles_timing: str = "auto"
+    tts_subtitles_phrase_style: str = "readable"
+    tts_subtitles_fallback: str = "heuristic"
+    tts_subtitles_alignment_enabled: bool = False
+    tts_subtitles_aligner: str = "stable-ts"
+    tts_subtitles_aligner_model: str = "base.en"
 
     sd_cli_path: str = "/home/rafatz/dev/stable-diffusion.cpp/build/bin/sd-cli"
     sd_model_path: str = "/data/sd-models/sd3.5_large.safetensors"

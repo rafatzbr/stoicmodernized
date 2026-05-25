@@ -176,3 +176,14 @@ Run the duplicate/same-month subject guardrail immediately after script generati
 - Guardrail messages should report trigger-level subject signals (for example `anxiety, meeting`), not incidental generic overlaps.
 - Regression tests live in `tests/test_upload_metadata.py`.
 
+## Metadata Titles Must Be Complete Phrases (May 2026)
+
+### Problem
+Identity-packaged metadata generation appended abstract emotion labels to otherwise complete titles, producing broken phrases such as `You Do Not Need Everyone To Like You: Stress`.
+
+### Fix
+When the Ledger topic carries missing workplace context and substantially overlaps the script title, prefer that complete contextual topic over adding an abstract `: Stress` / `: Anxiety` suffix. Keep suffix rewrites only for title formulas where the emotion label becomes grammatical, such as `Why Anxiety Keeps Running Your Work Life`.
+
+### Verification
+Added `test_resolve_metadata_title_prefers_contextual_ledger_topic_over_fragment_suffix` in `tests/test_upload_metadata.py`. Run `python -m pytest tests/test_upload_metadata.py -q` after metadata-title changes.
+

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Cross-cutting concerns include utility functions, logging, error handling, and output capture that are shared across all pipeline stages. These are implemented in `src/utils.py`, `src/logging_config.py`, and `src/main.py` (output capture).
+Cross-cutting concerns include utility functions, logging, error handling, output capture, and provider-neutral subtitle timing helpers that are shared across pipeline stages. These are implemented in `src/utils.py`, `src/logging_config.py`, `src/main.py` (output capture), and `src/subtitle_timing.py`.
 
 ## Architecture
 
@@ -37,7 +37,7 @@ Cross-cutting concerns include utility functions, logging, error handling, and o
 └──────────────────────────────────────────────────┘
 ```
 
-**Key files:** `src/utils.py`, `src/logging_config.py`, `src/main.py` (output capture)
+**Key files:** `src/utils.py`, `src/logging_config.py`, `src/main.py` (output capture), `src/subtitle_timing.py`
 
 ## Key Classes and Methods
 
@@ -88,6 +88,17 @@ Cross-cutting concerns include utility functions, logging, error handling, and o
 | `__enter__` | — | Start capturing stdout/stderr |
 | `__exit__` | — | Stop capturing |
 
+### Subtitle timing (`src/subtitle_timing.py`)
+
+| Class / Function | Purpose |
+|------------------|---------|
+| `TimedWord` | Provider-neutral word timing model |
+| `TimedCue` | Provider-neutral readable cue timing model |
+| `group_words_into_readable_cues()` | Convert native/aligned word timings into readable phrase cues |
+| `make_heuristic_cues()` | Approximate cue timing from transcript text and audio duration |
+| `parse_webvtt_cues()` | Parse EdgeTTS/WebVTT sidecars into normalized `TimedCue` records |
+| `write_webvtt()` | Format cue timing as deterministic WebVTT text for final `subtitles/subtitles.vtt` sidecars and provider/native VTT normalization |
+
 ## Data Flow
 
 1. **Job creation**: `utils.get_job_dir(job_id)` creates `output/jobs/{job_id}/`
@@ -111,6 +122,7 @@ Cross-cutting concerns include utility functions, logging, error handling, and o
 - **All stages** — Every stage uses `utils.get_job_dir()`, `utils.save_json()`, `utils.load_json()`
 - **All CLI commands** — Every command uses `JobLogger` for per-job logging
 - **All CLI commands** — Stage commands use `job_output_capture()` for output logging
+- **005 TTS Generation / 008 Subtitle Generation** — Video subtitle timing sidecars use `subtitle_timing.py` for normalized words, cues, heuristic audio-only fallback cues, and final `subtitles.vtt` formatting
 
 ## Configuration
 
@@ -118,6 +130,7 @@ Cross-cutting concerns include utility functions, logging, error handling, and o
 |------------|------|---------|---------|
 | `settings.jobs_dir` | Path | `output/jobs/` | All stages |
 | `settings.project_root` | Path | `src/` parent | Root path resolution |
+| `settings.tts_subtitles_*` | mixed | enabled/vtt/auto/readable/heuristic | Video-workflow subtitle timing sidecars only |
 
 ## Integration Points
 

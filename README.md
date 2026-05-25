@@ -105,10 +105,9 @@ python -m src.main script --job-id <job_id> --mock
 python -m src.main tts --job-id <job_id>
 ```
 
-Narration currently uses **Edge TTS only**.
-- **48kHz studio-quality** output
-- **Multiple backends**: CPU, CUDA (NVIDIA), or Vulkan (cross-platform GPU)
-- **Open source**: Apache-2.0 licensed
+Narration supports **Edge TTS** and **Kokoro**.
+- Edge writes native `audio/narration.vtt` timing sidecars.
+- Kokoro is local/audio-only by default and relies on the subtitle stage for readable `subtitles/subtitles.vtt` timing via ASR, heuristic fallback, or optional forced alignment.
 
 See **[docs/VOXCPM_TTS.md](docs/VOXCPM_TTS.md)** for detailed setup instructions.
 - **48kHz studio-quality** output
@@ -169,9 +168,13 @@ You can still pass options through to the launcher:
 
 ### TTS Configuration
 
-- `TTS_PROVIDER` - TTS provider (`edge` only)
+- `TTS_PROVIDER` - TTS provider (`edge` or `kokoro`)
 - `TTS_VOICE` - Edge TTS voice name
 - `TTS_SPEED` - Speech speed multiplier (0.25 to 4.0, default: 1.0)
+- `KOKORO_COMMAND` / `KOKORO_VOICE` / `KOKORO_FORMAT` - local Kokoro narration settings
+- `TTS_SUBTITLES_TIMING` - subtitle timing mode (`auto`, `align`, or fallback-compatible values)
+- `TTS_SUBTITLES_ALIGNMENT_ENABLED` - when true, `auto` mode tries optional forced alignment before ASR
+- `TTS_SUBTITLES_ALIGNER` / `TTS_SUBTITLES_ALIGNER_MODEL` - forced-alignment backend/model (`stable-ts`, `base.en` by default)
 
 ### Image Generation Configuration
 

@@ -7,6 +7,13 @@ from typing import Optional
 
 from src.config import settings
 from src.models import SubtitleSegment, SubtitleResult
+from src.subtitle_timing import (
+    TimedCue,
+    TimedWord,
+    group_words_into_readable_cues,
+    parse_webvtt_cues,
+    write_webvtt,
+)
 from src.utils import load_json, save_json
 
 
@@ -41,6 +48,10 @@ class SubtitleStage:
     ) -> SubtitleResult:
         audio_duration = self._get_audio_duration(audio_path) if audio_path else None
         segments = self._load_edge_tts_segments()
+        if not segments and audio_path:
+            transcript = self._alignment_transcript(script_data)
+            if self._should_attempt_alignment(transcript, audio_path=audio_path):
+                segments = self._aligned_segments(audio_path, transcript)
         if not segments and audio_path and settings.subtitle_asr_enabled:
             segments = self._transcribe_audio_segments(audio_path)
         if not segments:
@@ -54,9 +65,14 @@ class SubtitleStage:
         srt_content = self._format_srt(segments)
 
         srt_path = self.subtitles_dir / "subtitles.srt"
+        vtt_path = self.subtitles_dir / "subtitles.vtt"
         json_path = self.subtitles_dir / "subtitles.json"
 
         srt_path.write_text(srt_content, encoding="utf-8")
+        if self._should_write_vtt_sidecar():
+            vtt_path.write_text(self._format_vtt(segments), encoding="utf-8")
+        elif vtt_path.exists():
+            vtt_path.unlink()
         save_json({"segments": [segment.model_dump() for segment in segments]}, json_path)
 
         return SubtitleResult(
@@ -75,19 +91,10 @@ class SubtitleStage:
         except Exception:
             return []
 
-        segments: list[SubtitleSegment] = []
-        for match in self.SIMPLE_SRT_RE.finditer(text.strip()):
-            raw_text = " ".join(line.strip() for line in match.group("text").splitlines() if line.strip())
-            if not raw_text:
-                continue
-            segments.append(
-                SubtitleSegment(
-                    start_time=self._parse_hhmmss_ms(match.group("start")),
-                    end_time=self._parse_hhmmss_ms(match.group("end")),
-                    text=self._clean_subtitle_text(raw_text),
-                )
-            )
-        return segments
+        return [
+            SubtitleSegment(start_time=cue.start_time, end_time=cue.end_time, text=cue.text)
+            for cue in parse_webvtt_cues(text, source="edge")
+        ]
 
     def _load_scene_plan(self) -> Optional[dict]:
         scene_path = self.scenes_dir / "scenes.json"
@@ -142,6 +149,127 @@ class SubtitleStage:
                 )
             )
         return segments
+
+    def _alignment_transcript(self, script_data: dict) -> str:
+        narration = script_data.get("narration", "")
+        if isinstance(narration, str) and narration.strip():
+            lines = [
+                line.strip()
+                for line in narration.splitlines()
+                if line.strip() and not line.strip().startswith("[")
+            ]
+            return self._clean_subtitle_text(" ".join(lines))
+
+        scene_plan = self._load_scene_plan()
+        if not isinstance(scene_plan, dict):
+            return ""
+        scenes = scene_plan.get("scenes")
+        if not isinstance(scenes, list):
+            return ""
+
+        scene_texts: list[str] = []
+        for scene in scenes:
+            if not isinstance(scene, dict):
+                continue
+            text = self._clean_scene_text(scene.get("narration_segment"))
+            if not text or text.lower() in {"intro branding", "outro branding"}:
+                continue
+            scene_texts.append(text)
+        return self._clean_subtitle_text(" ".join(scene_texts))
+
+    def _should_attempt_alignment(self, transcript: str, *, audio_path: Optional[str]) -> bool:
+        if not audio_path or not transcript.strip():
+            return False
+        timing_mode = settings.tts_subtitles_timing.strip().lower().replace("_", "-")
+        if timing_mode in {"align", "alignment", "forced-align", "forced-alignment", "stable-ts"}:
+            return True
+        return timing_mode == "auto" and bool(settings.tts_subtitles_alignment_enabled)
+
+    def _aligned_segments(self, audio_path: str, transcript: str) -> list[SubtitleSegment]:
+        words = self._align_transcript_words(audio_path, transcript)
+        if not words:
+            return []
+        cues = group_words_into_readable_cues(words, max_words=8, max_duration=3.0)
+        return [
+            SubtitleSegment(
+                start_time=cue.start_time,
+                end_time=cue.end_time,
+                text=cue.text,
+                words=[
+                    {
+                        "text": word.text,
+                        "start": word.start_time,
+                        "end": word.end_time,
+                        "source": word.source,
+                        "confidence": word.confidence,
+                    }
+                    for word in cue.words
+                ],
+            )
+            for cue in cues
+        ]
+
+    def _align_transcript_words(self, audio_path: str, transcript: str) -> list[TimedWord]:
+        aligner = settings.tts_subtitles_aligner.strip().lower()
+        if aligner not in {"stable-ts", "stable_whisper", "stable-whisper"}:
+            return []
+        try:
+            import stable_whisper
+        except Exception:
+            return []
+
+        try:
+            model = stable_whisper.load_model(settings.tts_subtitles_aligner_model)
+            result = model.align(audio_path, transcript)
+        except Exception:
+            return []
+        return self._timed_words_from_alignment_result(result)
+
+    def _timed_words_from_alignment_result(self, result: object) -> list[TimedWord]:
+        if hasattr(result, "to_dict"):
+            try:
+                result = result.to_dict()
+            except Exception:
+                return []
+        if not isinstance(result, dict):
+            return []
+
+        raw_words: list[dict] = []
+        if isinstance(result.get("words"), list):
+            raw_words = [word for word in result["words"] if isinstance(word, dict)]
+        elif isinstance(result.get("segments"), list):
+            for segment in result["segments"]:
+                if not isinstance(segment, dict):
+                    continue
+                words = segment.get("words")
+                if isinstance(words, list):
+                    raw_words.extend(word for word in words if isinstance(word, dict))
+
+        timed_words: list[TimedWord] = []
+        for word in raw_words:
+            text = str(word.get("word") or word.get("text") or "").strip()
+            try:
+                start = float(word.get("start"))
+                end = float(word.get("end"))
+            except (TypeError, ValueError):
+                continue
+            if not text or end <= start:
+                continue
+            confidence_value = word.get("probability", word.get("confidence"))
+            try:
+                confidence = None if confidence_value is None else float(confidence_value)
+            except (TypeError, ValueError):
+                confidence = None
+            timed_words.append(
+                TimedWord(
+                    text=text,
+                    start_time=round(start, 3),
+                    end_time=round(end, 3),
+                    source="alignment",
+                    confidence=confidence,
+                )
+            )
+        return timed_words
 
     def _get_asr_pipeline(self):
         if SubtitleStage._asr_pipeline is not None:
@@ -529,6 +657,28 @@ class SubtitleStage:
             srt_lines.append(seg.text)
             srt_lines.append("")
         return "\n".join(srt_lines)
+
+    def _format_vtt(self, segments: list[SubtitleSegment]) -> str:
+        cues = [
+            TimedCue(
+                start_time=segment.start_time,
+                end_time=segment.end_time,
+                text=segment.text,
+                source="subtitle-stage",
+            )
+            for segment in segments
+        ]
+        return write_webvtt(cues)
+
+    def _should_write_vtt_sidecar(self) -> bool:
+        if not settings.tts_subtitles_enabled:
+            return False
+        requested_formats = {
+            part.strip().lower()
+            for part in settings.tts_subtitles_format.replace("+", ",").split(",")
+            if part.strip()
+        }
+        return "vtt" in requested_formats or "webvtt" in requested_formats
 
     def _format_time(self, seconds: float) -> str:
         hours = int(seconds // 3600)
