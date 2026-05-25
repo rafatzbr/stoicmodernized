@@ -30,6 +30,7 @@ class TimedCue:
 
 
 _SENTENCE_END_RE = re.compile(r"[.!?][\"')\]]*$")
+_SOFT_PHRASE_END_RE = re.compile(r"[,:;][\"')\]]*$")
 _PHRASE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 _WHITESPACE_RE = re.compile(r"\s+")
 _VTT_TIMING_RE = re.compile(
@@ -64,10 +65,13 @@ def group_words_into_readable_cues(
             )
         current.append(word)
         duration = current[-1].end_time - current[0].start_time
+        sentence_break = bool(_SENTENCE_END_RE.search(word.text.strip()))
+        phrase_break = len(current) >= 2 and bool(_SOFT_PHRASE_END_RE.search(word.text.strip()))
         should_close = (
             len(current) >= max_words
             or duration >= max_duration
-            or bool(_SENTENCE_END_RE.search(word.text.strip()))
+            or sentence_break
+            or phrase_break
         )
         if should_close:
             cues.append(_cue_from_words(current))

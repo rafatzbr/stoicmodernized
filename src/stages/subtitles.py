@@ -189,7 +189,8 @@ class SubtitleStage:
         words = self._align_transcript_words(audio_path, transcript)
         if not words:
             return []
-        cues = group_words_into_readable_cues(words, max_words=8, max_duration=3.0)
+        words = self._retime_transcript_words(words, transcript)
+        cues = group_words_into_readable_cues(words, max_words=5, max_duration=2.2)
         return [
             SubtitleSegment(
                 start_time=cue.start_time,
@@ -208,6 +209,80 @@ class SubtitleStage:
             )
             for cue in cues
         ]
+
+    def _retime_transcript_words(self, aligned_words: list[TimedWord], transcript: str) -> list[TimedWord]:
+        """Preserve script text while using aligner timings.
+
+        Stable Whisper can omit tiny words such as articles. Building subtitles
+        directly from those aligned words creates fragmented cue text. Keep the
+        script as the text source and interpolate short spans for omitted words.
+        """
+
+        transcript_tokens = [token for token in transcript.split() if token.strip()]
+        if not transcript_tokens or not aligned_words:
+            return aligned_words
+
+        retimed: list[TimedWord] = []
+        aligned_index = 0
+        previous_end = max(0.0, aligned_words[0].start_time)
+
+        for token_index, token in enumerate(transcript_tokens):
+            token_key = self._normalize_alignment_token(token)
+            match_index = None
+            search_end = min(len(aligned_words), aligned_index + 4)
+            for candidate_index in range(aligned_index, search_end):
+                candidate_key = self._normalize_alignment_token(aligned_words[candidate_index].text)
+                if token_key and token_key == candidate_key:
+                    match_index = candidate_index
+                    break
+
+            if match_index is not None:
+                matched = aligned_words[match_index]
+                start = max(previous_end, matched.start_time)
+                end = max(start + 0.001, matched.end_time)
+                retimed.append(
+                    TimedWord(
+                        text=token,
+                        start_time=round(start, 3),
+                        end_time=round(end, 3),
+                        source=matched.source,
+                        confidence=matched.confidence,
+                    )
+                )
+                previous_end = end
+                aligned_index = match_index + 1
+                continue
+
+            next_start = None
+            for future_token in transcript_tokens[token_index + 1 : token_index + 5]:
+                future_key = self._normalize_alignment_token(future_token)
+                for candidate_index in range(aligned_index, min(len(aligned_words), aligned_index + 6)):
+                    if future_key and future_key == self._normalize_alignment_token(aligned_words[candidate_index].text):
+                        next_start = max(previous_end, aligned_words[candidate_index].start_time)
+                        break
+                if next_start is not None:
+                    break
+
+            if next_start is None:
+                next_start = previous_end + 0.16
+
+            gap = max(0.001, next_start - previous_end)
+            start = previous_end
+            end = min(next_start, previous_end + min(max(gap * 0.75, 0.08), 0.2))
+            retimed.append(
+                TimedWord(
+                    text=token,
+                    start_time=round(start, 3),
+                    end_time=round(max(start + 0.001, end), 3),
+                    source="alignment-inferred",
+                )
+            )
+            previous_end = retimed[-1].end_time
+
+        return retimed
+
+    def _normalize_alignment_token(self, token: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "", token.lower())
 
     def _align_transcript_words(self, audio_path: str, transcript: str) -> list[TimedWord]:
         aligner = settings.tts_subtitles_aligner.strip().lower()

@@ -361,17 +361,6 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
           config: {damping: 200, stiffness: 180},
         });
 
-        const activeWordIndex = chunk.hasWordTimings
-          ? chunk.words.findIndex((word, wordIndex) => {
-              const wordStart = Math.round(word.startTime * fps);
-              const nextStart =
-                wordIndex === chunk.words.length - 1
-                  ? endFrame
-                  : Math.round(chunk.words[wordIndex + 1].startTime * fps);
-              return frame >= wordStart && frame < nextStart;
-            })
-          : -1;
-
         return (
           <div
             key={idx}
@@ -385,63 +374,23 @@ const StoicVideo: React.FC<RemotionRenderProps> = ({
               opacity: subtitleIn,
             }}
           >
-            {chunk.hasWordTimings ? (
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                  gap: isPortrait ? '6px 8px' : '8px 10px',
-                  color: TEXT_COLOR,
-                  textShadow: '0 6px 26px rgba(0,0,0,0.4)',
-                  fontSize: isPortrait ? 58 : 46,
-                  lineHeight: isPortrait ? 1.12 : 1.08,
-                  fontWeight: 950,
-                  letterSpacing: '-0.04em',
-                  textAlign: 'center',
-                }}
-              >
-                {chunk.words.map((word, absoluteWordIndex) => {
-                  const isActiveWord = absoluteWordIndex === activeWordIndex;
-                  return (
-                    <span
-                      key={`${idx}-${absoluteWordIndex}`}
-                      style={{
-                        color: isActiveWord ? '#111827' : TEXT_COLOR,
-                        background: isActiveWord
-                          ? `linear-gradient(135deg, ${HIGHLIGHT_COLOR}, ${BRAND_ACCENT})`
-                          : 'transparent',
-                        padding: isActiveWord ? '0.08em 0.18em' : 0,
-                        borderRadius: isActiveWord ? 14 : 0,
-                        boxShadow: isActiveWord ? '0 10px 30px rgba(245,158,11,0.35)' : 'none',
-                        transform: isActiveWord ? 'scale(1.04)' : 'scale(1)',
-                        transition: 'all 120ms ease-out',
-                      }}
-                    >
-                      {word.text}
-                    </span>
-                  );
-                })}
-              </div>
-            ) : (
-              <div
-                style={{
-                  color: TEXT_COLOR,
-                  textShadow: '0 6px 26px rgba(0,0,0,0.4)',
-                  fontSize: isPortrait ? 58 : 46,
-                  lineHeight: isPortrait ? 1.12 : 1.08,
-                  fontWeight: 950,
-                  letterSpacing: '-0.04em',
-                  textAlign: 'center',
-                  whiteSpace: 'normal',
-                  wordBreak: 'normal',
-                  overflowWrap: 'normal',
-                  maxWidth: '100%',
-                }}
-              >
-                {chunk.text}
-              </div>
-            )}
+            <div
+              style={{
+                color: TEXT_COLOR,
+                textShadow: '0 6px 26px rgba(0,0,0,0.4)',
+                fontSize: isPortrait ? 58 : 46,
+                lineHeight: isPortrait ? 1.12 : 1.08,
+                fontWeight: 950,
+                letterSpacing: '-0.04em',
+                textAlign: 'center',
+                whiteSpace: 'normal',
+                wordBreak: 'normal',
+                overflowWrap: 'normal',
+                maxWidth: '100%',
+              }}
+            >
+              {chunk.text}
+            </div>
           </div>
         );
       })}

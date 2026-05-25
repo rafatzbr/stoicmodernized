@@ -251,7 +251,7 @@ class TTSStage:
             return KokoroTTSAudio(
                 command=settings.kokoro_command,
                 voice=settings.kokoro_voice,
-                speed=settings.tts_speed,
+                speed=settings.kokoro_speed if settings.kokoro_speed is not None else settings.tts_speed,
                 timeout_seconds=settings.kokoro_timeout_seconds,
                 model_path=settings.kokoro_model_path,
                 voices_path=settings.kokoro_voices_path,

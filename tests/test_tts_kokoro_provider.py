@@ -14,6 +14,7 @@ def test_kokoro_provider_config_is_available() -> None:
     assert TTSProvider.KOKORO.value == "kokoro"
     assert settings.kokoro_command == "kokoro-tts"
     assert settings.kokoro_voice == "bm_lewis"
+    assert settings.kokoro_speed == 0.82
     assert settings.kokoro_format == "wav"
     assert settings.kokoro_timeout_seconds > 0
     assert settings.kokoro_language == "en-gb"
@@ -54,6 +55,40 @@ async def test_kokoro_stage_generates_audio_without_native_vtt_sidecar(
     assert path.exists()
     assert path.stat().st_size > 0
     assert not (stage.audio_dir / "narration.vtt").exists()
+
+
+@pytest.mark.asyncio
+async def test_kokoro_stage_uses_kokoro_specific_speed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import src.stages.tts as tts_module
+
+    observed = {}
+
+    def fake_audio_interface(self):
+        configured_speed = tts_module.settings.kokoro_speed
+        assert configured_speed is not None
+        audio = KokoroTTSAudio(command="kokoro-tts", voice="bm_lewis", speed=configured_speed)
+        observed["speed"] = audio.speed
+        return audio
+
+    async def fake_generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"fake kokoro wav")
+        return output_path
+
+    monkeypatch.setattr(tts_module.settings, "tts_speed", 1.0)
+    monkeypatch.setattr(tts_module.settings, "kokoro_speed", 0.82)
+    monkeypatch.setattr(TTSStage, "_audio_interface", fake_audio_interface)
+    monkeypatch.setattr(KokoroTTSAudio, "generate_audio", fake_generate_audio)
+
+    stage = TTSStage(job_id="kokoro-speed-job", provider="kokoro", mock=False)
+    stage.job_dir = tmp_path / "jobs" / "kokoro-speed-job"
+    stage.audio_dir = stage.job_dir / "audio"
+
+    await stage.run({"scenes": [{"narration_segment": "Speak at the channel pace."}]})
+
+    assert observed["speed"] == 0.82
 
 
 def test_kokoro_audio_invokes_configured_command(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

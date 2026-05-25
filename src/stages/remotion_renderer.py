@@ -216,27 +216,17 @@ class RemotionRenderer:
                 'titleText': scene.get('title_text'),
             })
 
-        # Build subtitles array
+        # Build subtitles array.
+        # Keep aligner/native word timings in the subtitle sidecar for sync diagnostics,
+        # but do not pass per-word timings into Remotion. The video should display
+        # readable phrase cues as complete phrases, not karaoke-style word highlights.
         remotion_subtitles = []
         for sub in subtitles:
-            words = sub.get('words')
-            if words and isinstance(words, list):
-                remotion_words = [
-                    {
-                        'startTime': float(w.get('start', 0)),
-                        'endTime': float(w.get('end', 0)),
-                        'text': w.get('text', ''),
-                    }
-                    for w in words
-                ]
-            else:
-                remotion_words = None
-
             remotion_subtitles.append({
                 'startTime': float(sub.get('start_time', 0)),
                 'endTime': float(sub.get('end_time', 0)),
                 'text': sub.get('text', ''),
-                'words': remotion_words,
+                'words': None,
             })
 
         # Calculate total duration

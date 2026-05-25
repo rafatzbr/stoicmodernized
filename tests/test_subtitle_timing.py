@@ -34,6 +34,30 @@ def test_groups_native_words_into_readable_phrase_cues() -> None:
     assert len(cues[0].words) == 6
 
 
+def test_groups_native_words_into_short_phrase_cues_at_commas() -> None:
+    words = [
+        TimedWord(text="When", start_time=0.0, end_time=0.1, source="native"),
+        TimedWord(text="the", start_time=0.1, end_time=0.2, source="native"),
+        TimedWord(text="priority", start_time=0.2, end_time=0.5, source="native"),
+        TimedWord(text="changes", start_time=0.5, end_time=0.9, source="native"),
+        TimedWord(text="at", start_time=0.9, end_time=1.1, source="native"),
+        TimedWord(text="four,", start_time=1.1, end_time=1.5, source="native"),
+        TimedWord(text="the", start_time=1.5, end_time=1.65, source="native"),
+        TimedWord(text="test", start_time=1.65, end_time=1.9, source="native"),
+        TimedWord(text="is", start_time=1.9, end_time=2.1, source="native"),
+        TimedWord(text="not", start_time=2.1, end_time=2.3, source="native"),
+        TimedWord(text="speed.", start_time=2.3, end_time=2.8, source="native"),
+    ]
+
+    cues = group_words_into_readable_cues(words, max_words=5, max_duration=2.2)
+
+    assert [cue.text for cue in cues] == [
+        "When the priority changes at",
+        "four, the test is not",
+        "speed.",
+    ]
+
+
 def test_write_webvtt_formats_cues_with_dot_milliseconds_and_final_newline() -> None:
     cues = [
         TimedCue(start_time=1.2, end_time=3.8, text="You do not control the interruption."),

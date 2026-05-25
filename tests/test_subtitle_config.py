@@ -12,7 +12,7 @@ def test_subtitle_video_workflow_config_defaults_to_vtt_auto_readable_heuristic(
     assert settings.tts_subtitles_timing == "auto"
     assert settings.tts_subtitles_phrase_style == "readable"
     assert settings.tts_subtitles_fallback == "heuristic"
-    assert settings.tts_subtitles_alignment_enabled is False
+    assert settings.tts_subtitles_alignment_enabled is True
     assert settings.tts_subtitles_aligner == "stable-ts"
     assert settings.tts_subtitles_aligner_model == "base.en"
 

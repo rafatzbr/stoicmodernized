@@ -69,3 +69,31 @@ def test_forced_alignment_is_skipped_when_disabled(monkeypatch) -> None:
     stage = SubtitleStage(job_id="forced-align-disabled", mock=True)
 
     assert stage._should_attempt_alignment("Anything", audio_path="narration.mp3") is False
+
+
+def test_alignment_preserves_script_words_missing_from_aligner() -> None:
+    stage = SubtitleStage(job_id="forced-align-retime", mock=True)
+
+    aligned_words = [
+        TimedWord(text="When", start_time=0.00, end_time=0.20, source="alignment"),
+        TimedWord(text="the", start_time=0.20, end_time=0.35, source="alignment"),
+        TimedWord(text="priority", start_time=0.35, end_time=0.80, source="alignment"),
+        TimedWord(text="changes", start_time=0.80, end_time=1.10, source="alignment"),
+        TimedWord(text="at", start_time=1.10, end_time=1.22, source="alignment"),
+        TimedWord(text="four,", start_time=1.22, end_time=1.60, source="alignment"),
+        TimedWord(text="test", start_time=1.82, end_time=2.05, source="alignment"),
+        TimedWord(text="is", start_time=2.05, end_time=2.20, source="alignment"),
+        TimedWord(text="not", start_time=2.20, end_time=2.40, source="alignment"),
+        TimedWord(text="speed.", start_time=2.40, end_time=2.80, source="alignment"),
+    ]
+
+    retimed = stage._retime_transcript_words(
+        aligned_words,
+        "When the priority changes at four, the test is not speed.",
+    )
+
+    assert " ".join(word.text for word in retimed) == (
+        "When the priority changes at four, the test is not speed."
+    )
+    inserted = next(word for word in retimed if word.text == "the" and word.source == "alignment-inferred")
+    assert 1.60 <= inserted.start_time < inserted.end_time <= 1.82

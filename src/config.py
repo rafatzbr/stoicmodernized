@@ -100,6 +100,7 @@ class Settings(BaseSettings):
     tts_api_key: Optional[str] = None
     kokoro_command: str = "kokoro-tts"
     kokoro_voice: str = "bm_lewis"
+    kokoro_speed: Optional[float] = 0.82
     kokoro_format: str = "wav"
     kokoro_timeout_seconds: float = 300.0
     kokoro_model_path: Optional[Path] = Path.home() / ".cache" / "kokoro-onnx" / "kokoro-v1.0.onnx"
@@ -115,7 +116,7 @@ class Settings(BaseSettings):
     tts_subtitles_timing: str = "auto"
     tts_subtitles_phrase_style: str = "readable"
     tts_subtitles_fallback: str = "heuristic"
-    tts_subtitles_alignment_enabled: bool = False
+    tts_subtitles_alignment_enabled: bool = True
     tts_subtitles_aligner: str = "stable-ts"
     tts_subtitles_aligner_model: str = "base.en"
 
