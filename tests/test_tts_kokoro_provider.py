@@ -14,7 +14,7 @@ def test_kokoro_provider_config_is_available() -> None:
     assert TTSProvider.KOKORO.value == "kokoro"
     assert settings.kokoro_command == "kokoro-tts"
     assert settings.kokoro_voice == "bm_lewis"
-    assert settings.kokoro_speed == 0.76
+    assert settings.kokoro_speed == 0.85
     assert settings.kokoro_format == "wav"
     assert settings.kokoro_timeout_seconds > 0
     assert settings.kokoro_language == "en-gb"

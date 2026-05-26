@@ -76,7 +76,7 @@ The TTS generation stage converts narration text into spoken audio using a selec
 | `settings.tts_speed` | float | `1.0` | TTS playback speed |
 | `settings.kokoro_command` | str | `"kokoro-tts"` | Local Kokoro CLI command |
 | `settings.kokoro_voice` | str | `"bm_lewis"` | Kokoro voice ID; Rafael-approved Stoic Modernized default from the Kokoro voice bake-off |
-| `settings.kokoro_speed` | Optional[float] | `0.76` | Kokoro narration speed; calm but avoids the over-slow 0.66 pacing that made Shorts feel sluggish |
+| `settings.kokoro_speed` | Optional[float] | `0.85` | Kokoro narration speed; faster production pacing while avoiding the over-slow 0.66 pacing that made Shorts feel sluggish |
 | `settings.kokoro_format` | str | `"wav"` | Kokoro narration file extension |
 | `settings.kokoro_timeout_seconds` | float | `300.0` | Kokoro CLI timeout/fallback timeout |
 | `settings.kokoro_model_path` | Optional[Path] | `~/.cache/kokoro-onnx/kokoro-v1.0.onnx` | Direct `kokoro_onnx` model path |

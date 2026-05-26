@@ -205,7 +205,7 @@ Added `test_scene_plan_fallback_scales_all_scene_text_to_actual_audio_duration` 
 Rafael reported a Kokoro Shorts render that felt too slow while phrase subtitles disappeared too fast. The render used `kokoro_speed=0.66`, and forced-aligned cue retiming displayed exact first/last spoken-word spans, making short captions such as “It is ownership.” visible for well under a readable hold time.
 
 ### Fix
-Use a calmer-but-moving Kokoro default (`kokoro_speed=0.76`) and keep alignment as the sync source, not the display-duration policy. Group aligned words into short phrase cues and apply readability windows that extend short phrases through available pauses without overlapping the next cue.
+Use the current Kokoro production default (`kokoro_speed=0.85`) and keep alignment as the sync source, not the display-duration policy. Group aligned words into short phrase cues and apply readability windows that extend short phrases through available pauses without overlapping the next cue.
 
 ### Verification
 Before rendering, inspect subtitle metrics for minimum cue duration and high-CPS short cues. Regression coverage lives in `tests/test_subtitle_timing.py` and `tests/test_subtitle_forced_alignment.py`.
