@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import datetime as dt
+import html
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,7 +30,7 @@ HTML_TEMPLATE = """<!doctype html>
     .bar{{display:grid;grid-template-columns:1fr auto;gap:12px;margin:18px 0}} input{{width:100%;min-height:44px;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:0 14px;font-size:15px}} input:focus{{outline:1px solid var(--accent);border-color:var(--accent)}}
     .crumbs{{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:18px 0;color:var(--muted)}} .crumbs a{{text-decoration:none;border:1px solid var(--line);padding:6px 10px;background:rgba(18,18,18,.8)}} .crumbs a:hover{{border-color:var(--text);color:var(--text)}}
     .summary{{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:14px;margin-bottom:14px}} .summary b{{color:var(--text)}}
-    .list{{border:1px solid var(--line);background:rgba(12,12,12,.8)}} .row{{display:grid;grid-template-columns:minmax(220px,1fr) 130px 210px 98px;gap:14px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);text-decoration:none}} .row:last-child{{border-bottom:0}} .row:hover{{background:var(--panel2)}} .head{{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.1em;background:#0d0d0d}} .sort{{appearance:none;background:transparent;border:0;color:inherit;padding:0;font:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;text-align:left}} .sort:hover,.sort:focus{{color:var(--text);outline:0}} .sort .arrow{{display:inline-block;min-width:1em;color:var(--accent)}} .name{{display:flex;align-items:center;gap:10px;min-width:0}} .icon{{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);flex:0 0 auto}} .label{{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}} .kind,.date,.size{{color:var(--muted);font-size:14px}} .empty{{padding:42px;text-align:center;color:var(--muted)}}
+    .list{{border:1px solid var(--line);background:rgba(12,12,12,.8)}} .row{{display:grid;grid-template-columns:minmax(220px,1fr) 130px 210px 98px;gap:14px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);text-decoration:none}} .row:last-child{{border-bottom:0}} .row:hover{{background:var(--panel2)}} .head{{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.1em;background:#0d0d0d}} .sort{{appearance:none;background:transparent;border:0;color:inherit;padding:0;font:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;text-align:left}} .sort:hover,.sort:focus{{color:var(--text);outline:0}} .sort .arrow{{display:inline-block;min-width:1em;color:var(--accent)}} .name{{display:flex;align-items:center;gap:10px;min-width:0}} .icon{{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);flex:0 0 auto}} .name-text{{min-width:0}} .label{{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}} .sub{{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px;margin-top:2px}} .kind,.date,.size{{color:var(--muted);font-size:14px}} .empty{{padding:42px;text-align:center;color:var(--muted)}}
     .footer{{margin-top:22px;color:var(--muted);font-size:13px}} .accent{{color:var(--accent)}}
     @media(max-width:760px){{header{{display:block}}.toplinks{{justify-content:flex-start;margin-top:18px}}.bar{{grid-template-columns:1fr}}.row{{grid-template-columns:1fr;gap:6px}}.head{{display:none}}.kind:before{{content:'Type: ';color:#777}}.size:before{{content:'Size: ';color:#777}}.date:before{{content:'Modified: ';color:#777}}}}
   </style>
@@ -55,7 +57,7 @@ HTML_TEMPLATE = """<!doctype html>
   <script id=\"tree-data\" type=\"application/json\">{tree_json}</script>
   <script>
     const tree = JSON.parse(document.getElementById('tree-data').textContent); const rows = document.getElementById('rows'); const crumbs = document.getElementById('crumbs'); const summary = document.getElementById('summary'); const search = document.getElementById('search'); const openFolder = document.getElementById('downloadCurrent'); const sortButtons = document.querySelectorAll('[data-sort]');
-    let sortKey = 'name'; let sortDir = 'asc';
+    let sortKey = 'modified'; let sortDir = 'desc';
     function fmtSize(bytes) {{ if (bytes === null || bytes === undefined) return '—'; const units = ['B','KB','MB','GB']; let n = bytes; let i = 0; while (n >= 1024 && i < units.length - 1) {{ n /= 1024; i++; }} return `${{n.toFixed(i ? 1 : 0)}} ${{units[i]}}`; }}
     function fmtDate(iso) {{ return new Date(iso).toLocaleString(undefined, {{year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'}}); }}
     function currentPath() {{ return decodeURIComponent((location.hash || '#/').slice(1)).replace(/^[/]/,'').replace(/[/]$/,''); }}
@@ -66,10 +68,12 @@ HTML_TEMPLATE = """<!doctype html>
     function escapeHtml(value) {{ return String(value).replace(/[&<>\"']/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}}[c])); }}
     function renderCrumbs(path) {{ const parts = path ? path.split('/') : []; let acc = ''; crumbs.innerHTML = `<a href=\"#/\">videos</a>` + parts.map(part => {{ acc = acc ? acc + '/' + part : part; return `<span>/</span><a href=\"#/${{encodeURI(acc)}}\">${{escapeHtml(part)}}</a>`; }}).join(''); }}
     function fileIcon(name) {{ const n = name.toLowerCase(); if (n.endsWith('.mp4')) return '🎬'; if (n.endsWith('.jpg')||n.endsWith('.png')||n.endsWith('.webp')) return '🖼️'; if (n.endsWith('.html')) return '🌐'; if (n.endsWith('.json')) return '🧾'; return '📄'; }}
-    function sortValue(item) {{ if (sortKey === 'modified') return new Date(item.modified).getTime() || 0; return item.name.toLowerCase(); }}
+    function displayName(item) {{ return item.title || item.name; }}
+    function sortValue(item) {{ if (sortKey === 'modified') return new Date(item.modified).getTime() || 0; return displayName(item).toLowerCase(); }}
     function sortedChildren(children) {{ const direction = sortDir === 'asc' ? 1 : -1; return [...children].sort((a, b) => {{ if (a.type !== b.type) return a.type === 'directory' ? -1 : 1; const av = sortValue(a); const bv = sortValue(b); if (av < bv) return -1 * direction; if (av > bv) return 1 * direction; return a.name.localeCompare(b.name); }}); }}
     function updateSortIndicators() {{ document.getElementById('sortName').textContent = sortKey === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''; document.getElementById('sortModified').textContent = sortKey === 'modified' ? (sortDir === 'asc' ? '↑' : '↓') : ''; }}
-    function render() {{ const node = findNode(currentPath()); const q = search.value.trim().toLowerCase(); renderCrumbs(node.path || ''); openFolder.href = node.path ? '/' + node.path + '/' : '/'; const children = sortedChildren((node.children || []).filter(item => !q || item.name.toLowerCase().includes(q))); const dirs = children.filter(i => i.type === 'directory').length; const files = children.length - dirs; updateSortIndicators(); summary.innerHTML = `<span><b>${{dirs}}</b> directories</span><span><b>${{files}}</b> files</span><span>Current: <b class=\"mono\">/${{escapeHtml(node.path || '')}}</b></span>`; if (!children.length) {{ rows.innerHTML = '<div class=\"empty\">No files match this filter.</div>'; return; }} rows.innerHTML = children.map(item => `<a class=\"row\" href=\"${{hrefFor(item)}}\" ${{targetAttrs(item)}}><div class=\"name\"><span class=\"icon\">${{item.type === 'directory' ? '📁' : fileIcon(item.name)}}</span><span class=\"label\">${{escapeHtml(item.name)}}</span></div><div class=\"kind\">${{item.type}}</div><div class=\"date\">${{fmtDate(item.modified)}}</div><div class=\"size\">${{fmtSize(item.size)}}</div></a>`).join(''); }}
+    function matchesQuery(item, q) {{ if (!q) return true; return [item.name, item.title, item.path].filter(Boolean).some(value => value.toLowerCase().includes(q)); }}
+    function render() {{ const node = findNode(currentPath()); const q = search.value.trim().toLowerCase(); renderCrumbs(node.path || ''); openFolder.href = node.path ? '/' + node.path + '/' : '/'; const children = sortedChildren((node.children || []).filter(item => matchesQuery(item, q))); const dirs = children.filter(i => i.type === 'directory').length; const files = children.length - dirs; updateSortIndicators(); summary.innerHTML = `<span><b>${{dirs}}</b> directories</span><span><b>${{files}}</b> files</span><span>Current: <b class=\"mono\">/${{escapeHtml(node.path || '')}}</b></span>`; if (!children.length) {{ rows.innerHTML = '<div class=\"empty\">No files match this filter.</div>'; return; }} rows.innerHTML = children.map(item => `<a class=\"row\" href=\"${{hrefFor(item)}}\" ${{targetAttrs(item)}}><div class=\"name\"><span class=\"icon\">${{item.type === 'directory' ? '📁' : fileIcon(item.name)}}</span><span class=\"name-text\"><span class=\"label\">${{escapeHtml(displayName(item))}}</span>${{item.title ? `<span class=\"sub mono\">${{escapeHtml(item.name)}}</span>` : ''}}</span></div><div class=\"kind\">${{item.type}}</div><div class=\"date\">${{fmtDate(item.modified)}}</div><div class=\"size\">${{fmtSize(item.size)}}</div></a>`).join(''); }}
     sortButtons.forEach(button => button.addEventListener('click', () => {{ const key = button.dataset.sort; if (sortKey === key) {{ sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }} else {{ sortKey = key; sortDir = key === 'modified' ? 'desc' : 'asc'; }} render(); }}));
     addEventListener('hashchange', () => {{ search.value = ''; render(); }}); search.addEventListener('input', render); render();
   </script>
@@ -78,30 +82,57 @@ HTML_TEMPLATE = """<!doctype html>
 """
 
 
-def node_for(path: Path) -> dict:
+def title_for_directory(path: Path) -> str | None:
+    """Return the human video title from a per-job helper page, when present."""
+    index_path = path / "index.html"
+    if not index_path.exists():
+        return None
+    try:
+        text = index_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = re.search(r'<div[^>]+id=["\']title["\'][^>]*>(.*?)</div>', text, flags=re.IGNORECASE | re.DOTALL)
+    if not match:
+        return None
+    title = re.sub(r"<[^>]+>", "", match.group(1)).strip()
+    return html.unescape(title) or None
+
+
+def node_for(path: Path, public_root: Path = PUBLIC_ROOT, inherited_title: str | None = None) -> dict:
     stat = path.stat()
-    rel = path.relative_to(PUBLIC_ROOT).as_posix() if path != PUBLIC_ROOT else ""
+    rel = path.relative_to(public_root).as_posix() if path != public_root else ""
     item: dict = {
-        "name": path.name if path != PUBLIC_ROOT else "videos",
+        "name": path.name if path != public_root else "videos",
         "path": rel,
         "type": "directory" if path.is_dir() else "file",
         "size": stat.st_size if path.is_file() else None,
         "modified": dt.datetime.fromtimestamp(stat.st_mtime, tz=dt.UTC).isoformat(timespec="seconds"),
         "url": f"/{rel}" if rel else "/",
     }
+    if inherited_title and path.is_file() and path.suffix.lower() == ".mp4":
+        item["title"] = inherited_title
     if path.is_dir():
+        title = title_for_directory(path) or inherited_title
+        if title:
+            item["title"] = title
         item["children"] = [
-            node_for(child)
+            node_for(child, public_root=public_root, inherited_title=title)
             for child in sorted(path.iterdir(), key=lambda candidate: (not candidate.is_dir(), candidate.name.lower()))
             if child.name != ".DS_Store"
         ]
     return item
 
 
+def generate_explorer(public_root: Path = PUBLIC_ROOT, output: Path | None = None) -> Path:
+    public_root.mkdir(parents=True, exist_ok=True)
+    output = output or public_root / "videos.html"
+    tree_json = json.dumps(node_for(public_root, public_root=public_root), separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+    output.write_text(HTML_TEMPLATE.format(tree_json=tree_json), encoding="utf-8")
+    return output
+
+
 def main() -> None:
-    tree_json = json.dumps(node_for(PUBLIC_ROOT), separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
-    OUTPUT.write_text(HTML_TEMPLATE.format(tree_json=tree_json), encoding="utf-8")
-    print(OUTPUT)
+    print(generate_explorer(PUBLIC_ROOT, OUTPUT))
 
 
 if __name__ == "__main__":

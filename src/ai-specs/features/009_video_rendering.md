@@ -79,6 +79,7 @@ Both renderers are instantiated and called from the `render()` CLI command in `m
    - `StoicPortrait` for portrait mode
 8. **Output**: Video saved to `output/jobs/{job_id}/remotion_output.mp4`
 9. **DB update**: `db.update_job(job_id, status="render_complete", video_path=...)`
+10. **Media explorer publish**: the subsequent `metadata` command copies the MP4 to `output/social_public/{job_id}/`, writes `index.html`, and refreshes `output/social_public/videos.html` for `stoicmodernized.zweb.ca` / `media.zweb.ca` browsing.
 
 ## Business Rules
 

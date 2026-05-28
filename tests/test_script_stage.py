@@ -308,3 +308,90 @@ class TestScriptStage:
                 },
                 topic="strategic patience",
             )
+
+    def test_short_quality_rejects_third_repeated_your_boss_opener(self, tmp_path: Path) -> None:
+        stage = ScriptStage(job_id="current-job", mock=False, video_mode=VideoMode.SHORT)
+        stage.job_dir = tmp_path / "current-job"
+        stage.script_dir = stage.job_dir / "script"
+        stage.script_dir.mkdir(parents=True, exist_ok=True)
+        for idx, hook in enumerate(
+            [
+                "Your boss changed priorities at 4 PM. You feel the rush to prove you can adapt.",
+                "Your boss calls an emergency meeting. You start over-explaining before anyone asks.",
+            ]
+        ):
+            recent_dir = tmp_path / f"recent-{idx}" / "script"
+            recent_dir.mkdir(parents=True, exist_ok=True)
+            (recent_dir / "script.json").write_text(
+                json.dumps({"hook": hook, "narration": hook, "title": "Recent Script"}),
+                encoding="utf-8",
+            )
+
+        script = Script(
+            title="Stay Steady Under Priority Pressure",
+            hook="Your boss shifts priorities again. You can answer without surrendering your pace.",
+            narration="[0:00-0:12] Hook\nYour boss shifts priorities again. You can answer without surrendering your pace.\n\n[0:12-0:30] Stoic Principle\nSeparate the request from the panic around it, because the assignment is outside your control and your judgment is not.\n\n[0:30-0:50] Workplace Application\nBefore replying, write the tradeoff, name the next useful action, and ask which deadline should move instead of silently absorbing the chaos.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            chapters=[],
+            cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            short_version="short",
+            generated_at=datetime.now(UTC),
+        )
+
+        with pytest.raises(ScriptGenerationError, match="repeats recent opener pattern: your boss"):
+            stage._enforce_generated_script_quality(script)
+
+    def test_short_quality_rejects_script_too_similar_to_recent_video(self, tmp_path: Path) -> None:
+        stage = ScriptStage(job_id="current-job", mock=False, video_mode=VideoMode.SHORT)
+        stage.job_dir = tmp_path / "current-job"
+        stage.script_dir = stage.job_dir / "script"
+        stage.script_dir.mkdir(parents=True, exist_ok=True)
+        recent_dir = tmp_path / "recent-similar" / "script"
+        recent_dir.mkdir(parents=True, exist_ok=True)
+        (recent_dir / "script.json").write_text(
+            json.dumps(
+                {
+                    "title": "Stop Resenting Priority Shifts",
+                    "hook": "A deadline moves late Friday and your whole body wants to argue.",
+                    "narration": "Separate the request from the resentment, name the tradeoff, write the next useful action, ask which deadline should move, and keep your pace instead of silently absorbing the urgency.",
+                }
+            ),
+            encoding="utf-8",
+        )
+        script = Script(
+            title="Handle Late Priority Shifts",
+            hook="A deadline moves late Friday and your first impulse is to argue.",
+            narration="[0:00-0:12] Hook\nA deadline moves late Friday and your first impulse is to argue.\n\n[0:12-0:30] Stoic Principle\nSeparate the request from resentment so the urgency does not own your judgment or pace.\n\n[0:30-0:50] Workplace Application\nName the tradeoff, write the next useful action, ask which deadline should move, and stop silently absorbing urgency that was never yours.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            chapters=[],
+            cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            short_version="short",
+            generated_at=datetime.now(UTC),
+        )
+
+        with pytest.raises(ScriptGenerationError, match="too similar to recent script"):
+            stage._enforce_generated_script_quality(script)
+
+    def test_build_scratch_prompt_lists_recent_openings_to_avoid(self, tmp_path: Path) -> None:
+        stage = ScriptStage(job_id="current-job", mock=False, video_mode=VideoMode.SHORT)
+        stage.job_dir = tmp_path / "current-job"
+        for idx, hook in enumerate(
+            [
+                "Your boss calls an emergency 9 AM meeting.",
+                "Your boss changes priorities right before close.",
+            ]
+        ):
+            recent_dir = tmp_path / f"recent-job-{idx}" / "script"
+            recent_dir.mkdir(parents=True, exist_ok=True)
+            (recent_dir / "script.json").write_text(
+                json.dumps({"title": "Recent", "hook": hook, "narration": "same"}),
+                encoding="utf-8",
+            )
+
+        prompt = stage._build_scratch_prompt(
+            research_packet={"topic": "priority shifts"},
+            whiskers_brief={"work_scenario": "late-day priority changes"},
+            ledger_strategy={},
+        )
+
+        assert "Recent script openings to avoid" in prompt
+        assert "Your boss calls an emergency 9 AM meeting" in prompt
+        assert "Do not start with `Your boss`" in prompt

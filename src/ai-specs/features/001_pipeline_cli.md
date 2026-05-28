@@ -88,8 +88,8 @@ Uses `TeeTextIO` to mirror writes to both the console and the log file simultane
 2. **Job lookup** → `_load_job_record(job_id)` fetches from SQLite via `db.get_job(job_id)`
 3. **Logger init** → `JobLogger(job_id)` creates per-job logger with dedicated log file
 4. **Stage instantiation** → `StageClass(job_id=job_id, mock=mock)`
-5. **Stage execution** → `asyncio.run(stage.run(...))`
-6. **Artifact save** → `stage.save_*()` writes JSON to `output/jobs/{job_id}/{stage}/`
+5. **Stage execution** → `asyncio.run(stage.run(...))` or synchronous helper execution
+6. **Artifact save** → `stage.save_*()` writes JSON to `output/jobs/{job_id}/{stage}/`; `metadata()` also publishes the rendered MP4 and per-job `index.html` into `output/social_public/{job_id}/` and refreshes `output/social_public/videos.html`
 7. **DB update** → `db.update_job(job_id, status="*_complete", <artifact>_path=...)`
 8. **Console output** → Rich-formatted tables and status messages
 

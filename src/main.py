@@ -32,7 +32,7 @@ from src.stages.research import ResearchStage
 from src.stages.scenes import SceneStage
 from src.stages.script import ScriptGenerationError, ScriptStage
 from src.stages.subtitles import SubtitleStage
-from src.stages.social_distribution import SocialDistributionStage
+from src.stages.social_distribution import SocialDistributionStage, publish_media_explorer_artifacts
 from src.stages.tts import TTSStage
 from src.stages.narration_prep import NarrationPreparationStage
 from src.stages.upload import YouTubeUploader
@@ -951,6 +951,12 @@ def metadata(
     )
     metadata_path = _save_metadata(job_id, metadata_payload)
     covered_news_added = _save_covered_news(job_id, metadata_payload["title"])
+    media_explorer_result = None
+    video_path = getattr(job_record, "video_path", None)
+    if video_path:
+        media_explorer_result = publish_media_explorer_artifacts(job_id, video_path, metadata_payload)
+    else:
+        console.print("[yellow]Warning: No rendered video path found; media explorer publish skipped.[/yellow]")
 
     console.print()
     console.print("[bold green]Metadata Complete![/bold green]")
@@ -959,6 +965,10 @@ def metadata(
     console.print(f"[dim]Metadata path:[/dim] {metadata_path}")
     if covered_news_added:
         console.print(f"[dim]Covered stories saved:[/dim] {covered_news_added}")
+    if media_explorer_result:
+        console.print(f"[dim]Media explorer page:[/dim] {media_explorer_result['path']}")
+        if media_explorer_result.get("url"):
+            console.print(f"[dim]Public media page:[/dim] {media_explorer_result['url']}")
     console.print(f"[dim]Next step:[/dim] python -m src.main upload {job_id}")
 
 

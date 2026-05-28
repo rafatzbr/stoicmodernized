@@ -18,6 +18,7 @@ from typing import Any
 
 import requests
 
+from scripts.generate_social_public_explorer import generate_explorer
 from src.config import ENV_FILE, settings
 from src.utils import load_json, save_json
 
@@ -89,6 +90,64 @@ def build_social_captions(metadata: dict[str, Any], channel_name: str = "Stoic M
         "tiktok": _truncate_at_word(f"{short_body} {hashtag_tail}".strip(), 2200),
         "instagram": _truncate_at_word(f"{title_lead}\n\n{medium_body}\n\n{hashtag_tail}".strip(), 2200),
         "facebook": _truncate_at_word(f"{medium_body}\n\n{hashtag_tail}".strip(), 5000),
+    }
+
+
+def public_media_url(job_id: str, filename: str) -> str | None:
+    """Return the public HTTPS URL for a staged social_public job artifact."""
+    base_url = settings.social_video_public_base_url
+    if not base_url:
+        return None
+    return f"{base_url.rstrip('/')}/{job_id}/{filename}"
+
+
+def publish_media_explorer_artifacts(
+    job_id: str,
+    video_path: str | Path,
+    metadata: dict[str, Any],
+    captions: dict[str, str] | None = None,
+) -> dict[str, str | Path | None]:
+    """Stage a rendered MP4 and helper page into output/social_public and refresh videos.html.
+
+    This is intentionally separate from social API publishing so normal video
+    generation jobs always leave a browsable/reviewable artifact at the public
+    Stoic Modernized media origin.
+    """
+    source_video_path = Path(video_path)
+    if not source_video_path.exists():
+        raise FileNotFoundError(f"Rendered video not found for media explorer publish: {source_video_path}")
+
+    captions = captions or build_social_captions(metadata, channel_name=settings.channel_name)
+    public_root = settings.jobs_dir.parent / "social_public"
+    public_dir = public_root / job_id
+    public_dir.mkdir(parents=True, exist_ok=True)
+
+    public_video_path = public_dir / source_video_path.name
+    if source_video_path.resolve() != public_video_path.resolve():
+        shutil.copy2(source_video_path, public_video_path)
+
+    title = str(metadata.get("title") or "Untitled Video").replace(f" | {settings.channel_name}", "").strip()
+    description = captions.get("instagram") or _strip_youtube_boilerplate(str(metadata.get("description") or "")) or title
+    public_video_url = public_media_url(job_id, public_video_path.name)
+    public_page_url = f"{settings.social_video_public_base_url.rstrip('/')}/{job_id}/" if settings.social_video_public_base_url else None
+    page_path = public_dir / "index.html"
+    page_path.write_text(
+        _render_instagram_upload_page(
+            title=title,
+            description=description,
+            video_filename=public_video_path.name,
+            public_video_url=public_video_url or public_video_path.name,
+            job_id=job_id,
+        ),
+        encoding="utf-8",
+    )
+    explorer_path = generate_explorer(public_root=public_root)
+    return {
+        "path": page_path,
+        "url": public_page_url,
+        "public_video_path": public_video_path,
+        "public_video_url": public_video_url,
+        "explorer_path": explorer_path,
     }
 
 
@@ -210,31 +269,7 @@ class SocialDistributionStage:
     def _write_instagram_manual_upload_page(
         self, video_path: Path, metadata: dict[str, Any], captions: dict[str, str]
     ) -> dict[str, str | Path | None]:
-        public_dir = self._social_public_job_dir()
-        public_dir.mkdir(parents=True, exist_ok=True)
-        public_video_path = public_dir / video_path.name
-        if video_path.resolve() != public_video_path.resolve():
-            shutil.copy2(video_path, public_video_path)
-
-        title = str(metadata.get("title") or "Untitled Video").replace(f" | {settings.channel_name}", "").strip()
-        description = captions.get("instagram") or title
-        page_path = public_dir / "index.html"
-        public_page_url = None
-        public_video_url = self._public_video_url(video_path)
-        if settings.social_video_public_base_url:
-            public_page_url = f"{settings.social_video_public_base_url.rstrip('/')}/{self.job_id}/"
-
-        page_path.write_text(
-            _render_instagram_upload_page(
-                title=title,
-                description=description,
-                video_filename=public_video_path.name,
-                public_video_url=public_video_url or public_video_path.name,
-                job_id=self.job_id,
-            ),
-            encoding="utf-8",
-        )
-        return {"path": page_path, "url": public_page_url}
+        return publish_media_explorer_artifacts(self.job_id, video_path, metadata, captions)
 
     def _publish_instagram_reel(self, video_path: Path, caption: str) -> dict[str, Any]:
         missing = []

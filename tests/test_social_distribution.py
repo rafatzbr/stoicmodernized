@@ -85,6 +85,65 @@ def test_mock_social_distribution_writes_auditable_manifest(monkeypatch, tmp_pat
     assert "Stop Resenting Last Minute Priority Shifts" in page_html
 
 
+def test_metadata_command_always_publishes_video_to_media_explorer(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    job_dir = jobs_dir / "job-654"
+    _write_job_artifacts(job_dir)
+    script_path = job_dir / "script" / "script.json"
+    script_path.parent.mkdir()
+    script_path.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr("src.stages.social_distribution.settings.jobs_dir", jobs_dir)
+    monkeypatch.setattr(main.settings, "jobs_dir", jobs_dir)
+    monkeypatch.setattr(main.settings, "social_video_public_base_url", "https://stoicmodernized.zweb.ca", raising=False)
+    monkeypatch.setattr(main, "print_header", lambda: None)
+    monkeypatch.setattr(
+        main,
+        "_load_job_record",
+        lambda job_id: type(
+            "JobRecord",
+            (),
+            {"job_id": job_id, "script_path": str(script_path), "video_path": str(job_dir / "remotion_output.mp4")},
+        )(),
+    )
+    metadata_payload = {
+        "title": "Stop Resenting Last Minute Priority Shifts | Stoic Modernized",
+        "description": "A last-minute shift can become practice.",
+        "tags": ["stoicism", "workplace stress"],
+    }
+    monkeypatch.setattr(main, "_generate_metadata_payload_for_job", lambda **kwargs: metadata_payload)
+
+    def fake_save_metadata(job_id: str, payload: dict) -> Path:
+        metadata_dir = jobs_dir / job_id / "metadata"
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        metadata_path = metadata_dir / "metadata.json"
+        metadata_path.write_text(json.dumps(payload), encoding="utf-8")
+        return metadata_path
+
+    monkeypatch.setattr(main, "_save_metadata", fake_save_metadata)
+    monkeypatch.setattr(main, "_save_covered_news", lambda job_id, title: None)
+
+    main.metadata(job_id="job-654", mock=True)
+
+    public_dir = jobs_dir.parent / "social_public"
+    public_video = public_dir / "job-654" / "remotion_output.mp4"
+    page_path = public_dir / "job-654" / "index.html"
+    explorer_path = public_dir / "videos.html"
+    assert public_video.read_bytes() == b"fake mp4"
+    assert page_path.exists()
+    page_html = page_path.read_text(encoding="utf-8")
+    assert "<video controls" in page_html
+    assert "https://stoicmodernized.zweb.ca/job-654/remotion_output.mp4" in page_html
+    assert explorer_path.exists()
+    explorer_html = explorer_path.read_text(encoding="utf-8")
+    assert "job-654" in explorer_html
+    assert "remotion_output.mp4" in explorer_html
+    assert '"title":"Stop Resenting Last Minute Priority Shifts"' in explorer_html
+    assert explorer_html.count('"title":"Stop Resenting Last Minute Priority Shifts"') == 2
+    assert "function displayName(item)" in explorer_html
+    assert "let sortKey = 'modified'; let sortDir = 'desc';" in explorer_html
+    assert "function matchesQuery(item, q)" in explorer_html
+
+
 def test_distribute_command_updates_job_status(monkeypatch, tmp_path: Path) -> None:
     jobs_dir = tmp_path / "jobs"
     job_dir = jobs_dir / "job-789"

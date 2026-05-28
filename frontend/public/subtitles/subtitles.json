@@ -2,121 +2,97 @@
   "segments": [
     {
       "start_time": 0.1,
-      "end_time": 3.85,
-      "text": "Finance wants cost, Marketing wants speed.",
+      "end_time": 4.4,
+      "text": "That meeting invite just popped up and your focus is already gone.",
       "words": null
     },
     {
-      "start_time": 3.85,
-      "end_time": 5.6,
-      "text": "They disagree.",
+      "start_time": 4.4,
+      "end_time": 9.237,
+      "text": "Your heart rate spikes because you think it's an emergency you have to answer right now.",
       "words": null
     },
     {
-      "start_time": 5.6,
-      "end_time": 8.2,
-      "text": "You panic and think they hate you.",
+      "start_time": 9.237,
+      "end_time": 14.575,
+      "text": "Here is the loop: you see the invite, you panic, and you accept it instantly.",
       "words": null
     },
     {
-      "start_time": 8.2,
-      "end_time": 9.8,
-      "text": "They don't.",
+      "start_time": 14.575,
+      "end_time": 18.412,
+      "text": "You lose your deep work time just to prove you are available.",
       "words": null
     },
     {
-      "start_time": 9.8,
-      "end_time": 12.737,
-      "text": "That friction isn't personal rejection.",
+      "start_time": 18.412,
+      "end_time": 20.287,
+      "text": "This is the trap.",
       "words": null
     },
     {
-      "start_time": 12.737,
-      "end_time": 15.112,
-      "text": "It's just role conflict.",
+      "start_time": 20.287,
+      "end_time": 23.987,
+      "text": "The Stoic move is simple: withhold your assent.",
       "words": null
     },
     {
-      "start_time": 15.112,
-      "end_time": 19.537,
-      "text": "Finance is paid to cut costs; Marketing is paid to grow.",
+      "start_time": 23.987,
+      "end_time": 27.9,
+      "text": "When the invite hits, do not say yes immediately.",
       "words": null
     },
     {
-      "start_time": 19.537,
-      "end_time": 24.425,
-      "text": "If you try to please both, you burn out trying to control the uncontrollable.",
+      "start_time": 27.9,
+      "end_time": 29.425,
+      "text": "Pause.",
       "words": null
     },
     {
-      "start_time": 24.425,
-      "end_time": 26.375,
-      "text": "The Stoic move?",
+      "start_time": 29.425,
+      "end_time": 35.037,
+      "text": "Ask yourself, does this serve the work I am doing now, or just the ego of the sender?",
       "words": null
     },
     {
-      "start_time": 26.375,
-      "end_time": 28.675,
-      "text": "Stop apologizing.",
+      "start_time": 35.037,
+      "end_time": 39.037,
+      "text": "If it is not critical, decline it or schedule it for later.",
       "words": null
     },
     {
-      "start_time": 28.675,
-      "end_time": 30.962,
-      "text": "Stop over-explaining.",
+      "start_time": 39.037,
+      "end_time": 42.95,
+      "text": "You are not ignoring them; you are protecting your judgment.",
       "words": null
     },
     {
-      "start_time": 30.962,
-      "end_time": 35.825,
-      "text": "Your job is to do the right thing for your role, not to be everyone's friend.",
+      "start_time": 42.95,
+      "end_time": 45.85,
+      "text": "Control what you can: your time.",
       "words": null
     },
     {
-      "start_time": 35.825,
-      "end_time": 39.712,
-      "text": "When you stop seeking validation, you gain respect.",
+      "start_time": 45.85,
+      "end_time": 48.987,
+      "text": "Accept what you cannot: their urgency.",
       "words": null
     },
     {
-      "start_time": 39.712,
-      "end_time": 45.412,
-      "text": "Your leaders will say, 'We need more people like him,' even if you never asked for the spotlight.",
+      "start_time": 48.987,
+      "end_time": 52.425,
+      "text": "Do you accept every invite, or do you pause?",
       "words": null
     },
     {
-      "start_time": 45.412,
-      "end_time": 48.1,
-      "text": "Calm isn't avoiding conflict.",
+      "start_time": 52.425,
+      "end_time": 54.562,
+      "text": "Tell me in the comments.",
       "words": null
     },
     {
-      "start_time": 48.1,
-      "end_time": 51.112,
-      "text": "It's knowing the disagreement isn't about you.",
-      "words": null
-    },
-    {
-      "start_time": 51.112,
-      "end_time": 53.05,
-      "text": "It's about the job.",
-      "words": null
-    },
-    {
-      "start_time": 53.05,
-      "end_time": 56.1,
-      "text": "Where do you feel this approval pressure most?",
-      "words": null
-    },
-    {
-      "start_time": 56.1,
-      "end_time": 57.8,
-      "text": "Tell me below.",
-      "words": null
-    },
-    {
-      "start_time": 57.8,
-      "end_time": 63.264,
+      "start_time": 54.562,
+      "end_time": 60.024,
       "text": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
       "words": null
     }

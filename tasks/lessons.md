@@ -209,3 +209,14 @@ Use the current Kokoro production default (`kokoro_speed=0.85`) and keep alignme
 
 ### Verification
 Before rendering, inspect subtitle metrics for minimum cue duration and high-CPS short cues. Regression coverage lives in `tests/test_subtitle_timing.py` and `tests/test_subtitle_forced_alignment.py`.
+
+## Script Variety Guardrail (May 26, 2026)
+
+### Problem
+Rafael flagged that a new Stoic short script was very similar to a recent video, and the last two generated videos started with “Your boss ...”.
+
+### Fix
+For Stoic shorts, include recent script titles/hooks as negative examples in script drafting, reject a generated script if its normalized opener pattern has appeared in at least two recent scripts, and reject term-heavy near-duplicates before scene planning/rendering.
+
+### Verification
+Regression coverage lives in `tests/test_script_stage.py`: repeated `Your boss ...` opener rejection, near-duplicate recent-script rejection, and recent-opening prompt context.

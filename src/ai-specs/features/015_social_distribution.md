@@ -55,7 +55,10 @@ python -m src.main run "topic" --distribute-social --social-mock
 
 ## Output
 
-`output/jobs/<job-id>/distribution/social_uploads.json`
+- `output/jobs/<job-id>/distribution/social_uploads.json`
+- `output/social_public/<job-id>/remotion_output.mp4` — staged automatically by the metadata/social publishing helper
+- `output/social_public/<job-id>/index.html` — per-job helper/review page with video preview and copy buttons
+- `output/social_public/videos.html` — regenerated static media explorer for the public site
 
 Fields:
 - `job_id`
@@ -71,5 +74,6 @@ Fields:
 2. Create/configure a Meta developer app and complete required app review for content publishing permissions.
 3. Create/configure a TikTok developer app and request Content Posting API access/scopes.
 4. Provide a short-lived or durable public HTTPS hosting path for rendered MP4s, or extend the stage with resumable/local upload flows where supported.
+   - Normal `metadata` runs now always stage the rendered MP4 into `output/social_public/<job-id>/`, create `index.html`, and regenerate `videos.html` for the public Stoic Modernized media explorer.
 5. Add credentials to `.env` or process environment; never commit real tokens.
 6. Run `python -m src.main distribute <job-id> --mock`, inspect the manifest, then run real distribution.

@@ -2,6 +2,7 @@
 
 import json
 import re
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -17,6 +18,10 @@ from src.utils import load_json, save_json
 
 class ScriptGenerationError(RuntimeError):
     """Raised when real local-LLM script generation fails validation or transport."""
+
+
+RECENT_SCRIPT_LIMIT = 8
+RECENT_SCRIPT_SIMILARITY_THRESHOLD = 0.58
 
 
 class ScriptStage:
@@ -607,7 +612,106 @@ Rules:
 - Recommend constraints that can actually affect title, hook, or narration choices for this video.
 """.strip()
 
+    def _recent_script_records(self, limit: int = RECENT_SCRIPT_LIMIT) -> list[dict[str, Any]]:
+        """Return recent completed script artifacts for repetition avoidance."""
+        jobs_dir = self.job_dir.parent
+        if not jobs_dir.exists():
+            return []
+        records: list[dict[str, Any]] = []
+        for script_path in jobs_dir.glob("*/script/script.json"):
+            if script_path.parent.parent.name == self.job_id:
+                continue
+            try:
+                payload = json.loads(script_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if str(payload.get("channel") or self.channel.value) != self.channel.value:
+                continue
+            hook = " ".join(str(payload.get("hook") or "").split()).strip()
+            narration = " ".join(str(payload.get("narration") or payload.get("short_version") or "").split()).strip()
+            title = " ".join(str(payload.get("title") or "").split()).strip()
+            if not hook and not narration:
+                continue
+            records.append({
+                "job_id": script_path.parent.parent.name,
+                "title": title,
+                "hook": hook,
+                "narration": narration,
+                "path": str(script_path),
+                "mtime": script_path.stat().st_mtime,
+            })
+        records.sort(key=lambda item: float(item.get("mtime") or 0), reverse=True)
+        return records[:limit]
+
+    def _opening_pattern(self, text: str) -> str:
+        """Normalize the first spoken phrase into a repeatable opener pattern."""
+        cleaned = self._short_spoken_narration(text or text)
+        cleaned = re.sub(r"^\s*\[\d+:\d{2}-\d+:\d{2}\]\s*hook\s*", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"[^a-zA-Z0-9'\s]", " ", cleaned).lower()
+        words = [word for word in cleaned.split() if word]
+        if len(words) >= 2 and words[:2] == ["your", "boss"]:
+            return "your boss"
+        if len(words) >= 2 and words[0] in {"your", "you", "a", "an", "the"}:
+            return " ".join(words[:2])
+        return " ".join(words[:3])
+
+    def _recent_opening_patterns(self) -> Counter[str]:
+        patterns = Counter()
+        for record in self._recent_script_records():
+            opener_source = str(record.get("hook") or record.get("narration") or "")
+            pattern = self._opening_pattern(opener_source)
+            if pattern:
+                patterns[pattern] += 1
+        return patterns
+
+    def _script_similarity_terms(self, text: str) -> set[str]:
+        stop_words = {
+            "about", "after", "again", "because", "before", "being", "could", "every", "from", "have",
+            "into", "just", "more", "next", "only", "practical", "should", "stoic", "subscribe", "that",
+            "their", "there", "these", "this", "tools", "under", "when", "where", "with", "work", "your",
+            "you", "can", "the", "and", "for", "are", "but", "not", "what", "will", "use", "one",
+        }
+        words = re.findall(r"[a-z0-9']+", (text or "").lower())
+        return {word for word in words if len(word) >= 4 and word not in stop_words}
+
+    def _recent_script_similarity_issue(self, script: Script) -> str | None:
+        current_text = " ".join([script.title or "", script.hook or "", self._short_spoken_narration(script.narration or "")])
+        current_terms = self._script_similarity_terms(current_text)
+        if len(current_terms) < 8:
+            return None
+        for record in self._recent_script_records():
+            recent_text = " ".join([str(record.get("title") or ""), str(record.get("hook") or ""), str(record.get("narration") or "")])
+            recent_terms = self._script_similarity_terms(recent_text)
+            if len(recent_terms) < 8:
+                continue
+            overlap = current_terms & recent_terms
+            similarity = len(overlap) / max(1, min(len(current_terms), len(recent_terms)))
+            if similarity >= RECENT_SCRIPT_SIMILARITY_THRESHOLD and len(overlap) >= 8:
+                title = str(record.get("title") or record.get("job_id") or "recent script")
+                return f"too similar to recent script '{title}' ({similarity:.0%} term overlap)"
+        return None
+
+    def _recent_script_avoidance_context(self) -> str:
+        records = self._recent_script_records(limit=5)
+        if not records:
+            return ""
+        lines = ["Recent script openings to avoid:"]
+        for record in records:
+            title = str(record.get("title") or record.get("job_id") or "recent script")
+            hook = str(record.get("hook") or record.get("narration") or "").strip()
+            if len(hook) > 140:
+                hook = hook[:137].rstrip() + "..."
+            lines.append(f"- {title}: {hook}")
+        repeated_patterns = [pattern for pattern, count in self._recent_opening_patterns().items() if count >= 2]
+        for pattern in repeated_patterns:
+            display = " ".join(word.capitalize() if idx == 0 else word for idx, word in enumerate(pattern.split()))
+            lines.append(f"- Do not start with `{display}` again; choose a different concrete opener actor/action.")
+        lines.append("- Do not reuse the same workplace scenario, title formula, hook structure, or first two spoken words from recent scripts.")
+        return "\n".join(lines)
+
     def _build_scratch_prompt(self, research_packet: dict[str, Any], whiskers_brief: dict[str, Any], ledger_strategy: dict[str, Any] | None = None) -> str:
+        recent_context = self._recent_script_avoidance_context()
+        recent_block = f"\n\n{recent_context}" if recent_context else ""
         return f"""
 Research packet:
 {json.dumps(research_packet, ensure_ascii=False, indent=2)}
@@ -616,7 +720,7 @@ Whiskers brief:
 {json.dumps(whiskers_brief, ensure_ascii=False, indent=2)}
 
 Ledger strategy:
-{json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}
+{json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}{recent_block}
 
 {self._script_json_contract()}
 
@@ -1319,6 +1423,13 @@ Output JSON only.
             audience_hits = sum(1 for term in audience_terms if term in narration_lower)
             if audience_hits >= 3:
                 issues.append("short narration tries to address too many audiences at once")
+            current_pattern = self._opening_pattern(script.hook or narration)
+            recent_patterns = self._recent_opening_patterns()
+            if current_pattern and recent_patterns.get(current_pattern, 0) >= 2:
+                issues.append(f"repeats recent opener pattern: {current_pattern}")
+            similarity_issue = self._recent_script_similarity_issue(script)
+            if similarity_issue:
+                issues.append(similarity_issue)
 
         if issues:
             raise ScriptGenerationError("Generated script rejected: " + "; ".join(issues))
