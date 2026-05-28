@@ -707,6 +707,7 @@ Rules:
             display = " ".join(word.capitalize() if idx == 0 else word for idx, word in enumerate(pattern.split()))
             lines.append(f"- Do not start with `{display}` again; choose a different concrete opener actor/action.")
         lines.append("- Do not reuse the same workplace scenario, title formula, hook structure, or first two spoken words from recent scripts.")
+        lines.append("- If recent scripts use a boss/manager pressure frame (meeting, priority change, deadline, urgent request), switch to a different actor and trigger instead of another boss-pressure opener.")
         return "\n".join(lines)
 
     def _build_scratch_prompt(self, research_packet: dict[str, Any], whiskers_brief: dict[str, Any], ledger_strategy: dict[str, Any] | None = None) -> str:

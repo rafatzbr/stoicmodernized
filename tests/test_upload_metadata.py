@@ -415,6 +415,97 @@ def test_research_topic_validation_blocks_same_month_subject(monkeypatch, tmp_pa
     assert "same-month subject guardrail" in error
 
 
+def test_script_subject_validation_blocks_boss_pressure_repeat_from_recent_video(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_script_dir = current_job / "script"
+    current_script_dir.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Stop Reacting to Boss's Priority Shifts",
+                "short_version": (
+                    "Your boss shifts priorities at 4 PM on Friday. That panic you feel is a test of your focus. "
+                    "Pause, name the tradeoff, and ask which deadline should move."
+                ),
+                "narration": (
+                    "Your boss shifts priorities at 4 PM on Friday. That panic you feel is a test of your focus. "
+                    "Pause, name the tradeoff, and ask which deadline should move."
+                ),
+                "chapters": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prior_job = jobs_dir / "prior-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "What Marcus Aurelius Does Before Your 9 AM Meeting | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "short_version": (
+                    "Your boss calls an emergency 9 AM meeting. Your chest tightens and you start over-explaining "
+                    "just to prove you're ready. Expect the interference before the meeting starts."
+                )
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_script_for_generation(
+        metadata={"title": "Stop Reacting to Boss's Priority Shifts | Stoic Modernized"},
+        job_dir=str(current_job),
+    )
+
+    assert error is not None
+    assert "boss-pressure subject guardrail" in error
+
+
+def test_research_topic_validation_blocks_boss_pressure_repeat_before_cats_spend(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_job.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+
+    prior_job = jobs_dir / "prior-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "What Marcus Aurelius Does Before Your 9 AM Meeting | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps({"short_version": "Your boss calls an emergency 9 AM meeting and you start over-explaining."}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_topic_for_research(
+        "Your Boss's Priority Change Is a Test of Your Focus",
+        str(current_job),
+    )
+
+    assert error is not None
+    assert "boss-pressure subject guardrail" in error
+
+
 def test_script_subject_validation_blocks_before_expensive_generation(monkeypatch, tmp_path: Path) -> None:
     jobs_dir = tmp_path / "jobs"
     current_job = jobs_dir / "current-job"

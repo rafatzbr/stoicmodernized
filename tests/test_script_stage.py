@@ -395,3 +395,4 @@ class TestScriptStage:
         assert "Recent script openings to avoid" in prompt
         assert "Your boss calls an emergency 9 AM meeting" in prompt
         assert "Do not start with `Your boss`" in prompt
+        assert "different actor and trigger" in prompt

@@ -27,7 +27,21 @@ TOPIC_FAMILY_ALIASES = {
     "meetings": "meeting",
     "coworkers": "coworker",
     "bosses": "boss",
+    "managers": "boss",
+    "manager": "boss",
     "deadlines": "deadline",
+    "priorities": "priority",
+    "shifts": "shift",
+    "shifted": "shift",
+    "changes": "change",
+    "changed": "change",
+    "changing": "change",
+    "emergency": "pressure",
+    "urgent": "pressure",
+    "urgency": "pressure",
+    "panic": "pressure",
+    "rushing": "rush",
+    "rushed": "rush",
     "loops": "loop",
     "replaying": "replay",
 }
@@ -46,7 +60,20 @@ TOPIC_FAMILY_STOPWORDS = {
 TOPIC_FAMILY_TRIGGER_TOKENS = {
     "slack", "notification", "meeting", "boss", "coworker", "deadline", "burnout", "layoff", "email",
     "text", "ping", "message", "praise", "approval", "disrespect", "overexplaining", "overthinking", "rumination",
-    "ruminate", "anxiety", "politics",
+    "ruminate", "anxiety", "politics", "priority", "pressure",
+}
+
+BOSS_PRESSURE_CONTEXT_TOKENS = {
+    "meeting",
+    "priority",
+    "shift",
+    "change",
+    "deadline",
+    "request",
+    "update",
+    "pressure",
+    "rush",
+    "overexplaining",
 }
 
 # Explicitly blocked topic keywords - these should NEVER appear in daily videos
@@ -247,6 +274,12 @@ class YouTubeUploader:
             # the daily pipeline should not publish another video on the same subject
             # family in the same month, even if more than `recent_limit` jobs exist.
             concept_overlap = current_family_tokens & other_family_tokens
+            if self._boss_pressure_subject_hit(current_family_tokens, other_family_tokens, metadata_path, other_metadata):
+                return (
+                    "Upload blocked by boss-pressure subject guardrail: this video repeats a recent boss/manager "
+                    f"pressure scenario from '{other_metadata.get('title', other_job_dir.name)}' (job {other_job_dir.name}). "
+                    "Regenerate with a different workplace actor and trigger before publishing."
+                )
             if self._same_month_subject_hit(concept_overlap, metadata_path, other_metadata):
                 subject_signals = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
                 overlap_terms = ", ".join(sorted(subject_signals or concept_overlap)[:4])
@@ -333,6 +366,12 @@ class YouTubeUploader:
                 )
 
             concept_overlap = current_family_tokens & other_family_tokens
+            if self._boss_pressure_subject_hit(current_family_tokens, other_family_tokens, metadata_path, other_metadata):
+                return (
+                    "Research blocked by boss-pressure subject guardrail: this topic repeats a recent boss/manager "
+                    f"pressure scenario from '{other_metadata.get('title', other_job_dir.name)}' (job {other_job_dir.name}). "
+                    "Research a different workplace actor and trigger before continuing."
+                )
             if self._same_month_subject_hit(concept_overlap, metadata_path, other_metadata):
                 subject_signals = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
                 overlap_terms = ", ".join(sorted(subject_signals or concept_overlap)[:4])
@@ -398,7 +437,8 @@ class YouTubeUploader:
     def _topic_family_tokens(self, text: str) -> set[str]:
         tokens: set[str] = set()
         for raw_token in re.findall(r"[a-z0-9']+", text.lower()):
-            token = TOPIC_FAMILY_ALIASES.get(raw_token, raw_token)
+            token = raw_token[:-2] if raw_token.endswith("'s") else raw_token
+            token = TOPIC_FAMILY_ALIASES.get(token, token)
             if token.endswith("ies") and len(token) > 4:
                 token = token[:-3] + "y"
             elif token.endswith("s") and len(token) > 4 and not token.endswith("ss"):
@@ -468,6 +508,40 @@ class YouTubeUploader:
             return False
         trigger_overlap = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
         return len(trigger_overlap) >= 2
+
+    def _recent_subject_window_hit(self, metadata_path: Path, metadata: Optional[dict[str, Any]] = None) -> bool:
+        """Return true for the strict short-window freshness checks."""
+        if self._metadata_in_current_month(metadata_path, metadata):
+            return True
+        try:
+            age = datetime.now(UTC) - datetime.fromtimestamp(metadata_path.stat().st_mtime, tz=UTC)
+        except OSError:
+            return False
+        return age.days < 7
+
+    def _boss_pressure_subject_hit(
+        self,
+        current_family_tokens: set[str],
+        other_family_tokens: set[str],
+        metadata_path: Path,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> bool:
+        """Block repeated boss/manager pressure scripts even when exact triggers differ.
+
+        The regular same-month guardrail requires two overlapping trigger tokens. That
+        missed back-to-back scripts where the same actor/pressure frame repeated but one
+        script said "emergency meeting" and the next said "priority change". This guard
+        treats boss/manager pressure as one subject family only when both sides have the
+        boss actor plus a concrete pressure context token, so unrelated boss praise or
+        feedback topics are not blocked by the actor word alone.
+        """
+        if not self._recent_subject_window_hit(metadata_path, metadata):
+            return False
+        if "boss" not in current_family_tokens or "boss" not in other_family_tokens:
+            return False
+        current_context = current_family_tokens & BOSS_PRESSURE_CONTEXT_TOKENS
+        other_context = other_family_tokens & BOSS_PRESSURE_CONTEXT_TOKENS
+        return bool(current_context and other_context)
 
     def _concept_cooldown_hit(self, concept_overlap: set[str], metadata_path: Path, cooldown_days: int = 7) -> bool:
         if len(concept_overlap) < 2:
