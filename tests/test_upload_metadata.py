@@ -446,15 +446,15 @@ def test_script_subject_validation_blocks_boss_pressure_repeat_from_recent_video
     prior_script_dir.mkdir(parents=True, exist_ok=True)
     (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
     (prior_metadata_dir / "metadata.json").write_text(
-        json.dumps({"title": "What Marcus Aurelius Does Before Your 9 AM Meeting | Stoic Modernized"}),
+        json.dumps({"title": "Stop Resenting Last Minute Priority Shifts | Stoic Modernized"}),
         encoding="utf-8",
     )
     (prior_script_dir / "script.json").write_text(
         json.dumps(
             {
                 "short_version": (
-                    "Your boss calls an emergency 9 AM meeting. Your chest tightens and you start over-explaining "
-                    "just to prove you're ready. Expect the interference before the meeting starts."
+                    "Your boss just changed priorities at 4 PM on Friday. Stop resenting it and start being useful. "
+                    "Treat your boss like a client, not an enemy, and ask which deadline should move."
                 )
             }
         ),
@@ -486,11 +486,17 @@ def test_research_topic_validation_blocks_boss_pressure_repeat_before_cats_spend
     prior_script_dir.mkdir(parents=True, exist_ok=True)
     (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
     (prior_metadata_dir / "metadata.json").write_text(
-        json.dumps({"title": "What Marcus Aurelius Does Before Your 9 AM Meeting | Stoic Modernized"}),
+        json.dumps({"title": "Stop Resenting Last Minute Priority Shifts | Stoic Modernized"}),
         encoding="utf-8",
     )
     (prior_script_dir / "script.json").write_text(
-        json.dumps({"short_version": "Your boss calls an emergency 9 AM meeting and you start over-explaining."}),
+        json.dumps(
+            {
+                "short_version": (
+                    "Your boss just changed priorities at 4 PM on Friday. Stop resenting it and start being useful."
+                )
+            }
+        ),
         encoding="utf-8",
     )
 
