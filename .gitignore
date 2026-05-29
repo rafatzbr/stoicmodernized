@@ -20,6 +20,12 @@ htmlcov/
 *.db
 output/
 
+# Generated Remotion preview assets
+frontend/public/audio/
+frontend/public/images/scene_*.jpg
+frontend/public/props.json
+frontend/public/subtitles/
+
 # Build artifacts
 build/
 dist/
