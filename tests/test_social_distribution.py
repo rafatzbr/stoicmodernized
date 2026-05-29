@@ -50,8 +50,42 @@ def test_build_social_captions_are_platform_specific_and_do_not_include_youtube_
         assert "Subscribe to" not in caption
         assert "#StoicModernized" in caption
     assert len(captions["tiktok"]) <= 2200
-    assert "#WorkplaceStress" in captions["instagram"]
+    assert "#PriorityShifts" in captions["instagram"]
     assert captions["facebook"].startswith("A last-minute priority shift")
+
+
+def test_media_explorer_caption_limits_hashtags_to_relevant_five() -> None:
+    metadata = {
+        "title": "Stop The Reopened Decision Loop At Work | Stoic Modernized",
+        "description": (
+            "When a decision keeps getting reopened at work, your job is not to win the argument again. "
+            "Pause, restate the boundary, and protect your focus for the next useful move."
+        ),
+        "tags": [
+            "anxiety spiral",
+            "bad meetings",
+            "credit stealing at work",
+            "stoicism",
+            "stoic modernized",
+            "decision making at work",
+            "focus at work",
+            "pause before reacting",
+            "workplace stress",
+        ],
+    }
+
+    captions = build_social_captions(metadata, channel_name="Stoic Modernized")
+    instagram = captions["instagram"]
+    hashtags = [word for word in instagram.split() if word.startswith("#")]
+
+    assert len(hashtags) <= 5
+    assert "#StoicModernized" in hashtags
+    assert any("Decision" in tag for tag in hashtags)
+    assert any("Focus" in tag for tag in hashtags)
+    assert "#PauseBeforeReacting" in hashtags
+    assert "#AnxietySpiral" not in hashtags
+    assert "#BadMeetings" not in hashtags
+    assert "#CreditStealingAtWork" not in hashtags
 
 
 def test_mock_social_distribution_writes_auditable_manifest(monkeypatch, tmp_path: Path) -> None:

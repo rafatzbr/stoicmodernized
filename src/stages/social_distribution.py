@@ -44,22 +44,59 @@ def _hashtag(value: str) -> str | None:
     return tag[:32] if len(tag) > 2 else None
 
 
-def _hashtags_from_tags(tags: list[Any]) -> list[str]:
-    seed = ["Stoicism", "StoicModernized", *[str(tag) for tag in tags]]
+def _tag_tokens(value: str) -> set[str]:
+    """Return normalized, meaning-bearing tokens for tag relevance checks."""
+    tokens = {token.lower() for token in re.findall(r"[A-Za-z0-9]+", str(value or ""))}
+    normalized: set[str] = set()
+    for token in tokens:
+        if token in {"a", "an", "and", "at", "for", "from", "in", "of", "on", "or", "the", "to", "you", "your"}:
+            continue
+        if token in {"workplace", "working"}:
+            token = "work"
+        elif token.endswith("ies") and len(token) > 4:
+            token = token[:-3] + "y"
+        elif token.endswith("ing") and len(token) > 5:
+            token = token[:-3]
+        elif token.endswith("s") and len(token) > 4:
+            token = token[:-1]
+        normalized.add(token)
+    return normalized
+
+
+def _hashtags_from_tags(tags: list[Any], context_text: str = "") -> list[str]:
+    context_tokens = _tag_tokens(context_text)
+    generic_context_tokens = {"stoic", "stoicism", "modernized"}
+    weak_context_tokens = {"work", "job", "office", "career"}
     out: list[str] = []
     seen: set[str] = set()
-    for item in seed:
+
+    def add(item: str) -> None:
         tag = _hashtag(item)
         if not tag:
-            continue
+            return
         key = tag.lower()
         if key in seen:
-            continue
+            return
         seen.add(key)
         out.append(tag)
+
+    # Keep one broad philosophy tag and the channel tag; both are relevant to this channel.
+    add("Stoicism")
+    add("StoicModernized")
+
+    for item in [str(tag) for tag in tags]:
+        item_tokens = _tag_tokens(item)
+        if not item_tokens:
+            continue
+        distinctive_tokens = item_tokens - generic_context_tokens - weak_context_tokens
+        if distinctive_tokens and not (distinctive_tokens & context_tokens):
+            continue
+        if not distinctive_tokens and not (item_tokens & context_tokens):
+            continue
+        add(item)
         if len(out) >= 5:
             break
-    return out
+    return out[:5]
 
 
 def _truncate_at_word(text: str, limit: int) -> str:
@@ -79,7 +116,7 @@ def build_social_captions(metadata: dict[str, Any], channel_name: str = "Stoic M
     body = _strip_youtube_boilerplate(str(metadata.get("description") or "")) or raw_title
     raw_tags = metadata.get("tags")
     tags: list[Any] = raw_tags if isinstance(raw_tags, list) else []
-    hashtags = _hashtags_from_tags(tags)
+    hashtags = _hashtags_from_tags(tags, context_text=f"{raw_title} {body}")
     hashtag_tail = " ".join(hashtags)
 
     short_body = _truncate_at_word(body, 180)

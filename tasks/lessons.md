@@ -1,5 +1,11 @@
 # Lessons Learned
 
+## Media Explorer Caption Tags (May 2026)
+
+- Media explorer/helper-page descriptions should not blindly copy the first metadata tags into hashtags.
+- Cap helper-page/social caption hashtag tails at five tags total.
+- Keep tags relevant by comparing distinctive tag tokens against the actual title/description context; generic work/channel words alone are not enough to include a tag.
+
 ## AI Signal Channel Cleanup (Dec 2024)
 
 ### Goal
