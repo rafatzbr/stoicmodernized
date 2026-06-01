@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -88,7 +89,39 @@ def test_generate_hashtags_uses_subject_specific_terms() -> None:
     lowered = hashtags.lower()
     assert "#stoicism" in lowered
     assert "#stoicmodernized" in lowered
+    assert len(re.findall(r"(?<!\w)#\w+", hashtags)) <= 5
     assert any(tag in lowered for tag in ["#workanxiety", "#catastrophicthinking", "#stopspiraling"])
+
+
+def test_description_hashtags_are_hard_capped_for_templates_and_ai_outputs() -> None:
+    uploader = YouTubeUploader(mock=True)
+    over_tagged = (
+        "One sentence. #stoicism #stoicmodernized #workanxiety "
+        "#anxietywork #workplaceanxiety #anxietymanagement #extra\n\nResources:\nBook https://example.com"
+    )
+
+    capped = uploader._generate_description("Work Anxiety", [], template=over_tagged)
+    hashtags = re.findall(r"(?<!\w)#\w+", capped)
+
+    assert len(hashtags) == 5
+    assert "#anxietymanagement" not in capped
+    assert "#extra" not in capped
+    assert "Resources:" in capped
+
+
+def test_default_description_hashtags_are_hard_capped_to_five() -> None:
+    uploader = YouTubeUploader(mock=True)
+    description = uploader._generate_default_description(
+        "Why Catastrophic Thinking Keeps Running Your Work Life",
+        [],
+        steering_context={
+            "ledger_packet": {"packaging_angle": "identity-level anxiety"},
+            "whiskers_handoff": {"viewer_problem": "spiraling after meetings", "stoic_move": "focus on control"},
+        },
+    )
+    hashtags = re.findall(r"(?<!\w)#\w+", description)
+
+    assert len(hashtags) <= 5
 
 
 def test_subject_tags_do_not_overfit_single_meeting_or_panic_mentions() -> None:
@@ -283,6 +316,120 @@ def test_topic_cooldown_guardrail_blocks_same_concept_family(monkeypatch, tmp_pa
 
     assert error is not None
     assert "same-month subject guardrail" in error
+
+
+def test_topic_cooldown_uses_stable_artifact_date_not_metadata_edit_mtime(monkeypatch, tmp_path: Path) -> None:
+    """Editing old metadata must not make upload stricter than early validation.
+
+    The daily script validates before media spend. If a maintenance edit later touches
+    an old metadata file, upload should not suddenly treat that old video as being in
+    the rolling recent cooldown window.
+    """
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_script_dir = current_job / "script"
+    current_script_dir.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Stop Meeting Anxiety Before 9 AM",
+                "short_version": (
+                    "Meeting anxiety creates pressure before the room even fills. "
+                    "Name what you control and enter the meeting steady."
+                ),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prior_job = jobs_dir / "old-edited-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps(
+            {
+                "title": "Failure Meditation Beats Reacting Under Pressure | Stoic Modernized",
+                "steering_context": {
+                    "ledger_packet": {"generated_at": "2026-05-18T13:01:07+00:00"}
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "short_version": (
+                    "Imagine your biggest project collapses tomorrow and the pressure creates anxiety. "
+                    "Prepare calmly before reacting."
+                )
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_script_for_generation(
+        metadata={"title": "Stop Meeting Anxiety Before 9 AM | Stoic Modernized"},
+        job_dir=str(current_job),
+    )
+
+    assert error is None
+
+
+
+def test_topic_cooldown_uses_script_date_when_metadata_lacks_date(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_script_dir = current_job / "script"
+    current_script_dir.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Stop Meeting Anxiety Before 9 AM",
+                "short_version": "Meeting pressure and anxiety can distort your first judgment.",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prior_job = jobs_dir / "old-script-date-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "Slow Down Before You Decide | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "generated_at": "2026-05-17T20:24:00Z",
+                "short_version": "A meeting deadline can create pressure, but panic is optional.",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_script_for_generation(
+        metadata={"title": "Stop Meeting Anxiety Before 9 AM | Stoic Modernized"},
+        job_dir=str(current_job),
+    )
+
+    assert error is None
+
 
 
 def test_recent_video_duplicate_guardrail_allows_different_angle(monkeypatch, tmp_path: Path) -> None:

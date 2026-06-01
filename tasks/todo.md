@@ -1,22 +1,24 @@
-# Script variety guardrail
+# Active plan — tighten validation and regenerate video
 
-- [x] Inspect recent Stoic script artifacts for repeated topic/opening patterns.
-- [x] Add regression coverage for repeated `Your boss ...` opener and near-duplicate recent scripts.
-- [x] Patch script generation prompts and validation to avoid repeated openings and too-similar recent scripts.
-- [x] Update script-generation spec and lessons.
-- [x] Run targeted tests and verify the current problematic script is now rejected.
+## Goal
+Make early subject validation match final upload cooldown behavior, generate a replacement video, and schedule it on YouTube for June 2, 2026 at 8 AM Pacific.
 
-## Review
+## Completed
+- [x] Root-caused early/upload validation disagreement: metadata maintenance rewrites refreshed old file mtimes, so upload treated older jobs as recent.
+- [x] Added regression coverage for edited old metadata and metadata missing dates.
+- [x] Patched cooldown date logic to prefer stable metadata/ledger/script dates before file mtime.
+- [x] Verified targeted upload metadata tests, daily orchestrator tests, py_compile, and daily setup check.
+- [x] Generated replacement video `d2ca9c28-cc30-4614-b6fb-c0ceaeeb75cf` after guardrail-aware topic retry.
+- [x] Repaired final YouTube metadata description before upload; verified exactly five hashtags.
+- [x] Verified MP4, music guardrail, duplicate/topic guardrail, and scheduled YouTube upload.
 
-Rafael flagged that the latest script was too similar to a recent video and that the last two starts included `Your boss ...`. Recent artifact inspection confirmed repeated priority-shift/`Your boss` openings. Added recent-script negative context to script drafting and quality gates that reject repeated opener patterns and term-heavy near-duplicates before scene planning/rendering. Verified with `tests/test_script_stage.py` and direct validation of job `ebe20fed-5716-4d70-8bad-4dd89e5ed666`, which now rejects with `repeats recent opener pattern: your boss`.
+## Upload result
+- Job ID: `d2ca9c28-cc30-4614-b6fb-c0ceaeeb75cf`
+- YouTube video ID: `wW9ma_TT0Lg`
+- URL: https://www.youtube.com/watch?v=wW9ma_TT0Lg
+- Schedule: `2026-06-02T15:00:00Z` (June 2, 8:00 AM Pacific)
+- Verified API state: `privacyStatus=private`, `uploadStatus=processed`, `processingStatus=succeeded`, `duration=PT1M1S`, `definition=hd`
 
-# Media explorer relevant tag limit
-
-- [x] Find media explorer description/tag generation code and tests.
-- [x] Add regression coverage: media explorer captions emit no more than 5 hashtags and skip unrelated metadata tags.
-- [x] Patch caption/tag selection to prefer context-relevant tags.
-- [x] Run targeted tests and syntax checks.
-
-## Review
-
-Media explorer/helper-page descriptions now build their hashtag tail from title/description context. The selection keeps Stoicism/channel branding, then only includes metadata tags with distinctive token overlap against the actual title/description, capped at five tags total. Verified with `tests/test_social_distribution.py` and `py_compile` for `src/stages/social_distribution.py` plus `scripts/generate_social_public_explorer.py`.
+## Notes
+- Do not bypass upload guardrails.
+- The standard CLI upload regenerates metadata; for this run the direct uploader path was used after cleaning bad generated description copy.

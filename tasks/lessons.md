@@ -1,10 +1,18 @@
 # Lessons Learned
 
-## Media Explorer Caption Tags (May 2026)
+## Media Explorer and YouTube Description Tags (May/June 2026)
 
 - Media explorer/helper-page descriptions should not blindly copy the first metadata tags into hashtags.
 - Cap helper-page/social caption hashtag tails at five tags total.
+- Cap YouTube metadata description hashtags at five tags total too; fixing only social captions leaves uploaded/generated video descriptions at six tags.
+- Enforce the cap after AI/template description generation because the LLM can ignore the hashtag count prompt.
 - Keep tags relevant by comparing distinctive tag tokens against the actual title/description context; generic work/channel words alone are not enough to include a tag.
+
+## Guardrail Date Parity and Packaging QA (June 2026)
+
+- Early subject validation and upload cooldown checks must use the same stable artifact date source. Metadata maintenance rewrites can refresh file `mtime` and make old jobs look recent at upload time; prefer metadata/ledger/script `generated_at` timestamps and use file `mtime` only as a last fallback.
+- Before scheduling/uploading, inspect the final `metadata.json` description, not just hashtag count. If research steering leaks unrelated snippets into the description, replace it with clean script-aligned copy and use the direct uploader path so the CLI does not regenerate the bad metadata.
+- Treat a packaging-review agent returning `FAIL` or “no artifacts provided” as a manual QA checkpoint before upload; do not upload uninspected metadata.
 
 ## AI Signal Channel Cleanup (Dec 2024)
 

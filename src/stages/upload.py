@@ -288,7 +288,7 @@ class YouTubeUploader:
                     f"'{other_metadata.get('title', other_job_dir.name)}' (job {other_job_dir.name}). "
                     f"Shared subject signals: {overlap_terms}. Regenerate with a different workplace trigger before publishing."
                 )
-            if self._concept_cooldown_hit(concept_overlap, metadata_path):
+            if self._concept_cooldown_hit(concept_overlap, metadata_path, other_metadata):
                 subject_signals = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
                 overlap_terms = ", ".join(sorted(subject_signals or concept_overlap)[:4])
                 return (
@@ -380,7 +380,7 @@ class YouTubeUploader:
                     f"'{other_metadata.get('title', other_job_dir.name)}' (job {other_job_dir.name}). "
                     f"Shared subject signals: {overlap_terms}. Research a different workplace trigger before continuing."
                 )
-            if self._concept_cooldown_hit(concept_overlap, metadata_path):
+            if self._concept_cooldown_hit(concept_overlap, metadata_path, other_metadata):
                 subject_signals = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
                 overlap_terms = ", ".join(sorted(subject_signals or concept_overlap)[:4])
                 return (
@@ -479,6 +479,23 @@ class YouTubeUploader:
                 parsed = parsed.replace(tzinfo=UTC)
             return parsed.astimezone(UTC)
 
+        script_path = metadata_path.parent.parent / "script" / "script.json"
+        if script_path.exists():
+            try:
+                script_payload = load_json(script_path)
+            except Exception:
+                script_payload = {}
+            for value in [script_payload.get("generated_at"), script_payload.get("created_at")]:
+                if not value:
+                    continue
+                try:
+                    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+                except ValueError:
+                    continue
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=UTC)
+                return parsed.astimezone(UTC)
+
         try:
             return datetime.fromtimestamp(metadata_path.stat().st_mtime, tz=UTC)
         except OSError:
@@ -543,13 +560,22 @@ class YouTubeUploader:
         other_context = other_family_tokens & BOSS_PRESSURE_CONTEXT_TOKENS
         return bool(current_context and other_context)
 
-    def _concept_cooldown_hit(self, concept_overlap: set[str], metadata_path: Path, cooldown_days: int = 7) -> bool:
+    def _concept_cooldown_hit(
+        self,
+        concept_overlap: set[str],
+        metadata_path: Path,
+        metadata: Optional[dict[str, Any]] = None,
+        cooldown_days: int = 7,
+    ) -> bool:
         if len(concept_overlap) < 2:
             return False
         trigger_overlap = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
         if len(trigger_overlap) < 2:
             return False
-        age = datetime.now(UTC) - datetime.fromtimestamp(metadata_path.stat().st_mtime, tz=UTC)
+        metadata_dt = self._metadata_datetime(metadata_path, metadata)
+        if metadata_dt is None:
+            return False
+        age = datetime.now(UTC) - metadata_dt
         return age.days < cooldown_days
 
     def _token_jaccard(self, left: set[str], right: set[str]) -> float:
@@ -632,7 +658,9 @@ class YouTubeUploader:
                 from datetime import datetime
                 try:
                     schedule_time = datetime.fromisoformat(self.schedule_datetime.replace("Z", "+00:00"))
-                    video_body["status"]["uploadStatus"] = "scheduled"
+                    # YouTube schedules publication by combining privacyStatus=private
+                    # with a future publishAt value. uploadStatus is read-only and
+                    # sending "scheduled" is rejected by the Data API.
                     video_body["status"]["publishAt"] = schedule_time.isoformat()
                 except Exception as e:
                     print(f"[yellow]Invalid schedule datetime, publishing immediately:[/yellow] {e}")
@@ -711,7 +739,9 @@ class YouTubeUploader:
         snippet = item.get("snippet") or {}
         status = item.get("status") or {}
         snippet["title"] = metadata.get("title", snippet.get("title", "Untitled Video"))
-        snippet["description"] = metadata.get("description", snippet.get("description", ""))
+        snippet["description"] = self._enforce_description_hashtag_cap(
+            metadata.get("description", snippet.get("description", ""))
+        )
         snippet["tags"] = metadata.get("tags", snippet.get("tags", []))
         body = {"id": video_id, "snippet": snippet, "status": status}
         return youtube.videos().update(part="snippet,status", body=body).execute()
@@ -1105,9 +1135,29 @@ class YouTubeUploader:
                 continue
             seen.add(lowered)
             hashtags.append(slug)
-            if len(hashtags) >= 6:
+            if len(hashtags) >= 5:
                 break
         return " ".join(hashtags)
+
+    def _enforce_description_hashtag_cap(self, description: str, max_hashtags: int = 5) -> str:
+        """Remove extra hashtags from a generated YouTube description.
+
+        The LLM can ignore the prompt and append additional hashtags. Keep the
+        first five hashtags in the whole description and strip any later ones so
+        every metadata path has the same hard cap.
+        """
+        kept = 0
+
+        def replace(match: re.Match[str]) -> str:
+            nonlocal kept
+            kept += 1
+            return match.group(0) if kept <= max_hashtags else ""
+
+        capped = re.sub(r"(?<![\w/])#[A-Za-z0-9_]+", replace, str(description or ""))
+        capped = re.sub(r"[ \t]{2,}", " ", capped)
+        capped = re.sub(r" *\n", "\n", capped)
+        capped = re.sub(r"\n{3,}", "\n\n", capped)
+        return capped.strip()
 
     def _format_chapters(self, chapters: list[dict]) -> list[dict]:
         """Format chapters for YouTube metadata.
@@ -1148,16 +1198,16 @@ class YouTubeUploader:
             Formatted description string
         """
         if template:
-            return template
+            return self._enforce_description_hashtag_cap(template)
 
         # Try to use AI to generate description if script text is available
         if script_text:
             ai_description = self._generate_description_with_ai(title, chapters, script_text, job_dir, steering_context)
             if ai_description:
-                return ai_description
+                return self._enforce_description_hashtag_cap(ai_description)
 
         # Fallback to default description
-        return self._generate_default_description(title, chapters, job_dir, steering_context)
+        return self._enforce_description_hashtag_cap(self._generate_default_description(title, chapters, job_dir, steering_context))
 
     def _generate_default_description(self, title: str, chapters: list[dict], job_dir: Optional[str] = None, steering_context: Optional[dict[str, Any]] = None) -> str:
         """Generate a default description when AI fails or isn't available."""
