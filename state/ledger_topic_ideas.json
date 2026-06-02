@@ -1,80 +1,80 @@
 {
-  "generated_at": "2026-05-25T05:56:38.701533+00:00",
+  "generated_at": "2026-06-01T09:40:59.776186+00:00",
   "niche": "stoicism for modern workers",
-  "strategy_generated_at": "2026-05-25T05:56:38.700660+00:00",
+  "strategy_generated_at": "2026-06-01T09:40:59.775159+00:00",
   "source_files": [
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-05-24.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-05-24.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-05-24.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-05-25.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-05-25.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-05-25.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-05-23.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-05-23.json"
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-05-31.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-05-31.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-05-31.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-01.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-01.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-01.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-01.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-01.json"
   ],
   "metric_signals": {
     "source_count": 9,
     "platform": {
-      "youtube_shorts_views": 1527.0,
-      "youtube_search_minutes": 105.0,
-      "mobile_view_share": 0.848,
-      "unsubscribed_view_share": 0.939,
-      "subscribers_gained": 4.0,
-      "facebook_video_views": 470.0,
-      "facebook_post_engagements": 14.0,
-      "facebook_reach": 1652.0
+      "youtube_shorts_views": 1474.0,
+      "youtube_search_minutes": 3.0,
+      "mobile_view_share": 0.857,
+      "unsubscribed_view_share": 0.955,
+      "subscribers_gained": 1.0,
+      "facebook_video_views": 488.0,
+      "facebook_post_engagements": 23.0,
+      "facebook_reach": 1662.0
     },
     "winning_themes": [
+      "workplace chaos / cleaning others' mess / boundary triggers",
+      "strategic patience / rushing / decision pause",
       "approval pressure / disagreement / seeking validation",
-      "deadline rushing / pressure spirals / urgency",
-      "strategic patience / decision pause / restraint",
-      "coworker disrespect / passive aggression / reactivity",
-      "discipline without burnout / sustainable focus",
+      "priority shifts / meetings / boss pressure",
+      "focus boundaries / over-accepting meetings",
       "conflict",
       "discipline systems",
-      "strategic patience"
+      "control"
     ],
     "youtube_top_titles": [
       "Stop Busy Idleness At Work | Stoic Modernized",
       "Your Coworkers Disrespect Only Wins If You React | Stoic Modernized",
       "Use Death to Stop Procrastinating | Stoic Modernized",
-      "Build Discipline Without Burning Out | Stoic Modernized",
-      "How Marcus Aurelius Handles Your 9 AM Meeting | Stoic Modernized"
+      "Your Gossip Trigger Only Wins If You React | Stoic Modernized",
+      "Build Discipline Without Burning Out | Stoic Modernized"
     ],
     "facebook_top_titles": [
-      "Finance wants cost, Marketing wants speed. You panic thinking they hate you, but that's ju…",
-      "Your boss shifts priorities at 4 PM on Friday, sparking deep resentment. Stop dwelling on …",
-      "Why Work Pressure Gets Worse When You Rush | Stoic Modernized",
-      "You think staying calm is a trait you lack, but it's actually a skill anyone can master. L…",
-      "You feel pressure when a colleague disagrees, but they aren't attacking you. Stop letting …"
+      "If a modern worker feels pressure but keeps giving that pressure control over attention an…",
+      "When a decision keeps getting reopened at work, your job is not to win the argument again.…",
+      "That dirty mug isn't a mess to fix; it's a trigger for your anxiety. Stop letting workplac…",
+      "That meeting invite spikes your heart rate and steals your focus. Stop giving that pressur…",
+      "The spreadsheet breaks five minutes before the forecast review. Your shoulders lock. You w…"
     ],
     "tiktok_top_titles": [
-      "697 views / 25 engagements (3.6%) — Your colleague's disrespect isn't stealing your peace; your judgment of them is. Discover how to stop their chaos from d — https://www.tiktok.com/@stoic_modernized/video/7634819797414448405",
-      "567 views / 20 engagements (3.5%) — Strategic Patience: The Ultimate Workplace Power Move | Stoic Modernized Stop forcing outcomes. Your rush to act is cost — https://www.tiktok.com/@stoic_modernized/video/7637051122150165781",
-      "396 views / 13 engagements (3.3%) — Stop Overexplaining At Work You sent a long Slack message just to prove you were right. Fear is stealing your credibilit — https://www.tiktok.com/@stoic_modernized/video/7639633308141260052",
-      "361 views / 15 engagements (4.2%) — Build Discipline Without Burning Out | Stoic Modernized Willpower is a finite battery that dies when you need it most. T — https://www.tiktok.com/@stoic_modernized/video/7637759093603699989",
-      "347 views / 8 engagements (2.3%) — Stop burning out trying to control outcomes you can't touch. True power isn't forcing results; it's mastering your react — https://www.tiktok.com/@stoic_modernized/video/7634819359688494357"
+      "Your colleague's disrespect isn't stealing your peace; your judgment of them is....",
+      "Stop Cleaning Their Mess",
+      "Why Rushing Makes Work Pressure Worse",
+      "Slow Down Before You Decide",
+      "Why Control Matters at Work Unfair treatment steals your focus and judgment at work."
     ],
     "tiktok_weightings": [
       {
-        "label": "approval pressure / disagreement / seeking validation",
+        "label": "workplace chaos / cleaning others' mess / boundary triggers",
         "weight": 35.0
       },
       {
-        "label": "deadline rushing / pressure spirals / urgency",
+        "label": "strategic patience / rushing / decision pause",
         "weight": 25.0
       },
       {
-        "label": "strategic patience / decision pause / restraint",
+        "label": "approval pressure / disagreement / seeking validation",
         "weight": 20.0
       },
       {
-        "label": "coworker disrespect / passive aggression / reactivity",
+        "label": "priority shifts / meetings / boss pressure",
         "weight": 15.0
       },
       {
-        "label": "discipline without burnout / sustainable focus",
+        "label": "focus boundaries / over-accepting meetings",
         "weight": 5.0
       }
     ],
@@ -108,6 +108,22 @@
     "discovery": [
       {
         "objective": "discovery",
+        "title": "Their Mess Is Not Your Emergency",
+        "recommended_angle": "turn messy shared-workspace chaos into a boundaries-and-judgment scenario",
+        "why_now": "Ledger metric signals currently favor: workplace chaos / cleaning others' mess / boundary triggers",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "workplace chaos / cleaning others' mess / boundary triggers"
+      },
+      {
+        "objective": "discovery",
+        "title": "Why Rushing Makes Work Pressure Worse",
+        "recommended_angle": "show how deadline pressure hijacks attention and how a short pause restores control",
+        "why_now": "Ledger metric signals currently favor: strategic patience / rushing / decision pause",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "strategic patience / rushing / decision pause"
+      },
+      {
+        "objective": "discovery",
         "title": "You Do Not Need Everyone at Work to Like You",
         "recommended_angle": "turn approval-seeking into a disagreement-at-work scenario the viewer can recognize immediately",
         "why_now": "Ledger metric signals currently favor: approval pressure / disagreement / seeking validation",
@@ -116,35 +132,33 @@
       },
       {
         "objective": "discovery",
-        "title": "Why Rushing Makes Work Pressure Worse",
-        "recommended_angle": "show how deadline pressure hijacks attention and how a short pause restores control",
-        "why_now": "Ledger metric signals currently favor: deadline rushing / pressure spirals / urgency",
+        "title": "The Priority Shift Is Not the Emergency",
+        "recommended_angle": "show how sudden priority changes test composure before they test productivity",
+        "why_now": "Ledger metric signals currently favor: priority shifts / meetings / boss pressure",
         "experiment_tag": "discovery_batch",
-        "metric_signal": "deadline rushing / pressure spirals / urgency"
+        "metric_signal": "priority shifts / meetings / boss pressure"
+      },
+      {
+        "objective": "discovery",
+        "title": "Stop Letting Work Steal Your Focus Before Noon",
+        "recommended_angle": "show one concrete focus leak and one Stoic boundary",
+        "why_now": "Ledger metric signals currently favor: focus boundaries / over-accepting meetings",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "focus boundaries / over-accepting meetings"
+      },
+      {
+        "objective": "discovery",
+        "title": "Your Coworker's Disrespect Only Wins If You React",
+        "recommended_angle": "turn workplace disrespect into a composure-vs-reactivity scenario",
+        "why_now": "TikTok data shows conflict/disrespect framing is currently the strongest reach lane",
+        "experiment_tag": "tiktok_conflict_batch"
       },
       {
         "objective": "discovery",
         "title": "Strategic Patience Is a Workplace Power Move",
         "recommended_angle": "frame patience as leverage, not passivity",
-        "why_now": "Ledger metric signals currently favor: strategic patience / decision pause / restraint",
-        "experiment_tag": "tiktok_conflict_batch",
-        "metric_signal": "strategic patience / decision pause / restraint"
-      },
-      {
-        "objective": "discovery",
-        "title": "Your Coworker's Disrespect Only Wins If You React",
-        "recommended_angle": "turn passive-aggressive workplace messages into a composure-vs-reactivity scenario",
-        "why_now": "Ledger metric signals currently favor: coworker disrespect / passive aggression / reactivity",
-        "experiment_tag": "discovery_batch",
-        "metric_signal": "coworker disrespect / passive aggression / reactivity"
-      },
-      {
-        "objective": "discovery",
-        "title": "Build Discipline Without Burning Out",
-        "recommended_angle": "make discipline a system of friction and boundaries, not self-punishment",
-        "why_now": "Ledger metric signals currently favor: discipline without burnout / sustainable focus",
-        "experiment_tag": "discovery_batch",
-        "metric_signal": "discipline without burnout / sustainable focus"
+        "why_now": "patience/power-move packaging is one of the strongest TikTok patterns",
+        "experiment_tag": "tiktok_conflict_batch"
       },
       {
         "objective": "discovery",
@@ -197,6 +211,22 @@
   "ideas": [
     {
       "objective": "discovery",
+      "title": "Their Mess Is Not Your Emergency",
+      "recommended_angle": "turn messy shared-workspace chaos into a boundaries-and-judgment scenario",
+      "why_now": "Ledger metric signals currently favor: workplace chaos / cleaning others' mess / boundary triggers",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "workplace chaos / cleaning others' mess / boundary triggers"
+    },
+    {
+      "objective": "discovery",
+      "title": "Why Rushing Makes Work Pressure Worse",
+      "recommended_angle": "show how deadline pressure hijacks attention and how a short pause restores control",
+      "why_now": "Ledger metric signals currently favor: strategic patience / rushing / decision pause",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "strategic patience / rushing / decision pause"
+    },
+    {
+      "objective": "discovery",
       "title": "You Do Not Need Everyone at Work to Like You",
       "recommended_angle": "turn approval-seeking into a disagreement-at-work scenario the viewer can recognize immediately",
       "why_now": "Ledger metric signals currently favor: approval pressure / disagreement / seeking validation",
@@ -205,35 +235,33 @@
     },
     {
       "objective": "discovery",
-      "title": "Why Rushing Makes Work Pressure Worse",
-      "recommended_angle": "show how deadline pressure hijacks attention and how a short pause restores control",
-      "why_now": "Ledger metric signals currently favor: deadline rushing / pressure spirals / urgency",
+      "title": "The Priority Shift Is Not the Emergency",
+      "recommended_angle": "show how sudden priority changes test composure before they test productivity",
+      "why_now": "Ledger metric signals currently favor: priority shifts / meetings / boss pressure",
       "experiment_tag": "discovery_batch",
-      "metric_signal": "deadline rushing / pressure spirals / urgency"
+      "metric_signal": "priority shifts / meetings / boss pressure"
+    },
+    {
+      "objective": "discovery",
+      "title": "Stop Letting Work Steal Your Focus Before Noon",
+      "recommended_angle": "show one concrete focus leak and one Stoic boundary",
+      "why_now": "Ledger metric signals currently favor: focus boundaries / over-accepting meetings",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "focus boundaries / over-accepting meetings"
+    },
+    {
+      "objective": "discovery",
+      "title": "Your Coworker's Disrespect Only Wins If You React",
+      "recommended_angle": "turn workplace disrespect into a composure-vs-reactivity scenario",
+      "why_now": "TikTok data shows conflict/disrespect framing is currently the strongest reach lane",
+      "experiment_tag": "tiktok_conflict_batch"
     },
     {
       "objective": "discovery",
       "title": "Strategic Patience Is a Workplace Power Move",
       "recommended_angle": "frame patience as leverage, not passivity",
-      "why_now": "Ledger metric signals currently favor: strategic patience / decision pause / restraint",
-      "experiment_tag": "tiktok_conflict_batch",
-      "metric_signal": "strategic patience / decision pause / restraint"
-    },
-    {
-      "objective": "discovery",
-      "title": "Your Coworker's Disrespect Only Wins If You React",
-      "recommended_angle": "turn passive-aggressive workplace messages into a composure-vs-reactivity scenario",
-      "why_now": "Ledger metric signals currently favor: coworker disrespect / passive aggression / reactivity",
-      "experiment_tag": "discovery_batch",
-      "metric_signal": "coworker disrespect / passive aggression / reactivity"
-    },
-    {
-      "objective": "discovery",
-      "title": "Build Discipline Without Burning Out",
-      "recommended_angle": "make discipline a system of friction and boundaries, not self-punishment",
-      "why_now": "Ledger metric signals currently favor: discipline without burnout / sustainable focus",
-      "experiment_tag": "discovery_batch",
-      "metric_signal": "discipline without burnout / sustainable focus"
+      "why_now": "patience/power-move packaging is one of the strongest TikTok patterns",
+      "experiment_tag": "tiktok_conflict_batch"
     },
     {
       "objective": "discovery",

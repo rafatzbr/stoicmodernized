@@ -323,26 +323,26 @@ class ScriptStage:
             max_tokens=settings.local_script_max_tokens,
         )
 
-        self._progress("[ScriptStage] Council step: Paw hook")
-        paw_hook = await self._call_council_agent(
-            agent_name="Paw",
+        self._progress("[ScriptStage] Council step: Piper hook")
+        piper_hook = await self._call_council_agent(
+            agent_name="Piper",
             role_prompt=(
-                "You are Paw, the hook editor. Generate the sharpest non-clickbait title and hook for this Stoic Modernized video."
+                "You are Piper, the hook editor. Generate the sharpest non-clickbait title and hook for this Stoic Modernized video."
             ),
-            task_prompt=self._build_paw_prompt(research_packet, tweezers_edit, ledger_strategy),
+            task_prompt=self._build_piper_prompt(research_packet, tweezers_edit, ledger_strategy),
             max_tokens=400,
         )
 
-        self._progress("[ScriptStage] Council step: Speak polish")
-        speak_polish = await self._call_council_agent(
-            agent_name="Speak",
+        self._progress("[ScriptStage] Council step: Marlow polish")
+        marlow_polish = await self._call_council_agent(
+            agent_name="Marlow",
             role_prompt=(
-                "You are Speak, the TTS optimizer. Rewrite only as needed so the script sounds natural aloud, preserves scene-sized thought units, and keeps the same claims."
+                "You are Marlow, the TTS optimizer. Rewrite only as needed so the script sounds natural aloud, preserves scene-sized thought units, and keeps the same claims."
             ),
-            task_prompt=self._build_speak_prompt(research_packet, tweezers_edit, paw_hook, ledger_strategy),
+            task_prompt=self._build_marlow_prompt(research_packet, tweezers_edit, piper_hook, ledger_strategy),
             max_tokens=settings.local_script_max_tokens,
         )
-        speak_polish = self._normalize_council_script_payload(speak_polish)
+        marlow_polish = self._normalize_council_script_payload(marlow_polish)
 
         self._progress("[ScriptStage] Council step: Mittens review")
         mittens_review = await self._call_council_agent(
@@ -351,7 +351,7 @@ class ScriptStage:
                 "You are Mittens, the final script reviewer. Check for malformed text, weak claims, generic sludge, and pacing drift. "
                 "Approve only if this is ready for scene planning."
             ),
-            task_prompt=self._build_mittens_prompt(research_packet, speak_polish, ledger_strategy),
+            task_prompt=self._build_mittens_prompt(research_packet, marlow_polish, ledger_strategy),
             max_tokens=900,
         )
         if isinstance(mittens_review.get("script"), dict):
@@ -400,8 +400,8 @@ class ScriptStage:
             "ledger": ledger_strategy,
             "scratch": scratch_draft,
             "tweezers": tweezers_edit,
-            "paw": paw_hook,
-            "speak": speak_polish,
+            "piper": piper_hook,
+            "marlow": marlow_polish,
             "mittens": mittens_review,
             "mr_jim_business": mr_jim_review,
         }
@@ -412,7 +412,7 @@ class ScriptStage:
 
         final_review = remediation_review or mr_jim_review
         approved = bool(final_review.get("approved", False))
-        final_script_payload = final_review.get("script") or mr_jim_review.get("script") or mittens_review.get("script") or speak_polish
+        final_script_payload = final_review.get("script") or mr_jim_review.get("script") or mittens_review.get("script") or marlow_polish
         if not approved:
             issues = final_review.get("issues") or mr_jim_review.get("issues") or mittens_review.get("issues") or ["Council review rejected script"]
             raise ScriptGenerationError("Council rejected script: " + "; ".join(str(issue) for issue in issues))
@@ -750,7 +750,7 @@ Rules:
 - Do not turn this into slogans or generic advice.
 """.strip()
 
-    def _build_paw_prompt(self, research_packet: dict[str, Any], script_payload: dict[str, Any], ledger_strategy: dict[str, Any] | None = None) -> str:
+    def _build_piper_prompt(self, research_packet: dict[str, Any], script_payload: dict[str, Any], ledger_strategy: dict[str, Any] | None = None) -> str:
         return f"""
 Research packet:
 {json.dumps(research_packet, ensure_ascii=False, indent=2)}
@@ -775,10 +775,10 @@ Rules:
 - For shorts, do not use colons, parentheses, or subtitle-style add-ons.
 """.strip()
 
-    def _build_speak_prompt(self, research_packet: dict[str, Any], script_payload: dict[str, Any], paw_hook: dict[str, Any], ledger_strategy: dict[str, Any] | None = None) -> str:
+    def _build_marlow_prompt(self, research_packet: dict[str, Any], script_payload: dict[str, Any], piper_hook: dict[str, Any], ledger_strategy: dict[str, Any] | None = None) -> str:
         merged = dict(script_payload)
-        merged["title"] = paw_hook.get("title") or merged.get("title")
-        merged["hook"] = paw_hook.get("hook") or merged.get("hook")
+        merged["title"] = piper_hook.get("title") or merged.get("title")
+        merged["hook"] = piper_hook.get("hook") or merged.get("hook")
         return f"""
 Research packet:
 {json.dumps(research_packet, ensure_ascii=False, indent=2)}

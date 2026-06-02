@@ -146,6 +146,45 @@ def test_topic_plan_uses_new_tiktok_weighting_themes(tmp_path: Path) -> None:
     assert plan["metric_signals"]["tiktok_weightings"][0]["label"] == "approval pressure / disagreement / seeking validation"
 
 
+def test_topic_plan_uses_workplace_chaos_tiktok_weighting(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    artifacts = workspace / "artifacts"
+    artifacts.mkdir(parents=True, exist_ok=True)
+    (artifacts / "stoic-modernized-tiktok-analytics-2026-06-01.md").write_text(
+        """
+# TikTok analytics
+## Analytics window
+- Video views: 1,471
+- Profile views: 4
+- Likes: 69
+- Comments: 9
+- Shares: 2
+- Followers at window end: 56
+- Followers gained: 11
+## Strongest posts by views
+1. Stop Cleaning Their Mess - 435 views
+2. Your boss shifts priorities at 4 PM on Friday - 208 views
+## Recommended weighting for next batch
+- 35% workplace chaos / cleaning others' mess / boundary triggers
+- 25% strategic patience / rushing / decision pause
+""",
+        encoding="utf-8",
+    )
+
+    manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
+    strategy = manager.generate_global_strategy()
+    signals = strategy["metric_signals"]
+
+    assert signals["tiktok_top_titles"] == ["Stop Cleaning Their Mess", "Your boss shifts priorities at 4 PM on Friday"]
+    assert signals["tiktok_weightings"][0]["label"] == "workplace chaos / cleaning others' mess / boundary triggers"
+    assert "workplace chaos / cleaning others' mess / boundary triggers" in signals["winning_themes"]
+
+    plan = manager.generate_topic_plan()
+    assert plan["metric_signals"]["source_count"] == 1
+    assert plan["ideas"][0]["title"] == "Their Mess Is Not Your Emergency"
+    assert plan["ideas"][0]["metric_signal"] == "workplace chaos / cleaning others' mess / boundary triggers"
+
+
 def test_job_packet_carries_metric_and_format_steering(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     artifacts = workspace / "artifacts"

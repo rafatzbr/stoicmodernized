@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Paw Hook Editor for AI Signal
+Piper Hook Editor for AI Signal
 Generates 5 YouTube Short hooks based on Pip summaries
 """
 import json
@@ -13,7 +13,7 @@ summaries_file = sys.argv[1] if len(sys.argv) > 1 else None
 output_dir = sys.argv[2] if len(sys.argv) > 2 else None
 
 if not summaries_file:
-    print("Usage: python paw_hooks_editor.py <summaries.json> [output_dir]")
+    print("Usage: python piper_hooks_editor.py <summaries.json> [output_dir]")
     sys.exit(1)
 
 with open(summaries_file) as f:
@@ -69,7 +69,7 @@ recommended = {
 
 # Build output
 output = {
-    "job_id": f"paw-hooks-{datetime.utcnow().strftime('%Y-%m-%dT%H-%M-%S')}",
+    "job_id": f"piper-hooks-{datetime.utcnow().strftime('%Y-%m-%dT%H-%M-%S')}",
     "source_job": data["job_id"],
     "generated_at": datetime.utcnow().isoformat() + "Z",
     "theme": core_theme,

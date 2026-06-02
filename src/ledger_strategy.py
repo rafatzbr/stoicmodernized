@@ -582,6 +582,21 @@ class LedgerStrategyManager:
     def _metric_topic_ideas(self, metric_signals: dict[str, Any]) -> list[dict[str, Any]]:
         templates = [
             (
+                "mess",
+                "Their Mess Is Not Your Emergency",
+                "turn messy shared-workspace chaos into a boundaries-and-judgment scenario",
+            ),
+            (
+                "cleaning",
+                "Their Mess Is Not Your Emergency",
+                "turn cleaning up other people's messes into a practical boundary scenario",
+            ),
+            (
+                "boundary",
+                "Their Mess Is Not Your Emergency",
+                "show how one small workplace boundary protects attention and judgment",
+            ),
+            (
                 "approval",
                 "You Do Not Need Everyone at Work to Like You",
                 "turn approval-seeking into a disagreement-at-work scenario the viewer can recognize immediately",
@@ -605,6 +620,11 @@ class LedgerStrategyManager:
                 "urgency",
                 "Slow Down Before You Decide",
                 "frame urgency as the moment where a decision-pause prevents avoidable mistakes",
+            ),
+            (
+                "priority",
+                "The Priority Shift Is Not the Emergency",
+                "show how sudden priority changes test composure before they test productivity",
             ),
             (
                 "passive aggression",
