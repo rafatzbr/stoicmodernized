@@ -1,24 +1,16 @@
-# Active plan — tighten validation and regenerate video
+# Task: Fix initial duplicate-subject guardrails
 
-## Goal
-Make early subject validation match final upload cooldown behavior, generate a replacement video, and schedule it on YouTube for June 2, 2026 at 8 AM Pacific.
+## Plan
+- [x] Inspect current topic/script duplicate guardrail implementation and recent job artifacts.
+- [x] Patch early validation so script-only/research-only recent attempts are considered, not only jobs with metadata.
+- [x] Add regression coverage for the coworker-disrespect / coworker-steals-credit repeat and script-only prior artifacts.
+- [x] Run targeted tests and compile checks.
+- [x] Update lessons for this correction and report results.
 
-## Completed
-- [x] Root-caused early/upload validation disagreement: metadata maintenance rewrites refreshed old file mtimes, so upload treated older jobs as recent.
-- [x] Added regression coverage for edited old metadata and metadata missing dates.
-- [x] Patched cooldown date logic to prefer stable metadata/ledger/script dates before file mtime.
-- [x] Verified targeted upload metadata tests, daily orchestrator tests, py_compile, and daily setup check.
-- [x] Generated replacement video `d2ca9c28-cc30-4614-b6fb-c0ceaeeb75cf` after guardrail-aware topic retry.
-- [x] Repaired final YouTube metadata description before upload; verified exactly five hashtags.
-- [x] Verified MP4, music guardrail, duplicate/topic guardrail, and scheduled YouTube upload.
-
-## Upload result
-- Job ID: `d2ca9c28-cc30-4614-b6fb-c0ceaeeb75cf`
-- YouTube video ID: `wW9ma_TT0Lg`
-- URL: https://www.youtube.com/watch?v=wW9ma_TT0Lg
-- Schedule: `2026-06-02T15:00:00Z` (June 2, 8:00 AM Pacific)
-- Verified API state: `privacyStatus=private`, `uploadStatus=processed`, `processingStatus=succeeded`, `duration=PT1M1S`, `definition=hd`
-
-## Notes
-- Do not bypass upload guardrails.
-- The standard CLI upload regenerates metadata; for this run the direct uploader path was used after cleaning bad generated description copy.
+## Review
+- Root cause: initial research/script subject guardrails scanned packaged `metadata.json` jobs only. Retry artifacts that had `script.json` or `research.json` but no metadata were invisible, so a later candidate could repeat the same subject family before media spend.
+- Fix: `YouTubeUploader` now scans one best subject artifact per recent job: metadata first, then script, then research.
+- Fix: stale-scan cutoff now counts only artifacts outside the current month and outside the rolling recent-subject window, so last-week script-only retries are not skipped.
+- Fix: `react` is a trigger token, catching coworker/react conflict repeats such as coworker steals credit vs coworker disrespect.
+- Added regression tests for both research-time and script-time blocking of script-only retry repeats.
+- Verification passed: `tests/test_upload_metadata.py`, `tests/test_daily_video_orchestrator.py`, `py_compile`, and daily `--check`.

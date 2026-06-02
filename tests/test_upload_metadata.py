@@ -659,6 +659,95 @@ def test_research_topic_validation_blocks_boss_pressure_repeat_before_cats_spend
     assert "boss-pressure subject guardrail" in error
 
 
+def test_research_topic_validation_blocks_repeat_from_script_only_retry(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_job.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+
+    prior_job = jobs_dir / "prior-script-only-job"
+    prior_script_dir = prior_job / "script"
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Stop Reacting When Coworkers Steal Credit",
+                "short_version": (
+                    "Your coworker just took your idea in the meeting and claimed it as their own. "
+                    "Do not react yet. That urge to correct them immediately is the trap."
+                ),
+                "generated_at": "2026-06-02T15:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_topic_for_research(
+        "Your Coworker's Disrespect Only Wins If You React",
+        str(current_job),
+    )
+
+    assert error is not None
+    assert "same-month subject guardrail" in error
+    assert "prior-script-only-job" in error
+
+
+def test_script_subject_validation_blocks_repeat_from_script_only_retry(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_script_dir = current_job / "script"
+    current_script_dir.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Your Coworker's Disrespect Only Wins If You React",
+                "short_version": (
+                    "Your coworker just gave you a condescending greeting. Do not react. "
+                    "Pause before the disrespect controls your day."
+                ),
+                "narration": "Your coworker disrespected you. Pause before you react.",
+                "chapters": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prior_job = jobs_dir / "prior-script-only-job"
+    prior_script_dir = prior_job / "script"
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Stop Reacting When Coworkers Steal Credit",
+                "short_version": (
+                    "Your coworker just took your idea in the meeting and claimed it as their own. "
+                    "Do not react yet. That urge to correct them immediately is the trap."
+                ),
+                "generated_at": "2026-06-02T15:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_script_for_generation(
+        metadata={"title": "Your Coworker's Disrespect Only Wins If You React | Stoic Modernized"},
+        job_dir=str(current_job),
+    )
+
+    assert error is not None
+    assert "same-month subject guardrail" in error
+    assert "prior-script-only-job" in error
+
+
 def test_script_subject_validation_blocks_before_expensive_generation(monkeypatch, tmp_path: Path) -> None:
     jobs_dir = tmp_path / "jobs"
     current_job = jobs_dir / "current-job"

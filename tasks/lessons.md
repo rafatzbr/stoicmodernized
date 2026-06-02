@@ -190,6 +190,14 @@ Run the duplicate/same-month subject guardrail immediately after script generati
 - Guardrail messages should report trigger-level subject signals (for example `anxiety, meeting`), not incidental generic overlaps.
 - Regression tests live in `tests/test_upload_metadata.py`.
 
+## Initial Guardrails Must Include Retry Artifacts (June 2026)
+
+- Correction: A duplicated Stoic Modernized subject reached generation because the early guardrails scanned only packaged `metadata.json` jobs. Script-only/research-only retries from prior blocked or abandoned attempts were invisible.
+- Rule: subject guardrails must compare one best artifact per recent job, preferring `metadata/metadata.json`, then `script/script.json`, then `research/research.json`.
+- Rule: do not stop scanning after a small count of non-current-month artifacts if they are still inside the rolling recent-subject window; script-only retries from the last week must still be eligible blockers.
+- For coworker/react conflict repeats, `react` is a trigger token so subjects like “coworker steals credit” and “coworker disrespect only wins if you react” are treated as the same short-window family.
+- Regression tests: `test_research_topic_validation_blocks_repeat_from_script_only_retry` and `test_script_subject_validation_blocks_repeat_from_script_only_retry`.
+
 ## Metadata Titles Must Be Complete Phrases (May 2026)
 
 ### Problem

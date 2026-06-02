@@ -60,7 +60,7 @@ TOPIC_FAMILY_STOPWORDS = {
 TOPIC_FAMILY_TRIGGER_TOKENS = {
     "slack", "notification", "meeting", "boss", "coworker", "deadline", "burnout", "layoff", "email",
     "text", "ping", "message", "praise", "approval", "disrespect", "overexplaining", "overthinking", "rumination",
-    "ruminate", "anxiety", "politics", "priority", "pressure",
+    "ruminate", "anxiety", "politics", "priority", "pressure", "react",
 }
 
 BOSS_PRESSURE_CONTEXT_TOKENS = {
@@ -221,24 +221,15 @@ class YouTubeUploader:
         if len(current_combined_tokens) < 4:
             return None
 
-        metadata_paths = sorted(
-            settings.jobs_dir.glob("*/metadata/metadata.json"),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )
+        subject_artifacts = self._recent_subject_artifacts()
 
         checked_jobs = 0
-        for metadata_path in metadata_paths:
+        for metadata_path, other_metadata in subject_artifacts:
             other_job_dir = metadata_path.parent.parent.resolve()
             if other_job_dir == current_job_dir:
                 continue
 
             if not self._job_matches_channel(other_job_dir):
-                continue
-
-            try:
-                other_metadata = load_json(metadata_path)
-            except Exception:
                 continue
 
             other_title = self._normalize_video_text(str(other_metadata.get("title") or ""))
@@ -297,7 +288,7 @@ class YouTubeUploader:
                     f"Shared topic signals: {overlap_terms}. Regenerate with a different workplace trigger before publishing."
                 )
 
-            if not self._metadata_in_current_month(metadata_path, other_metadata):
+            if not self._recent_subject_window_hit(metadata_path, other_metadata):
                 checked_jobs += 1
                 if checked_jobs >= recent_limit:
                     break
@@ -321,22 +312,14 @@ class YouTubeUploader:
         if len(current_topic_tokens) < 2:
             return None
 
-        metadata_paths = sorted(
-            settings.jobs_dir.glob("*/metadata/metadata.json"),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )
+        subject_artifacts = self._recent_subject_artifacts()
 
         checked_jobs = 0
-        for metadata_path in metadata_paths:
+        for metadata_path, other_metadata in subject_artifacts:
             other_job_dir = metadata_path.parent.parent.resolve()
             if other_job_dir == current_job_dir:
                 continue
             if not self._job_matches_channel(other_job_dir):
-                continue
-            try:
-                other_metadata = load_json(metadata_path)
-            except Exception:
                 continue
 
             other_title = self._normalize_video_text(str(other_metadata.get("title") or ""))
@@ -389,12 +372,55 @@ class YouTubeUploader:
                     f"Shared topic signals: {overlap_terms}. Research a different workplace trigger before continuing."
                 )
 
-            if not self._metadata_in_current_month(metadata_path, other_metadata):
+            if not self._recent_subject_window_hit(metadata_path, other_metadata):
                 checked_jobs += 1
                 if checked_jobs >= recent_limit:
                     break
 
         return None
+
+    def _recent_subject_artifacts(self) -> list[tuple[Path, dict[str, Any]]]:
+        """Return one comparable subject artifact per recent job.
+
+        Metadata is the preferred source after a video is packaged/upload-ready, but the
+        daily guardrails also need to learn from abandoned retry attempts. Those attempts
+        often have only `script.json` or `research.json`, so metadata-only scans let the
+        next candidate repeat the same subject before the expensive stages begin.
+        """
+        artifacts: list[tuple[Path, dict[str, Any]]] = []
+        for job_dir in settings.jobs_dir.glob("*"):
+            if not job_dir.is_dir():
+                continue
+            for rel_path in (
+                Path("metadata/metadata.json"),
+                Path("script/script.json"),
+                Path("research/research.json"),
+            ):
+                path = job_dir / rel_path
+                if not path.exists():
+                    continue
+                try:
+                    payload = load_json(path)
+                except Exception:
+                    break
+                if not isinstance(payload, dict):
+                    break
+                comparable = self._subject_payload_from_artifact(payload, rel_path)
+                if comparable.get("title"):
+                    artifacts.append((path, comparable))
+                break
+        return sorted(artifacts, key=lambda item: item[0].stat().st_mtime, reverse=True)
+
+    def _subject_payload_from_artifact(self, payload: dict[str, Any], rel_path: Path) -> dict[str, Any]:
+        comparable = dict(payload)
+        if rel_path.parts[0] == "script":
+            comparable.setdefault("title", payload.get("title"))
+            comparable.setdefault("generated_at", payload.get("generated_at") or payload.get("created_at"))
+        elif rel_path.parts[0] == "research":
+            title = payload.get("topic") or payload.get("title")
+            comparable["title"] = title
+            comparable.setdefault("generated_at", payload.get("generated_at") or payload.get("created_at"))
+        return comparable
 
     def _job_matches_channel(self, job_dir: Path) -> bool:
         job_json = job_dir / "job.json"

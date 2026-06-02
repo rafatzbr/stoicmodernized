@@ -67,8 +67,8 @@ The research stage gathers relevant source material for a given topic. It search
 ## Business Rules
 
 - **Mock mode**: In mock mode, returns deterministic mock data with predefined sources.
-- **Topic guardrail**: Research validates the requested topic against recent uploads before doing expensive downstream work. If the topic is rejected, research must choose a new candidate topic before proceeding.
-- **Research-stage retries**: Topic duplication and cooldown decisions are handled inside research, not deferred to upload.
+- **Topic guardrail**: Research validates the requested topic against recent uploads and recent retry artifacts (`script.json` / `research.json`) before doing expensive downstream work. If the topic is rejected, research must choose a new candidate topic before proceeding.
+- **Research-stage retries**: Topic duplication and cooldown decisions are handled inside research, not deferred to upload. Abandoned script-only attempts still count as recent subject evidence so the next candidate cannot repeat the same actor/trigger family.
 - **Relevance scoring**: Sources must have a relevance score between 0.0 and 1.0 (enforced by Pydantic `Field(ge=0.0, le=1.0)`).
 - **Output format**: Always JSON, always under `output/jobs/{job_id}/research/`.
 - **Source attribution**: Each source must include a `note` explaining its relevance.
