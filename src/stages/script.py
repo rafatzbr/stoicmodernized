@@ -1051,13 +1051,14 @@ Rules:
 
     def _ensure_cta_handle(self, text: str) -> str:
         candidate = " ".join((text or "").split()).strip()
+        standard_cta = "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
         if not candidate:
-            return "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+            return standard_cta
         if "@stoic-modernized" in candidate.lower():
-            return candidate
+            return standard_cta
         lowered = candidate.lower().rstrip(".! ")
         if lowered.startswith("subscribe") or lowered.startswith("follow"):
-            return "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+            return standard_cta
         return f"{candidate.rstrip('.! ')}. Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
 
     def _normalize_short_narration_blocks(self, hook: str, narration: str, cta: str) -> str:

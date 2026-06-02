@@ -198,6 +198,13 @@ Run the duplicate/same-month subject guardrail immediately after script generati
 - For coworker/react conflict repeats, `react` is a trigger token so subjects like “coworker steals credit” and “coworker disrespect only wins if you react” are treated as the same short-window family.
 - Regression tests: `test_research_topic_validation_blocks_repeat_from_script_only_retry` and `test_script_subject_validation_blocks_repeat_from_script_only_retry`.
 
+## Shorts Must Have One Subscribe CTA (June 2026)
+
+- Correction: A generated Stoic short ended with two spoken CTAs: a custom action/subscription line followed by the standard `@stoic-modernized` subscription line.
+- Rule: for Stoic Modernized shorts, normalize any CTA that already mentions `@stoic-modernized` to the single standard line: `Subscribe to @stoic-modernized for practical Stoic tools you can use at work.`
+- Rule: when fixing an already-rendered double-CTA short, cancel any scheduled YouTube publish first, then patch `script/script.json` and the final `scenes/scenes.json` CTA scene, rerun TTS → subtitles → render → metadata, and verify the final subtitle/audio tail has one subscribe cue.
+- Regression test: `test_short_cta_with_existing_handle_uses_single_standard_subscribe_line` in `tests/test_script_stage.py`.
+
 ## Metadata Titles Must Be Complete Phrases (May 2026)
 
 ### Problem

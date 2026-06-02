@@ -154,6 +154,22 @@ class TestScriptStage:
         assert 4 <= len(script.title.split()) <= 9
         assert "@stoic-modernized" in script.cta
 
+    def test_short_cta_with_existing_handle_uses_single_standard_subscribe_line(self) -> None:
+        stage = ScriptStage(job_id="job-4-cta", mock=False, video_mode=VideoMode.SHORT)
+        normalized = stage._normalize_council_script_payload(
+            {
+                "title": "Stop Defending When Criticized",
+                "hook": "Client feedback hits your ego fast.",
+                "narration": "[0:00-0:12] Hook\nClient feedback hits your ego fast.\n\n[0:12-0:30] Stoic Principle\nYou control your judgment, not their words.\n\n[0:30-0:50] Workplace Application\nPause before you type and answer the work, not your pride.\n\n[0:50-0:58] CTA\nBreathe first. Reply second. Subscribe for steady work strategies. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                "chapters": [],
+                "cta": "Breathe first. Reply second. Subscribe for steady work strategies. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            }
+        )
+
+        cta_block = normalized["narration"].split("[0:50-0:58] CTA", 1)[1]
+        assert cta_block.strip() == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        assert cta_block.lower().count("subscribe") == 1
+
     def test_parse_script_response_does_not_prepend_hook_to_timed_short_script(self) -> None:
         stage = ScriptStage(job_id="job-4b", mock=False, video_mode=VideoMode.SHORT)
         script = stage._parse_script_response(
