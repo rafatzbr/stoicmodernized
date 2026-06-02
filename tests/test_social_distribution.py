@@ -179,6 +179,9 @@ def test_metadata_command_always_publishes_video_to_media_explorer(monkeypatch, 
     assert "function displayName(item)" in explorer_html
     assert "let sortKey = 'modified'; let sortDir = 'desc';" in explorer_html
     assert "function matchesQuery(item, q)" in explorer_html
+    assert "grid-template-columns:minmax(0,1fr)" in explorer_html
+    assert ".label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" in explorer_html
+    assert ".sub{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" in explorer_html
 
 
 def test_distribute_command_updates_job_status(monkeypatch, tmp_path: Path) -> None:
