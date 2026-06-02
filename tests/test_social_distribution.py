@@ -59,7 +59,8 @@ def test_media_explorer_caption_limits_hashtags_to_relevant_five() -> None:
         "title": "Stop The Reopened Decision Loop At Work | Stoic Modernized",
         "description": (
             "When a decision keeps getting reopened at work, your job is not to win the argument again. "
-            "Pause, restate the boundary, and protect your focus for the next useful move."
+            "Pause, restate the boundary, and protect your focus for the next useful move.\n\n"
+            "#stoicism #stoicmodernized #workplacestress #careeradvice #selfcontrol"
         ),
         "tags": [
             "anxiety spiral",
@@ -79,6 +80,8 @@ def test_media_explorer_caption_limits_hashtags_to_relevant_five() -> None:
     hashtags = [word for word in instagram.split() if word.startswith("#")]
 
     assert len(hashtags) <= 5
+    assert "#stoicism" not in instagram
+    assert "#workplacestress" not in instagram
     assert "#StoicModernized" in hashtags
     assert any("Decision" in tag for tag in hashtags)
     assert any("Focus" in tag for tag in hashtags)

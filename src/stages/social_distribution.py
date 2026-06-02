@@ -30,6 +30,10 @@ def _strip_youtube_boilerplate(description: str) -> str:
     body = body.split("\n\nResources:", 1)[0]
     body = re.sub(r"Subscribe to @stoic-modernized[^.#!?]*(?:[.!?]|$)", "", body, flags=re.IGNORECASE)
     body = re.sub(r"Watch on YouTube:?\s*\S*", "", body, flags=re.IGNORECASE)
+    # YouTube descriptions often include their own hashtag tail. Social captions
+    # build a fresh capped/relevance-filtered hashtag set, so strip existing
+    # hashtags from the body first to avoid publishing duplicate/over-limit tags.
+    body = re.sub(r"(?:^|\s)#\w+", "", body)
     body = re.sub(r"\s+", " ", body).strip(" -")
     return body
 
