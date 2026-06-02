@@ -129,6 +129,8 @@ class SceneStage:
             text_overlay = (
                 title_text
                 if scene_type in {"title_screen", "story"}
+                else "CTA"
+                if scene_type == "cta"
                 else self._generate_text_overlay(line, topic, spec.get("label"))
             )
 
@@ -242,7 +244,9 @@ class SceneStage:
                         narration_segment=scene.narration_segment,
                         visual_prompt=str(replacement.get("visual_prompt") or scene.visual_prompt).strip(),
                         text_overlay=(
-                            scene.text_overlay
+                            "CTA"
+                            if scene.scene_type == "cta"
+                            else scene.text_overlay
                             if scene.scene_type in {"title_screen", "story"}
                             else self._normalize_overlay(str(replacement.get("text_overlay") or scene.text_overlay or "")).strip()
                             or scene.text_overlay
@@ -649,10 +653,40 @@ Input scenes:
             if not body and section_type != "title_screen":
                 continue
             normalized_label = self._normalize_section_label(raw_label, body)
+            start_time = self._parse_mmss(match.group("start"))
+            end_time = self._parse_mmss(match.group("end"))
+            if section_type == "cta":
+                split_cta = self._split_action_text_from_subscribe_cta(body)
+                if split_cta is not None:
+                    action_text, subscribe_text = split_cta
+                    action_words = max(1, len(action_text.split()))
+                    subscribe_words = max(1, len(subscribe_text.split()))
+                    split_time = start_time + (end_time - start_time) * (action_words / (action_words + subscribe_words))
+                    sections.append(
+                        {
+                            "start_time": start_time,
+                            "end_time": round(split_time, 3),
+                            "label": "Action",
+                            "text": action_text,
+                            "scene_type": None,
+                            "title_text": None,
+                        }
+                    )
+                    sections.append(
+                        {
+                            "start_time": round(split_time, 3),
+                            "end_time": end_time,
+                            "label": title_text or normalized_label,
+                            "text": subscribe_text,
+                            "scene_type": "cta",
+                            "title_text": title_text,
+                        }
+                    )
+                    continue
             sections.append(
                 {
-                    "start_time": self._parse_mmss(match.group("start")),
-                    "end_time": self._parse_mmss(match.group("end")),
+                    "start_time": start_time,
+                    "end_time": end_time,
                     "label": title_text or normalized_label,
                     "text": "" if section_type == "title_screen" else body,
                     "scene_type": section_type,
@@ -660,6 +694,26 @@ Input scenes:
                 }
             )
         return sections
+
+    def _split_action_text_from_subscribe_cta(self, text: str) -> tuple[str, str] | None:
+        sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text or "") if part.strip()]
+        if len(sentences) < 2:
+            return None
+        subscribe_index = next(
+            (
+                index
+                for index, sentence in enumerate(sentences)
+                if re.search(r"\b(subscribe|follow)\b", sentence.lower()) or "@stoic-modernized" in sentence.lower()
+            ),
+            None,
+        )
+        if subscribe_index is None or subscribe_index == 0:
+            return None
+        action_text = " ".join(sentences[:subscribe_index]).strip()
+        subscribe_text = " ".join(sentences[subscribe_index:]).strip()
+        if not action_text or not subscribe_text:
+            return None
+        return action_text, subscribe_text
 
     def _short_cta_text(self, script_data: dict) -> str:
         """Return the established Stoic Modernized short CTA text.
@@ -854,7 +908,7 @@ Input scenes:
             return "title_announcement"
         if re.match(r"section\s+[2-6]:", lowered):
             return "story"
-        if re.match(r"section\s+7:\s*cta", lowered):
+        if re.match(r"section\s+7:\s*cta", lowered) or lowered == "cta" or " call to action" in f" {lowered}":
             return "cta"
         return None
 

@@ -201,8 +201,8 @@ Run the duplicate/same-month subject guardrail immediately after script generati
 ## Shorts Must Have One Subscribe CTA (June 2026)
 
 - Correction: A generated Stoic short ended with two spoken CTAs: a custom action/subscription line followed by the standard `@stoic-modernized` subscription line.
-- Rule: for Stoic Modernized shorts, normalize any CTA that already mentions `@stoic-modernized` to the single standard line: `Subscribe to @stoic-modernized for practical Stoic tools you can use at work.`
-- Rule: when fixing an already-rendered double-CTA short, cancel any scheduled YouTube publish first, then patch `script/script.json` and the final `scenes/scenes.json` CTA scene, rerun TTS → subtitles → render → metadata, and verify the final subtitle/audio tail has one subscribe cue.
+- Rule: for Stoic Modernized shorts, preserve the useful action CTA text but normalize duplicate subscribe/follow phrases into one standard subscribe sentence: `Subscribe to @stoic-modernized for practical Stoic tools you can use at work.`
+- Rule: when fixing an already-rendered double-CTA short, cancel any scheduled YouTube publish first, then patch/regenerate so the action line stays in the pre-end-card scene and the final CTA scene contains exactly one subscribe cue; rerun scene → TTS → subtitles → render → metadata and verify the subtitle/audio tail.
 - Regression test: `test_short_cta_with_existing_handle_uses_single_standard_subscribe_line` in `tests/test_script_stage.py`.
 
 ## Metadata Titles Must Be Complete Phrases (May 2026)

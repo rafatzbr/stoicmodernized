@@ -54,6 +54,33 @@ async def test_short_scene_plan_appends_separate_spoken_cta_when_script_cta_is_n
 
 
 @pytest.mark.asyncio
+async def test_short_timed_cta_action_text_stays_before_subscribe_end_card(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+
+    stage = SceneStage(job_id="short-cta-split-job", mock=True)
+    script = {
+        "title": "Stop Defending When Criticized",
+        "narration": "[0:00-0:12] Hook\nClient feedback hits your ego fast.\n\n[0:12-0:30] Stoic Principle\nYou control your judgment, not their words.\n\n[0:30-0:50] Workplace Application\nPause before you type and answer the work, not your pride.\n\n[0:50-0:58] CTA\nBreathe first. Reply second. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+        "chapters": [],
+        "cta": "Breathe first. Reply second. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+        "video_mode": "short",
+    }
+
+    scene_plan = await stage.run(script)
+
+    assert scene_plan.scenes[-2].narration_segment == "Breathe first. Reply second."
+    assert scene_plan.scenes[-2].scene_type is None
+    assert scene_plan.scenes[-1].narration_segment == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+    assert scene_plan.scenes[-1].scene_type == "cta"
+    assert scene_plan.scenes[-1].text_overlay == "CTA"
+    assert scene_plan.scenes[-1].start_time > scene_plan.scenes[-2].start_time
+
+
+@pytest.mark.asyncio
 async def test_short_mode_scene_plan_stays_within_short_limit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

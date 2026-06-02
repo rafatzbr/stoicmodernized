@@ -1054,12 +1054,29 @@ Rules:
         standard_cta = "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
         if not candidate:
             return standard_cta
-        if "@stoic-modernized" in candidate.lower():
-            return standard_cta
+
+        def non_subscribe_sentences(value: str) -> list[str]:
+            parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+", value) if part.strip()]
+            if not parts:
+                parts = [value.strip()]
+            kept: list[str] = []
+            for part in parts:
+                lowered_part = part.lower()
+                if "@stoic-modernized" in lowered_part:
+                    continue
+                if re.search(r"\b(subscribe|follow)\b", lowered_part):
+                    continue
+                kept.append(part.rstrip(".! ").strip())
+            return [part for part in kept if part]
+
         lowered = candidate.lower().rstrip(".! ")
         if lowered.startswith("subscribe") or lowered.startswith("follow"):
             return standard_cta
-        return f"{candidate.rstrip('.! ')}. Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        prefix_parts = non_subscribe_sentences(candidate)
+        if not prefix_parts:
+            return standard_cta
+        prefix = ". ".join(prefix_parts).rstrip(".! ")
+        return f"{prefix}. {standard_cta}"
 
     def _normalize_short_narration_blocks(self, hook: str, narration: str, cta: str) -> str:
         text = narration.strip()

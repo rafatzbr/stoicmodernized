@@ -167,7 +167,7 @@ class TestScriptStage:
         )
 
         cta_block = normalized["narration"].split("[0:50-0:58] CTA", 1)[1]
-        assert cta_block.strip() == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        assert cta_block.strip() == "Breathe first. Reply second. Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
         assert cta_block.lower().count("subscribe") == 1
 
     def test_parse_script_response_does_not_prepend_hook_to_timed_short_script(self) -> None:
