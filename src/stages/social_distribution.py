@@ -24,6 +24,16 @@ from src.utils import load_json, save_json
 
 SUPPORTED_PLATFORMS = ("instagram", "facebook", "tiktok")
 
+CANONICAL_HASHTAGS = {
+    "stoicism": "#Stoicism",
+    "stoicmodernized": "#StoicModernized",
+    "workplacestress": "#WorkplaceStress",
+    "careeradvice": "#CareerAdvice",
+    "selfcontrol": "#SelfControl",
+    "workanxiety": "#WorkAnxiety",
+    "stopspiraling": "#StopSpiraling",
+}
+
 
 def _strip_youtube_boilerplate(description: str) -> str:
     body = str(description or "")
@@ -42,6 +52,9 @@ def _hashtag(value: str) -> str | None:
     words = re.findall(r"[A-Za-z0-9]+", str(value or ""))
     if not words:
         return None
+    compact = "".join(words).lower()
+    if compact in CANONICAL_HASHTAGS:
+        return CANONICAL_HASHTAGS[compact]
     stopwords = {"a", "an", "and", "at", "for", "of", "or", "the", "to", "you", "your"}
     words = [word for word in words if word.lower() not in stopwords] or words
     tag = "#" + "".join(word[:1].upper() + word[1:] for word in words[:4])
@@ -67,7 +80,7 @@ def _tag_tokens(value: str) -> set[str]:
     return normalized
 
 
-def _hashtags_from_tags(tags: list[Any], context_text: str = "") -> list[str]:
+def _hashtags_from_tags(tags: list[Any], context_text: str = "", preferred_tags: list[str] | None = None) -> list[str]:
     context_tokens = _tag_tokens(context_text)
     generic_context_tokens = {"stoic", "stoicism", "modernized"}
     weak_context_tokens = {"work", "job", "office", "career"}
@@ -87,6 +100,14 @@ def _hashtags_from_tags(tags: list[Any], context_text: str = "") -> list[str]:
     # Keep one broad philosophy tag and the channel tag; both are relevant to this channel.
     add("Stoicism")
     add("StoicModernized")
+
+    # YouTube metadata descriptions already carry the approved five-tag tail.
+    # Strip those tags from the caption body, but preserve them as high-priority
+    # social tags so the media manager does not collapse to only the two defaults.
+    for item in preferred_tags or []:
+        add(item)
+        if len(out) >= 5:
+            return out[:5]
 
     for item in [str(tag) for tag in tags]:
         item_tokens = _tag_tokens(item)
@@ -116,11 +137,13 @@ def build_social_captions(metadata: dict[str, Any], channel_name: str = "Stoic M
     Captions intentionally remove YouTube-only boilerplate/resources and keep a
     compact Shorts/Reels/TikTok-friendly body plus a small hashtag set.
     """
+    raw_description = str(metadata.get("description") or "")
     raw_title = str(metadata.get("title") or "Untitled Video").replace(f" | {channel_name}", "").strip()
-    body = _strip_youtube_boilerplate(str(metadata.get("description") or "")) or raw_title
+    body = _strip_youtube_boilerplate(raw_description) or raw_title
     raw_tags = metadata.get("tags")
     tags: list[Any] = raw_tags if isinstance(raw_tags, list) else []
-    hashtags = _hashtags_from_tags(tags, context_text=f"{raw_title} {body}")
+    description_hashtags = re.findall(r"(?<!\w)#\w+", raw_description)
+    hashtags = _hashtags_from_tags(tags, context_text=f"{raw_title} {body}", preferred_tags=description_hashtags)
     hashtag_tail = " ".join(hashtags)
 
     short_body = _truncate_at_word(body, 180)

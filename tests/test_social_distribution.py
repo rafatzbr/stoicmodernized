@@ -82,10 +82,7 @@ def test_media_explorer_caption_limits_hashtags_to_relevant_five() -> None:
     assert len(hashtags) <= 5
     assert "#stoicism" not in instagram
     assert "#workplacestress" not in instagram
-    assert "#StoicModernized" in hashtags
-    assert any("Decision" in tag for tag in hashtags)
-    assert any("Focus" in tag for tag in hashtags)
-    assert "#PauseBeforeReacting" in hashtags
+    assert hashtags == ["#Stoicism", "#StoicModernized", "#WorkplaceStress", "#CareerAdvice", "#SelfControl"]
     assert "#AnxietySpiral" not in hashtags
     assert "#BadMeetings" not in hashtags
     assert "#CreditStealingAtWork" not in hashtags
