@@ -130,6 +130,12 @@ def test_daily_orchestrator_keeps_valid_fresh_whiskers_retry_topic_outside_ledge
     ]
 
 
+def test_daily_orchestrator_default_safe_subject_retry_budget_is_increased():
+    orchestrator = load_daily_orchestrator()
+
+    assert orchestrator.SAFE_SUBJECT_MAX_ATTEMPTS >= 12
+
+
 def test_daily_orchestrator_parses_research_rejected_topics_for_retry_blacklist():
     orchestrator = load_daily_orchestrator()
 
@@ -185,3 +191,15 @@ def test_daily_orchestrator_accepts_natural_workplace_replacement_topic():
     )
 
     assert reason is None
+
+
+def test_daily_orchestrator_falls_back_to_concrete_operational_lane_when_ledger_is_exhausted():
+    orchestrator = load_daily_orchestrator()
+
+    topic = orchestrator.choose_fallback_topic(
+        {"ideas": [{"title": "When the Handoff Has No Owner"}]},
+        ["When the Handoff Has No Owner"],
+    )
+
+    assert topic == "When a Spreadsheet Cell Breaks Your Patience During Reconciliation"
+    assert orchestrator.topic_quality_rejection_reason(topic) is None

@@ -20,6 +20,48 @@ from src.stages.upload import YouTubeUploader
 from src.utils import load_json, save_json
 
 
+STOIC_GENERIC_SOURCE_PATTERNS = (
+    "anxiety feels so real",
+    "anxiety is affecting your work",
+    "burnout",
+    "subtle art of not giving",
+    "performance review phrases",
+    "stoic rules for success",
+    "work success",
+    "stoicism for modern workers",
+    "stoic perspective",
+    "calm is a skill",
+    "stoic quotes",
+    "self help",
+    "personality",
+)
+
+STOIC_OPERATIONAL_EVIDENCE_TERMS = {
+    "approval", "approve", "approved", "approver", "sign-off", "signoff", "review queue", "queue",
+    "blocked", "blocker", "dependency", "dependencies", "handoff", "owner", "ownership",
+    "workflow", "process", "bottleneck", "latency", "waiting", "pending", "decision",
+    "calendar", "schedule", "meeting", "agenda", "focus block", "deep work", "context switching",
+    "attention residue", "interruption", "notification", "inbox", "email", "message",
+    "dashboard", "filter", "report", "spreadsheet", "cell", "reconciliation", "ledger",
+    "export", "timestamp", "file", "filename", "version", "password", "reset",
+    "build", "cache", "deployment", "ticket", "jira", "checklist", "printer", "keyboard shortcut",
+}
+
+STOIC_OPERATIONAL_QUERY_TERMS = {
+    "approval": ("approval workflow", "approval bottleneck", "review queue", "blocked tasks", "sign-off process"),
+    "waiting": ("workflow latency", "blocked tasks", "approval bottleneck", "decision delay"),
+    "handoff": ("handoff ownership", "unclear ownership", "work handoff process", "ticket ownership"),
+    "dashboard": ("dashboard filter", "reporting error", "data quality", "business intelligence"),
+    "export": ("export timestamp", "stale data", "reporting workflow", "version mismatch"),
+    "calendar": ("calendar interruption", "context switching", "attention residue", "deep work"),
+    "focus": ("context switching", "attention residue", "deep work", "calendar interruption"),
+    "spreadsheet": ("spreadsheet error", "reconciliation process", "data validation", "audit trail"),
+    "password": ("password reset", "account lockout", "access management", "workflow interruption"),
+    "build": ("build cache", "continuous integration", "developer workflow", "deployment delay"),
+    "printer": ("printer jam", "office equipment", "workflow interruption", "service desk"),
+}
+
+
 class ResearchStage:
     """Handles the research stage of the pipeline."""
 
@@ -188,9 +230,33 @@ class ResearchStage:
         return candidates
 
     def _validate_topic_candidate(self, topic: str) -> Optional[str]:
-        return self.topic_validator.validate_topic_for_research(topic, str(self.job_dir))
+        upload_error = self.topic_validator.validate_topic_for_research(topic, str(self.job_dir))
+        if upload_error:
+            return upload_error
+        return self._stoic_topic_specificity_error(topic)
+
+    def _stoic_topic_specificity_error(self, topic: str) -> Optional[str]:
+        if self.channel != Channel.STOIC_MODERNIZED:
+            return None
+        lowered = (topic or "").lower()
+        title_operational_terms = {
+            "approval", "spreadsheet", "reconciliation", "dashboard", "filter", "export", "timestamp",
+            "password", "reset", "build", "cache", "dependency", "printer", "keyboard", "shortcut",
+            "file", "version", "calendar", "handoff", "checklist", "ticket", "queue", "blocked",
+            "cell", "reconcile", "review queue", "sign-off", "signoff",
+        }
+        if any(term in lowered for term in title_operational_terms):
+            return None
+        return (
+            "topic specificity guardrail: choose a concrete operational workplace mechanism "
+            "(spreadsheet/reconciliation, password reset, build cache, file/version mismatch, dependency update, "
+            "printer jam, dashboard filter, calendar interruption, approval queue) instead of a generic conflict or self-help frame."
+        )
 
     def _validate_research_result(self, topic: str, result: ResearchResult) -> Optional[str]:
+        quality_error = self._stoic_operational_research_quality_error(topic, result)
+        if quality_error:
+            return quality_error
         candidate_text = " ".join(
             [
                 topic,
@@ -200,6 +266,38 @@ class ResearchStage:
             ]
         )
         return self.topic_validator.validate_topic_for_research(candidate_text, str(self.job_dir))
+
+    def _stoic_operational_research_quality_error(self, topic: str, result: ResearchResult) -> Optional[str]:
+        """Reject generic self-help research before it can shape another repetitive script."""
+        if self.channel != Channel.STOIC_MODERNIZED:
+            return None
+        if not result.sources:
+            return "research quality guardrail: no usable sources found for the concrete workplace trigger"
+
+        operational_sources = [
+            source for source in result.sources if self._source_has_operational_work_evidence(topic, source)
+        ]
+        generic_sources = [source for source in result.sources if self._is_generic_stoic_source(source)]
+        topic_matched_sources = [
+            source for source in result.sources if self._topic_matches_source(topic, f"{source.title} {source.note}")
+        ]
+
+        if not operational_sources:
+            return (
+                "research quality guardrail: sources are generic Stoic/self-help material, not a concrete "
+                "workplace mechanism. Research a specific operational trigger before scripting."
+            )
+        if len(result.sources) >= 3 and len(operational_sources) < 2 and len(generic_sources) >= 2:
+            return (
+                "research quality guardrail: source mix is dominated by generic anxiety/self-help articles; "
+                "need at least two sources tied to the actual workplace process."
+            )
+        if len(result.sources) >= 3 and len(topic_matched_sources) < 2:
+            return (
+                "research quality guardrail: fewer than two sources match the requested workplace trigger; "
+                "avoid drifting into nearby recycled topics."
+            )
+        return None
     
     async def _load_fallback_research(self, topic: str) -> ResearchResult:
         """Load fallback research if primary research fails."""
@@ -429,8 +527,12 @@ class ResearchStage:
 
         self._progress(f"  🔹 Traditional sources:")
         steering_queries = list(((self.last_ledger_packet or {}).get("research_steering") or {}).get("preferred_queries", []))
+        operational_terms = self._operational_query_terms(topic)
+        operational_query = " OR ".join(f'"{term}"' for term in operational_terms[:5])
         primary_queries = [
             *steering_queries,
+            f'({operational_query}) (workplace OR workflow OR operations OR process)' if operational_query else f'"{topic}" workplace workflow process',
+            f'"{topic}" (workflow OR process OR bottleneck OR queue OR interruption OR dependency)',
             f'"{topic}" (focus OR productivity OR work OR workplace)',
             f'"{topic}" site:slack.com OR site:atlassian.com OR site:zapier.com OR site:calnewport.com',
             self._build_query(topic),
@@ -1220,7 +1322,7 @@ Article text:
     def _topic_keywords(self, topic: str) -> list[str]:
         stopwords = {
             "how", "to", "stop", "before", "after", "the", "a", "an", "and", "or", "of", "for",
-            "when", "while", "your", "you", "work", "thinking", "think", "check", "checking",
+            "when", "while", "your", "you", "work", "thinking", "think", "check", "checking", "during",
         }
         raw_terms = re.findall(r"[a-zA-Z][a-zA-Z-]+", (topic or "").lower())
         terms = [term for term in raw_terms if term not in stopwords and len(term) >= 4]
@@ -1236,6 +1338,51 @@ Article text:
             if term not in seen:
                 seen.append(term)
         return seen[:8]
+
+    def _operational_query_terms(self, topic: str) -> list[str]:
+        lowered = (topic or "").lower()
+        terms: list[str] = []
+        for trigger, query_terms in STOIC_OPERATIONAL_QUERY_TERMS.items():
+            if trigger in lowered:
+                terms.extend(query_terms)
+        terms.extend(self._topic_keywords(topic)[:4])
+        seen: list[str] = []
+        for term in terms:
+            clean = str(term or "").strip().lower()
+            if clean and clean not in seen:
+                seen.append(clean)
+        return seen[:8]
+
+    def _is_generic_stoic_source(self, source: ResearchSource) -> bool:
+        lowered = f"{source.title} {source.note}".lower()
+        return any(pattern in lowered for pattern in STOIC_GENERIC_SOURCE_PATTERNS)
+
+    def _source_has_operational_work_evidence(self, topic: str, source: ResearchSource) -> bool:
+        text = f"{source.title} {source.note}".lower()
+        if self._is_generic_stoic_source(source):
+            return False
+        has_operational_term = any(term in text for term in STOIC_OPERATIONAL_EVIDENCE_TERMS)
+        topic_overlap = self._topic_match_count(topic, text)
+        has_work_context = any(
+            term in text
+            for term in (
+                "work", "workplace", "workflow", "office", "team", "manager", "project", "task",
+                "process", "operations", "employee", "knowledge worker", "deep work",
+            )
+        )
+        # One incidental word like "spreadsheet" inside a generic anxiety article should not pass.
+        # Require at least two requested-topic terms unless the exact title phrase is present.
+        exact_topic = " ".join((topic or "").lower().split())
+        exact_phrase_hit = exact_topic and exact_topic in text
+        return has_operational_term and (exact_phrase_hit or (topic_overlap >= 2 and has_work_context))
+
+    def _topic_match_count(self, topic: str, text: str) -> int:
+        lowered_text = (text or "").lower()
+        return sum(
+            1
+            for term in self._topic_keywords(topic)
+            if re.search(rf"\b{re.escape(term)}s?\b", lowered_text)
+        )
 
     def _topic_matches_source(self, topic: str, text: str) -> bool:
         lowered_topic = (topic or "").lower()
@@ -1288,14 +1435,18 @@ Article text:
             return False
         if article_read and article_read.get("read_success") and not article_read.get("article_summary") and article_read.get("content_chars", 0) < 400:
             return False
+        if self._is_generic_stoic_source(source):
+            return False
         base_terms = [
             "stoic", "stoicism", "marcus aurelius", "epictetus", "seneca", "control", "discipline",
             "attention", "focus", "stress", "anxiety", "work", "workplace", "reactivity", "boundary", "deep work", "burnout",
         ]
-        if not any(term in lowered for term in base_terms):
+        has_base_relevance = any(term in lowered for term in base_terms)
+        has_operational_relevance = self._source_has_operational_work_evidence(topic, source)
+        if not has_base_relevance and not has_operational_relevance:
             return False
         topic_terms = self._topic_keywords(topic)
-        if topic_terms and not self._topic_matches_source(topic, lowered):
+        if topic_terms and not self._topic_matches_source(topic, lowered) and not has_operational_relevance:
             return False
         return True
 
@@ -1322,6 +1473,8 @@ Article text:
             score += 0.1
         if overlap:
             score += min(0.14, overlap * 0.03)
+        if self._source_has_operational_work_evidence(topic, source):
+            score += 0.16
         if any(term in lowered for term in ("slack", "notification", "doomscroll", "attention", "focus", "deep work")):
             score += 0.1
         if any(term in lowered for term in ("stoic", "stoicism", "marcus aurelius", "epictetus", "seneca")):
@@ -1349,13 +1502,12 @@ Using the sources below, produce concise JSON with this exact shape:
 }}
 
 Rules:
-- rank and summarize five distinct AI developments
-- diversify the list: avoid more than two items centered on the same primary company, model family, or source cluster
-- prefer a mix across model releases, product moves, infrastructure/chips, enterprise adoption, policy/safety, and major company news
-- focus on concrete product launches, model releases, enterprise moves, infrastructure shifts, or policy changes
-- use the article summaries as the primary evidence, not raw snippets
-- write in a precise, tech-forward tone with no hype
-- workplace_applications should explain why each development matters for operators, builders, or knowledge workers
+- synthesize the concrete workplace mechanism behind this topic, not generic Stoic advice
+- use article summaries as the primary evidence, not raw snippets
+- prefer operational details: process bottlenecks, queues, handoffs, interruptions, review loops, ownership, data/checking steps, or attention costs
+- include one classical Stoic move only after the workplace mechanism is grounded
+- reject vague emotional mush: do not write generic anxiety/self-help, generic productivity, or broad Stoicism-for-workers notes
+- workplace_applications should be repeatable actions a modern worker can perform in the exact scenario
 - no markdown
 - output JSON only
 

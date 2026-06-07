@@ -1,5 +1,12 @@
 # Lessons Learned
 
+## Stoic Research Repetition Guardrails (June 2026)
+
+- If the Stoic daily pipeline repeats visceral openers or the same boss/coworker/meeting subjects, fix the upstream research selector first; script-level wording bans are not enough.
+- Research validation must reject source packets dominated by generic anxiety, burnout, performance-review, broad self-help, or generic Stoic-workplace pages unless at least two sources match the actual operational trigger.
+- Whiskers replacement/fallback topics should prefer concrete operational mechanisms (spreadsheet/reconciliation, password reset, build cache, file/version mismatch, dependency update, printer jam, dashboard filter, calendar interruption, approval queue) over generic conflict frames.
+- Verify guardrail fixes by rechecking a known bad packet as well as running focused tests; a passing research command can still be bad if Whiskers converts weak sources into generic handoff fields.
+
 ## Media Explorer and YouTube Description Tags (May/June 2026)
 
 - Media explorer/helper-page descriptions should not blindly copy the first metadata tags into hashtags.
@@ -157,6 +164,7 @@ Clean up the AI Signal channel from the stoic-modernized pipeline, keeping only 
 - Correction: Rafael expected the completed daily Stoic Modernized video to be sent in Telegram, not only reported as `ready_for_upload`.
 - Root cause: the Hermes `no_agent` cron script printed a status summary but did not emit a `MEDIA:/absolute/path.mp4` attachment line after successful render verification.
 - Rule: when the daily cron finishes a render and is not uploading to YouTube, verify the exact MP4 path, nonzero size, duration, dimensions, and codecs, then include `MEDIA:<path>` in stdout so Telegram receives the video attachment.
+- Rule: when Rafael needs the exact-resolution video on Telegram, send it as a Telegram document/raw file via Bot API `sendDocument` after ffprobe verification. Do not use inline video delivery (`sendVideo`/generic `MEDIA:<.mp4>`) for QA files because Telegram may present/transcode it at the wrong resolution.
 - Failure rule: if media verification fails, treat delivery as failed and report the missing/invalid artifact instead of claiming the video is ready.
 
 ## Stoic Modernized Image Prompt Specificity (May 2026)
@@ -202,8 +210,16 @@ Run the duplicate/same-month subject guardrail immediately after script generati
 
 - Correction: A generated Stoic short ended with two spoken CTAs: a custom action/subscription line followed by the standard `@stoic-modernized` subscription line.
 - Rule: for Stoic Modernized shorts, preserve the useful action CTA text but normalize duplicate subscribe/follow phrases into one standard subscribe sentence: `Subscribe to @stoic-modernized for practical Stoic tools you can use at work.`
-- Rule: when fixing an already-rendered double-CTA short, cancel any scheduled YouTube publish first, then patch/regenerate so the action line stays in the pre-end-card scene and the final CTA scene contains exactly one subscribe cue; rerun scene → TTS → subtitles → render → metadata and verify the subtitle/audio tail.
-- Regression test: `test_short_cta_with_existing_handle_uses_single_standard_subscribe_line` in `tests/test_script_stage.py`.
+- Rule: Stoic Modernized shorts must never promise to send anything to viewers. Strip/reject CTAs like `comment/DM/reply and I will send you a checklist/guide/template/link/resource` before scene planning or rendering.
+- Rule: when fixing an already-rendered double-CTA or viewer-promise short, cancel any scheduled YouTube publish first, then patch/regenerate so the action line stays in the pre-end-card scene and the final CTA scene contains exactly one subscribe cue; rerun scene → TTS → subtitles → render → metadata and verify the subtitle/audio tail and forbidden CTA scans.
+- Regression tests: `test_short_cta_with_existing_handle_uses_single_standard_subscribe_line`, `test_short_cta_strips_comment_to_receive_resource_promise`, and `test_short_quality_rejects_viewer_delivery_promise` in `tests/test_script_stage.py`.
+
+## Daily Guardrail Retry Budget (June 2026)
+
+- Correction: The Council of Cats daily run can exhaust five safe subject attempts when recent duplicate/cooldown/umbrella guardrails are doing their job.
+- Rule: keep the guardrails intact and raise the cheap research/script retry budget instead of weakening validation or spending on scene/TTS/images/render too early.
+- Default retry budget is `STOIC_DAILY_SAFE_SUBJECT_MAX_ATTEMPTS=12`; override with that environment variable only when needed.
+- Regression test: `test_daily_orchestrator_default_safe_subject_retry_budget_is_increased` in `tests/test_daily_video_orchestrator.py`.
 
 ## Metadata Titles Must Be Complete Phrases (May 2026)
 

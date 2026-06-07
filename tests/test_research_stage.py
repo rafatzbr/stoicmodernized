@@ -28,6 +28,7 @@ async def test_real_research_uses_searxng_when_available(
 
     _settings = Settings()
     stage = ResearchStage(job_id="search-job", mock=False)
+    monkeypatch.setattr(stage, "_candidate_topics", lambda topic, limit=12: [topic])
 
     async def fake_search_fixed(topic: str):
         _ = topic
@@ -35,9 +36,9 @@ async def test_real_research_uses_searxng_when_available(
 
         return [
             ResearchSource(
-                title="workplace stress result",
+                title="Workplace stress from approval workflow bottlenecks",
                 url="https://example.com/workplace-stress",
-                note="Useful summary for workplace stress.",
+                note="Workplace approval queues and blocked task dependencies create workflow latency that interrupts focus and delays next actions.",
                 relevance=0.9,
                 source="web",
             )
@@ -63,13 +64,13 @@ async def test_real_research_uses_searxng_when_available(
     monkeypatch.setattr(stage, "_read_and_summarize_sources", fake_enrich)
     monkeypatch.setattr(stage, "_handoff_to_whiskers", fake_whiskers)
     monkeypatch.setattr(stage, "_summarize_with_llama", fake_llama)
-    result = await stage.run("workplace stress")
+    result = await stage.run("approval workflow stress")
 
     assert result.sources
     assert "workplace stress" in result.sources[0].title.lower()
     assert result.key_insights == ["Insight 1", "Insight 2", "Insight 3", "Insight 4"]
     assert stage.last_ledger_packet is not None
-    assert stage.last_ledger_packet["topic"] == "workplace stress"
+    assert stage.last_topic == "approval workflow stress"
 
 
 def test_search_queries_include_ledger_preferred_queries(tmp_path: Path) -> None:
@@ -264,3 +265,89 @@ async def test_real_research_limits_expensive_source_enrichment(monkeypatch: pyt
 
     assert result.title == "Distinct Topic: A Stoic Perspective"
     assert captured["count"] == stage.MAX_SOURCE_ENRICHMENT
+
+
+def test_stoic_topic_specificity_rejects_generic_review_conflict() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="topic-specificity", mock=False, channel=Channel.STOIC_MODERNIZED)
+
+    error = stage._stoic_topic_specificity_error("When the Review Comment Feels Personal")
+
+    assert error is not None
+    assert "operational workplace mechanism" in error
+
+
+def test_stoic_research_rejects_generic_self_help_source_mix() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="generic-source-guardrail", mock=False, channel=Channel.STOIC_MODERNIZED)
+    result = ResearchResult(
+        title="When Waiting for Approval Freezes Your Next Task",
+        sources=[
+            ResearchSource(
+                title="Why Anxiety Feels So Real, Even When There Is No Danger",
+                url="https://example.com/anxiety",
+                note="This self help article explains general anxiety and emotional reactions without any approval workflow, queue, task dependency, or workplace process detail.",
+                relevance=0.9,
+                source="web",
+            ),
+            ResearchSource(
+                title="Book Review: The Subtle Art of Not Giving a F*ck",
+                url="https://example.com/book-review",
+                note="This broad self help book review talks about caring less and emotional resilience without discussing approval queues or concrete workplace mechanisms.",
+                relevance=0.85,
+                source="web",
+            ),
+            ResearchSource(
+                title="100 Performance Review Phrases To Increase Productivity",
+                url="https://example.com/performance-review-phrases",
+                note="A generic list of performance review phrases for managers, not evidence about blocked approval processes, workflow latency, or task handoffs.",
+                relevance=0.8,
+                source="web",
+            ),
+        ],
+        key_insights=["Generic anxiety insight", "Generic review insight", "Generic self help insight"],
+        workplace_applications=["Pause before reacting", "Choose what you control"],
+    )
+
+    error = stage._stoic_operational_research_quality_error("When Waiting for Approval Freezes Your Next Task", result)
+
+    assert error is not None
+    assert "generic" in error.lower() or "workplace mechanism" in error.lower()
+
+
+def test_stoic_research_accepts_operational_approval_sources() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="operational-source-guardrail", mock=False, channel=Channel.STOIC_MODERNIZED)
+    result = ResearchResult(
+        title="When Waiting for Approval Freezes Your Next Task",
+        sources=[
+            ResearchSource(
+                title="Approval workflow bottlenecks and blocked tasks",
+                url="https://example.com/approval-workflow",
+                note="Approval queues create workflow latency when a worker cannot move the next task because a sign-off dependency remains pending.",
+                relevance=0.92,
+                source="web",
+            ),
+            ResearchSource(
+                title="Reducing review queue delays in team processes",
+                url="https://example.com/review-queue",
+                note="Team review queues and unclear approver ownership can delay decisions, increase waiting time, and interrupt focused work on dependent tasks.",
+                relevance=0.88,
+                source="web",
+            ),
+            ResearchSource(
+                title="Attention residue after workplace interruptions",
+                url="https://example.com/attention-residue",
+                note="Workplace interruptions and pending decisions leave attention residue that makes it harder to return to deep work after context switching.",
+                relevance=0.82,
+                source="web",
+            ),
+        ],
+        key_insights=["Approval queues create latency", "Waiting fragments attention", "Ownership reduces delay"],
+        workplace_applications=["Name the blocked dependency", "Ask for the next approver"],
+    )
+
+    assert stage._stoic_operational_research_quality_error("When Waiting for Approval Freezes Your Next Task", result) is None
