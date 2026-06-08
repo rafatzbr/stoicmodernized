@@ -203,3 +203,37 @@ def test_daily_orchestrator_falls_back_to_concrete_operational_lane_when_ledger_
 
     assert topic == "When a Spreadsheet Cell Breaks Your Patience During Reconciliation"
     assert orchestrator.topic_quality_rejection_reason(topic) is None
+
+
+def test_daily_orchestrator_topic_prompt_explains_underused_umbrellas_and_slate():
+    orchestrator = load_daily_orchestrator()
+
+    prompt = orchestrator.format_ledger_topic_prompt(
+        {
+            "ideas": [
+                {
+                    "title": "When the Dashboard Filter Is Wrong",
+                    "subject_umbrella": "loss_of_control",
+                    "operational_trigger": "dashboard filter",
+                    "experiment_tag": "operational_variety_batch",
+                    "why_now": "fresh operational lane",
+                    "objective": "discovery",
+                },
+                {
+                    "title": "When the Phone Wins the Morning",
+                    "subject_umbrella": "attention_distraction",
+                    "operational_trigger": "phone notification",
+                    "experiment_tag": "operational_variety_batch",
+                    "why_now": "underused attention lane",
+                    "objective": "discovery",
+                },
+            ],
+            "underused_subject_umbrellas": ["attention_distraction", "fatigue_boundaries"],
+            "subject_umbrella_policy": "no more than 2 of last 5 from one umbrella",
+        }
+    )
+
+    assert "underused subject umbrellas" in prompt.lower()
+    assert "attention_distraction" in prompt
+    assert "generate a private slate" in prompt.lower()
+    assert "subject_umbrella=loss_of_control" in prompt

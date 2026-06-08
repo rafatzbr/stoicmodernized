@@ -278,6 +278,14 @@ def test_stoic_topic_specificity_rejects_generic_review_conflict() -> None:
     assert "operational workplace mechanism" in error
 
 
+def test_stoic_topic_specificity_accepts_source_date_range_mechanism() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="topic-specificity", mock=False, channel=Channel.STOIC_MODERNIZED)
+
+    assert stage._stoic_topic_specificity_error("When the Source Date Range Is Missing") is None
+
+
 def test_stoic_research_rejects_generic_self_help_source_mix() -> None:
     from src.config import Channel
 

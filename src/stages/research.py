@@ -43,7 +43,7 @@ STOIC_OPERATIONAL_EVIDENCE_TERMS = {
     "calendar", "schedule", "meeting", "agenda", "focus block", "deep work", "context switching",
     "attention residue", "interruption", "notification", "inbox", "email", "message",
     "dashboard", "filter", "report", "spreadsheet", "cell", "reconciliation", "ledger",
-    "export", "timestamp", "file", "filename", "version", "password", "reset",
+    "export", "timestamp", "file", "filename", "version", "source", "date range", "scope", "password", "reset",
     "build", "cache", "deployment", "ticket", "jira", "checklist", "printer", "keyboard shortcut",
 }
 
@@ -52,6 +52,9 @@ STOIC_OPERATIONAL_QUERY_TERMS = {
     "waiting": ("workflow latency", "blocked tasks", "approval bottleneck", "decision delay"),
     "handoff": ("handoff ownership", "unclear ownership", "work handoff process", "ticket ownership"),
     "dashboard": ("dashboard filter", "reporting error", "data quality", "business intelligence"),
+    "source": ("source date range", "requirements scope", "data request", "reporting period"),
+    "date": ("source date range", "requirements scope", "reporting period", "data request"),
+    "range": ("source date range", "requirements scope", "reporting period", "data request"),
     "export": ("export timestamp", "stale data", "reporting workflow", "version mismatch"),
     "calendar": ("calendar interruption", "context switching", "attention residue", "deep work"),
     "focus": ("context switching", "attention residue", "deep work", "calendar interruption"),
@@ -243,7 +246,8 @@ class ResearchStage:
             "approval", "spreadsheet", "reconciliation", "dashboard", "filter", "export", "timestamp",
             "password", "reset", "build", "cache", "dependency", "printer", "keyboard", "shortcut",
             "file", "version", "calendar", "handoff", "checklist", "ticket", "queue", "blocked",
-            "cell", "reconcile", "review queue", "sign-off", "signoff",
+            "cell", "reconcile", "review queue", "sign-off", "signoff", "source", "date range", "range",
+            "decision record", "owner", "scope", "form", "attachment", "version label",
         }
         if any(term in lowered for term in title_operational_terms):
             return None

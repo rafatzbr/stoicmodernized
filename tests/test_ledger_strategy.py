@@ -26,6 +26,24 @@ def test_load_topic_ideas_reads_and_refreshes_file(tmp_path: Path) -> None:
     assert cached["generated_at"] == payload["generated_at"]
 
 
+def test_load_topic_plan_refreshes_stale_cache_without_umbrella_policy(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    (workspace / "artifacts").mkdir(parents=True, exist_ok=True)
+    manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
+    strategy = manager.load_global_strategy()
+    manager.topic_plan_path.write_text(
+        '{"niche":"stoicism for modern workers","strategy_generated_at":"'
+        + strategy["generated_at"]
+        + '","ideas":[{"title":"Why Your Anxiety Wants a Script"}]}',
+        encoding="utf-8",
+    )
+
+    refreshed = manager.load_topic_plan()
+
+    assert refreshed["subject_umbrella_policy"]
+    assert refreshed["ideas"][0].get("subject_umbrella")
+
+
 def test_build_job_packet_includes_steering_fields(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     (workspace / "artifacts").mkdir(parents=True, exist_ok=True)
@@ -116,7 +134,7 @@ def test_global_strategy_derives_metric_signals_from_youtube_and_tiktok(tmp_path
     plan = manager.generate_topic_plan()
     assert plan["metric_signals"]["source_count"] == 3
     assert plan["ideas"][0]["metric_signal"] == "conflict / disrespect / status games"
-    assert plan["ideas"][0]["title"] == "Your Coworker's Disrespect Only Wins If You React"
+    assert plan["ideas"][0]["title"] == "When the Review Comment Feels Personal"
 
 
 def test_topic_plan_uses_new_tiktok_weighting_themes(tmp_path: Path) -> None:
@@ -139,10 +157,9 @@ def test_topic_plan_uses_new_tiktok_weighting_themes(tmp_path: Path) -> None:
     plan = manager.generate_topic_plan()
 
     titles = [idea["title"] for idea in plan["ideas"][:5]]
-    assert "You Do Not Need Everyone at Work to Like You" in titles
-    assert "Why Rushing Makes Work Pressure Worse" in titles
+    assert "When the Review Comment Feels Personal" in titles
+    assert "When the Export Timestamp Is Stale" in titles
     assert "Strategic Patience Is a Workplace Power Move" in titles
-    assert "Your Coworker's Disrespect Only Wins If You React" in titles
     assert plan["metric_signals"]["tiktok_weightings"][0]["label"] == "approval pressure / disagreement / seeking validation"
 
 
@@ -181,8 +198,54 @@ def test_topic_plan_uses_workplace_chaos_tiktok_weighting(tmp_path: Path) -> Non
 
     plan = manager.generate_topic_plan()
     assert plan["metric_signals"]["source_count"] == 1
-    assert plan["ideas"][0]["title"] == "Their Mess Is Not Your Emergency"
+    assert plan["ideas"][0]["title"] == "When the Handoff Has No Owner"
     assert plan["ideas"][0]["metric_signal"] == "workplace chaos / cleaning others' mess / boundary triggers"
+
+
+def test_topic_plan_maps_concrete_operational_weighting_to_fresh_process_subjects(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    artifacts = workspace / "artifacts"
+    artifacts.mkdir(parents=True, exist_ok=True)
+    (artifacts / "stoic-modernized-tiktok-analytics-2026-06-07.md").write_text(
+        """
+# TikTok analytics
+## Recommended weighting for next batch
+- 35% concrete operational frictions / ordinary objects
+- 25% criticism / feedback without defensiveness
+- 20% attention-control systems
+- 10% resource constraints / doing useful work with less
+- 10% ambition / promotion / desire control
+""",
+        encoding="utf-8",
+    )
+
+    manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
+    plan = manager.generate_topic_plan()
+
+    titles = [idea["title"] for idea in plan["ideas"][:8]]
+    assert "When the Dashboard Filter Is Wrong" in titles
+    assert "When the Version Label Is Stale" in titles
+    assert "When the Client Note Needs One Clarifying Question" in titles
+    assert "When the Calendar Block Gets Broken" in titles
+    first_five = titles[:5]
+    assert "When the Review Comment Feels Personal" not in first_five
+    assert "When the Checklist Has One Missing Step" not in first_five
+    assert plan["metric_signals"]["tiktok_weightings"][0]["label"] == "concrete operational frictions / ordinary objects"
+
+
+def test_topic_plan_carries_subject_umbrellas_and_rotates_first_week(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    (workspace / "artifacts").mkdir(parents=True, exist_ok=True)
+
+    manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
+    plan = manager.generate_topic_plan()
+
+    first_eight = plan["ideas"][:8]
+    umbrellas = [idea.get("subject_umbrella") for idea in first_eight]
+    assert all(umbrellas)
+    assert len(set(umbrellas)) >= 4
+    assert all(idea.get("operational_trigger") for idea in first_eight)
+    assert all(idea.get("subject_family") for idea in first_eight)
 
 
 def test_job_packet_carries_metric_and_format_steering(tmp_path: Path) -> None:

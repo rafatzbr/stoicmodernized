@@ -51,9 +51,39 @@ CONVERSION_KEYWORDS = {
     "worth",
 }
 
+SUBJECT_UMBRELLA_TRIGGER_MAP: dict[str, tuple[str, tuple[str, ...]]] = {
+    "attention_distraction": ("attention/distraction", ("phone", "notification", "inbox", "tab", "focus", "calendar block")),
+    "fatigue_boundaries": ("fatigue/boundaries", ("calendar", "white space", "weekend", "energy", "boundary", "overcommit")),
+    "loss_of_control": ("loss of control", ("dashboard", "filter", "export", "timestamp", "version", "source", "date range", "password", "build", "printer", "broken", "budget")),
+    "uncertainty_waiting": ("uncertainty/waiting", ("approval", "pending", "waiting", "handoff", "owner", "decision", "clarifying", "queue")),
+    "desire_ambition": ("desire/ambition", ("promotion", "raise", "metrics", "recognition", "status", "ambition")),
+    "ego_reputation": ("ego/reputation", ("review", "comment", "feedback", "criticism", "personal", "corrected", "decision record")),
+    "conflict_friction": ("conflict/friction", ("boss", "coworker", "client", "meeting", "disagreement", "disrespect")),
+    "everyday_inconvenience": ("everyday inconvenience", ("coffee", "elevator", "parking", "lunch", "printer jam", "noise")),
+}
+
+OPERATIONAL_TRIGGER_PATTERNS: tuple[tuple[str, str, list[str]], ...] = (
+    ("dashboard filter", "loss_of_control", ["dashboard", "filter", "data quality"]),
+    ("source date range", "loss_of_control", ["source", "date range", "scope"]),
+    ("export timestamp", "loss_of_control", ["export", "timestamp", "stale data"]),
+    ("version label", "loss_of_control", ["version", "label", "file"]),
+    ("budget line", "loss_of_control", ["budget", "scope", "resource constraint"]),
+    ("approval queue", "uncertainty_waiting", ["approval", "queue", "waiting"]),
+    ("handoff owner", "uncertainty_waiting", ["handoff", "owner", "next action"]),
+    ("decision record", "ego_reputation", ["decision record", "audit trail", "memory"]),
+    ("review comment", "ego_reputation", ["review", "comment", "feedback"]),
+    ("calendar block", "attention_distraction", ["calendar", "focus block", "interruption"]),
+    ("checklist step", "attention_distraction", ["checklist", "step", "verification"]),
+    ("promotion window", "desire_ambition", ["promotion", "ambition", "next action"]),
+    ("status game", "desire_ambition", ["status", "approval", "recognition"]),
+    ("discipline system", "fatigue_boundaries", ["discipline", "boundary", "energy"]),
+    ("printer jam", "everyday_inconvenience", ["printer", "jam", "office equipment"]),
+)
+
 
 @dataclass
 class LedgerStrategyManager:
+
     project_root: Path | None = None
     workspace_root: Path | None = None
 
@@ -531,7 +561,7 @@ class LedgerStrategyManager:
             "title_constraints": list(strategy["hook_constraints"][:1]) + list(title_formulas[:2]),
             "hook_constraints": list(strategy["hook_constraints"]),
             "script_constraints": list(strategy["script_constraints"]),
-            "cta_style": "light comment prompt + optional follow CTA" if objective != "discovery" else "light comment prompt",
+            "cta_style": "subscribe-only CTA; never promise to send viewers resources" if objective != "discovery" else "light subscribe CTA without resource promises",
             "distribution_notes": [
                 "mobile-first captions and framing",
                 "shorts-feed hook matters more than SEO",
@@ -579,67 +609,150 @@ class LedgerStrategyManager:
             return existing
         return self.build_job_packet(job_id, topic, channel, video_mode)
 
+    def _topic_variety_metadata(self, title: str, angle: str = "") -> dict[str, Any]:
+        text = f"{title} {angle}".lower()
+        for trigger, umbrella, family in OPERATIONAL_TRIGGER_PATTERNS:
+            if all(part in text for part in trigger.split()):
+                return {
+                    "subject_umbrella": umbrella,
+                    "operational_trigger": trigger,
+                    "subject_family": family,
+                }
+        for umbrella, (_label, tokens) in SUBJECT_UMBRELLA_TRIGGER_MAP.items():
+            matches = [token for token in tokens if token in text]
+            if matches:
+                return {
+                    "subject_umbrella": umbrella,
+                    "operational_trigger": matches[0],
+                    "subject_family": matches[:3],
+                }
+        return {
+            "subject_umbrella": "loss_of_control",
+            "operational_trigger": "concrete workplace process",
+            "subject_family": ["workplace process", "verification"],
+        }
+
+    def _with_topic_variety_metadata(self, idea: dict[str, Any]) -> dict[str, Any]:
+        if idea.get("subject_umbrella") and idea.get("operational_trigger") and idea.get("subject_family"):
+            return idea
+        enriched = dict(idea)
+        enriched.update(
+            self._topic_variety_metadata(
+                str(idea.get("title") or ""),
+                str(idea.get("recommended_angle") or ""),
+            )
+        )
+        return enriched
+
+    def _add_topic_variety_metadata(self, ideas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [self._with_topic_variety_metadata(idea) for idea in ideas]
+
+    def _underused_subject_umbrellas(self, ideas: list[dict[str, Any]], limit: int = 4) -> list[str]:
+        used = [str(idea.get("subject_umbrella") or "") for idea in ideas[:5]]
+        counts = {umbrella: used.count(umbrella) for umbrella in SUBJECT_UMBRELLA_TRIGGER_MAP}
+        return [umbrella for umbrella, _count in sorted(counts.items(), key=lambda item: (item[1], item[0]))][:limit]
+
     def _metric_topic_ideas(self, metric_signals: dict[str, Any]) -> list[dict[str, Any]]:
         templates = [
             (
+                "concrete operational",
+                "When the Version Label Is Stale",
+                "turn a stale version label into a concrete verify-before-sending method",
+            ),
+            (
+                "ordinary objects",
+                "When the Dashboard Filter Is Wrong",
+                "make the visible work object the trigger: verify filter, source, and date before reacting",
+            ),
+            (
+                "resource constraints",
+                "When the Budget Line Gets Cut",
+                "show the three-column method: what still matters, what stops, and what can ship smaller",
+            ),
+            (
+                "ambition",
+                "When the Promotion Window Opens",
+                "turn ambition into one controllable next action instead of attention theft",
+            ),
+            (
+                "criticism",
+                "When the Client Note Needs One Clarifying Question",
+                "turn critical feedback into one clarifying question before defending or rewriting",
+            ),
+            (
+                "feedback",
+                "When the Client Note Needs One Clarifying Question",
+                "turn critical feedback into one clarifying question before defending or rewriting",
+            ),
+            (
+                "attention-control",
+                "When the Calendar Block Gets Broken",
+                "show how to protect one work block after an interruption without spiraling",
+            ),
+            (
+                "attention control",
+                "When the Calendar Block Gets Broken",
+                "show how to protect one work block after an interruption without spiraling",
+            ),
+            (
                 "mess",
-                "Their Mess Is Not Your Emergency",
-                "turn messy shared-workspace chaos into a boundaries-and-judgment scenario",
+                "When the Handoff Has No Owner",
+                "turn a messy handoff into a concrete ownership-and-next-action scenario",
             ),
             (
                 "cleaning",
-                "Their Mess Is Not Your Emergency",
-                "turn cleaning up other people's messes into a practical boundary scenario",
+                "When the Decision Record Is Incomplete",
+                "show how to repair an incomplete decision trail without blame or panic",
             ),
             (
                 "boundary",
-                "Their Mess Is Not Your Emergency",
-                "show how one small workplace boundary protects attention and judgment",
+                "When the Handoff Has No Owner",
+                "show one small boundary: clarify owner, next step, and evidence before absorbing extra work",
             ),
             (
                 "approval",
-                "You Do Not Need Everyone at Work to Like You",
-                "turn approval-seeking into a disagreement-at-work scenario the viewer can recognize immediately",
+                "When the Review Comment Feels Personal",
+                "turn approval pressure into a concrete review-comment scenario with one verification move",
             ),
             (
                 "disagreement",
-                "A Coworker's Disagreement Is Not an Attack",
-                "show how disagreement triggers approval pressure, then give one Stoic move for staying steady",
+                "When the Review Comment Feels Personal",
+                "show how disagreement triggers approval pressure, then give one Stoic move for separating fact from ego",
             ),
             (
                 "deadline",
-                "Why Rushing Makes Work Pressure Worse",
-                "show how deadline pressure hijacks attention and how a short pause restores control",
+                "When the Export Timestamp Is Stale",
+                "replace generic rushing with a concrete timestamp-check method before sending work",
             ),
             (
                 "rushing",
-                "Why Rushing Makes Work Pressure Worse",
-                "show how deadline pressure hijacks attention and how a short pause restores control",
+                "When the Export Timestamp Is Stale",
+                "replace generic rushing with a concrete timestamp-check method before sending work",
             ),
             (
                 "urgency",
-                "Slow Down Before You Decide",
-                "frame urgency as the moment where a decision-pause prevents avoidable mistakes",
+                "When the Dashboard Filter Is Wrong",
+                "frame urgency as the moment to verify filter, source, and date before deciding",
             ),
             (
                 "priority",
-                "The Priority Shift Is Not the Emergency",
-                "show how sudden priority changes test composure before they test productivity",
+                "When the Handoff Has No Owner",
+                "turn priority churn into a concrete owner/next-step clarification instead of another boss-pressure story",
             ),
             (
                 "passive aggression",
-                "Your Coworker's Disrespect Only Wins If You React",
-                "turn passive-aggressive workplace messages into a composure-vs-reactivity scenario",
+                "When the Review Comment Feels Personal",
+                "turn passive-aggressive wording into a fact-vs-story review comment scenario",
             ),
             (
                 "conflict",
-                "Your Coworker's Disrespect Only Wins If You React",
-                "turn workplace disrespect into a composure-vs-reactivity scenario",
+                "When the Review Comment Feels Personal",
+                "turn workplace friction into a concrete written-review scenario instead of another coworker/boss confrontation",
             ),
             (
                 "disrespect",
-                "Your Coworker's Disrespect Only Wins If You React",
-                "turn workplace disrespect into a composure-vs-reactivity scenario",
+                "When the Review Comment Feels Personal",
+                "turn disrespect framing into a concrete written-review scenario instead of another coworker/boss confrontation",
             ),
             (
                 "status",
@@ -663,8 +776,8 @@ class LedgerStrategyManager:
             ),
             (
                 "focus",
-                "Stop Letting Work Steal Your Focus Before Noon",
-                "show one concrete focus leak and one Stoic boundary",
+                "When the Checklist Has One Missing Step",
+                "show one concrete focus leak and one verification boundary before resuming work",
             ),
             (
                 "overexplaining",
@@ -697,7 +810,7 @@ class LedgerStrategyManager:
                     )
                     seen_titles.add(title)
                     break
-        return ideas[:5]
+        return self._add_topic_variety_metadata(ideas[:5])
 
     def generate_topic_plan(self, niche: str = "stoicism for modern workers") -> dict[str, Any]:
         strategy = self.load_global_strategy()
@@ -706,53 +819,53 @@ class LedgerStrategyManager:
         discovery = [
             {
                 "objective": "discovery",
-                "title": "Your Coworker's Disrespect Only Wins If You React",
-                "recommended_angle": "turn workplace disrespect into a composure-vs-reactivity scenario",
-                "why_now": "TikTok data shows conflict/disrespect framing is currently the strongest reach lane",
-                "experiment_tag": "tiktok_conflict_batch",
+                "title": "When the Dashboard Filter Is Wrong",
+                "recommended_angle": "turn a wrong dashboard filter into a verify-before-react method",
+                "why_now": "keeps proven workplace-tension packaging while moving away from repeated conflict/rush subjects",
+                "experiment_tag": "operational_variety_batch",
             },
             {
                 "objective": "discovery",
-                "title": "Strategic Patience Is a Workplace Power Move",
-                "recommended_angle": "frame patience as leverage, not passivity",
-                "why_now": "patience/power-move packaging is one of the strongest TikTok patterns",
-                "experiment_tag": "tiktok_conflict_batch",
+                "title": "When the Export Timestamp Is Stale",
+                "recommended_angle": "show how one timestamp check prevents a rushed bad decision",
+                "why_now": "concrete operational triggers give the channel fresher repeatable methods",
+                "experiment_tag": "operational_variety_batch",
             },
             {
                 "objective": "discovery",
-                "title": "Stop Checking Slack Before Thinking",
-                "recommended_angle": "show how notifications hijack focus before real work begins",
-                "why_now": "mobile-first shorts feed rewards immediate workplace pain recognition",
-                "experiment_tag": "discovery_batch",
+                "title": "When the Handoff Has No Owner",
+                "recommended_angle": "clarify owner, next step, and evidence before absorbing the mess",
+                "why_now": "keeps boundary appeal without repeating coworker-disrespect framing",
+                "experiment_tag": "operational_variety_batch",
             },
             {
                 "objective": "discovery",
-                "title": "What Marcus Aurelius Would Do Before Your 9 AM Meeting",
-                "recommended_angle": "use a specific work ritual instead of generic philosophy",
-                "why_now": "meeting-specific packaging matches proven concrete-work framing",
-                "experiment_tag": "discovery_batch",
+                "title": "When the Decision Record Is Incomplete",
+                "recommended_angle": "repair the audit trail calmly before arguing about memory",
+                "why_now": "tests non-conflict operational friction with a clear Stoic method",
+                "experiment_tag": "operational_variety_batch",
             },
         ]
         conversion = [
             {
                 "objective": "conversion",
-                "title": "Why Your Anxiety Wants a Script",
-                "recommended_angle": "frame anxiety as a learned pattern the viewer can catch and interrupt",
-                "why_now": "identity/emotion framing has shown the strongest subscriber conversion on YouTube, but needs sharper scenarios on TikTok",
+                "title": "When the Phone Wins the Morning",
+                "recommended_angle": "turn attention theft into one visible phone-boundary move before the first work block",
+                "why_now": "identity/emotion framing converts better when attached to a concrete attention object",
                 "experiment_tag": "conversion_batch",
             },
             {
                 "objective": "conversion",
-                "title": "You Do Not Need Everyone at Work to Like You",
-                "recommended_angle": "approval-seeking at work becomes the central emotional trap",
-                "why_now": "unsubscribed viewers may convert when the struggle feels personally seen",
+                "title": "When the Promotion Window Opens",
+                "recommended_angle": "turn ambition into one controllable next action instead of attention theft",
+                "why_now": "desire and status can convert without becoming another conflict story",
                 "experiment_tag": "conversion_batch",
             },
             {
                 "objective": "conversion",
-                "title": "Calm Is a Skill, Not a Personality",
-                "recommended_angle": "reframe calm as trained self-command under pressure",
-                "why_now": "gives the channel a repeatable emotional-positioning lane",
+                "title": "When the Calendar Has No White Space",
+                "recommended_angle": "make calm a practical boundary around energy and calendar load",
+                "why_now": "fatigue and overcommitment give the channel a fresher emotional-positioning lane",
                 "experiment_tag": "conversion_batch",
             },
         ]
@@ -774,6 +887,9 @@ class LedgerStrategyManager:
                 by_title.setdefault(str(idea.get("title", "")), idea)
             discovery = [idea for title, idea in by_title.items() if title]
 
+        discovery = self._add_topic_variety_metadata(discovery)
+        conversion = self._add_topic_variety_metadata(conversion)
+        balanced = self._add_topic_variety_metadata(balanced)
         ideas = discovery + conversion + balanced
         payload = {
             "generated_at": datetime.now(UTC).isoformat(),
@@ -782,6 +898,8 @@ class LedgerStrategyManager:
             "source_files": strategy.get("source_files", []),
             "metric_signals": metric_signals,
             "format_steering": strategy.get("format_steering", []),
+            "subject_umbrella_policy": "Rotate subject_umbrella: no more than 2 of the last 5 videos from one umbrella; prefer at least 4 umbrellas per week.",
+            "underused_subject_umbrellas": self._underused_subject_umbrellas(ideas),
             "batches": {
                 "discovery": discovery,
                 "conversion": conversion,
@@ -801,6 +919,8 @@ class LedgerStrategyManager:
                 isinstance(payload, dict)
                 and payload.get("niche") == niche
                 and payload.get("strategy_generated_at") == strategy.get("generated_at")
+                and payload.get("subject_umbrella_policy")
+                and all(isinstance(idea, dict) and idea.get("subject_umbrella") for idea in payload.get("ideas", [])[:5])
             ):
                 return payload
         return self.generate_topic_plan(niche=niche)
