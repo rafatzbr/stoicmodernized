@@ -562,6 +562,190 @@ def test_research_topic_validation_blocks_same_month_subject(monkeypatch, tmp_pa
     assert "same-month subject guardrail" in error
 
 
+def test_research_topic_validation_blocks_expense_receipt_repeat_before_cats_spend(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_job.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+
+    prior_job = jobs_dir / "prior-expense-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "When Finance Rejects Your Expense Report | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "short_version": (
+                    "Finance rejects your expense report over one missing receipt. "
+                    "Open the report, attach the missing proof, and move the paperwork forward."
+                ),
+                "generated_at": "2026-06-04T16:41:59Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_topic_for_research(
+        "When the Expense Receipt Goes Missing",
+        str(current_job),
+    )
+
+    assert error is not None
+    assert "same-month subject guardrail" in error
+    assert "expense, receipt" in error
+
+
+def test_script_subject_validation_blocks_expense_receipt_repeat_before_media(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_script_dir = current_job / "script"
+    current_script_dir.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Missing Receipt, Clean Ledger",
+                "short_version": (
+                    "The card charge is real. The receipt is gone. Accounting needs it today. "
+                    "Open the card statement, write the vendor and amount, and send the clean note."
+                ),
+                "generated_at": "2026-06-05T16:53:55Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prior_job = jobs_dir / "prior-expense-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "When Finance Rejects Your Expense Report | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "short_version": (
+                    "Finance rejects your expense report over one missing receipt. "
+                    "Ask one precise question and attach the missing proof."
+                ),
+                "generated_at": "2026-06-04T16:41:59Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_script_for_generation(
+        metadata={"title": "Missing Receipt, Clean Ledger | Stoic Modernized"},
+        job_dir=str(current_job),
+    )
+
+    assert error is not None
+    assert "same-month subject guardrail" in error
+    assert "expense, receipt" in error
+
+
+def test_same_month_guardrail_ignores_only_generic_meeting_react_overlap(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_script_dir = current_job / "script"
+    current_script_dir.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "title": "Calendar Hold, Clean Focus",
+                "short_version": (
+                    "A calendar hold appears during your first focus block. The meeting may move, "
+                    "but you do not need to react yet. Protect the next twenty minutes and write the one task you can finish."
+                ),
+                "generated_at": "2026-06-08T16:53:55Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    prior_job = jobs_dir / "prior-criticism-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "Why Defending Makes Criticism Worse | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps(
+            {
+                "short_version": (
+                    "A review meeting includes criticism and you want to react immediately. "
+                    "Listen, separate fact from judgment, and answer only after the useful point is clear."
+                ),
+                "generated_at": "2026-06-03T16:41:59Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_script_for_generation(
+        metadata={"title": "Calendar Hold, Clean Focus | Stoic Modernized"},
+        job_dir=str(current_job),
+    )
+
+    assert error is None
+
+
+def test_expense_receipt_guardrail_allows_unrelated_document_problem(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_job.mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+
+    prior_job = jobs_dir / "prior-expense-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "When Finance Rejects Your Expense Report | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps({"short_version": "Finance rejects your expense report over one missing receipt."}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_topic_for_research(
+        "When a Training Room Is Booked Twice",
+        str(current_job),
+    )
+
+    assert error is None
+
+
 def test_script_subject_validation_blocks_boss_pressure_repeat_from_recent_video(monkeypatch, tmp_path: Path) -> None:
     jobs_dir = tmp_path / "jobs"
     current_job = jobs_dir / "current-job"
@@ -996,3 +1180,75 @@ def test_upload_regenerates_metadata_from_current_script(monkeypatch, tmp_path: 
     assert captured["video_path"] == str(video_path)
     assert captured["saved_metadata"]["title"] == "Slow Down Before You Decide | Stoic Modernized"
     assert captured["metadata"]["title"] == "Slow Down Before You Decide | Stoic Modernized"
+
+
+def _write_subject_job(jobs_dir: Path, job_name: str, title: str, script: str) -> Path:
+    job = jobs_dir / job_name
+    (job / "metadata").mkdir(parents=True, exist_ok=True)
+    (job / "script").mkdir(parents=True, exist_ok=True)
+    (job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (job / "metadata" / "metadata.json").write_text(json.dumps({"title": title}), encoding="utf-8")
+    (job / "script" / "script.json").write_text(json.dumps({"short_version": script}), encoding="utf-8")
+    return job
+
+
+def test_umbrella_balance_blocks_overused_conflict_friction(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    (current_job / "script").mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_job / "script" / "script.json").write_text(
+        json.dumps({"short_version": "Your boss turns the meeting into pressure. Pause before you react."}),
+        encoding="utf-8",
+    )
+    _write_subject_job(
+        jobs_dir,
+        "prior-conflict-1",
+        "Your Coworker Interrupts You Again | Stoic Modernized",
+        "A coworker interrupts the meeting. You do not need to win the room.",
+    )
+    _write_subject_job(
+        jobs_dir,
+        "prior-conflict-2",
+        "When Your Boss Rejects the Plan | Stoic Modernized",
+        "Your boss rejects the plan and the pressure rises.",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_topic_for_research("Your Boss Changes the Meeting Again", str(current_job))
+
+    assert error is not None
+    assert "subject-umbrella balance guardrail" in error
+    assert "conflict friction" in error
+
+
+def test_umbrella_balance_allows_underused_attention_topic(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    (current_job / "script").mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_job / "script" / "script.json").write_text(
+        json.dumps({"short_version": "Your phone wins the morning when attention is left undefended."}),
+        encoding="utf-8",
+    )
+    _write_subject_job(
+        jobs_dir,
+        "prior-conflict-1",
+        "Your Coworker Interrupts You Again | Stoic Modernized",
+        "A coworker interrupts the meeting. You do not need to win the room.",
+    )
+    _write_subject_job(
+        jobs_dir,
+        "prior-conflict-2",
+        "When Your Boss Rejects the Plan | Stoic Modernized",
+        "Your boss rejects the plan and the pressure rises.",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_topic_for_research("The Phone Wins the Morning", str(current_job))
+
+    assert error is None

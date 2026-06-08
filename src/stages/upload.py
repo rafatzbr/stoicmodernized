@@ -44,13 +44,25 @@ TOPIC_FAMILY_ALIASES = {
     "rushed": "rush",
     "loops": "loop",
     "replaying": "replay",
+    "receipts": "receipt",
+    "expenses": "expense",
+    "finance": "expense",
+    "accounting": "expense",
+    "reimbursements": "expense",
+    "reimbursement": "expense",
+    "charges": "expense",
+    "charge": "expense",
+    "cards": "expense",
+    "card": "expense",
+    "ledgers": "expense",
+    "ledger": "expense",
 }
 
 TOPIC_FAMILY_STOPWORDS = {
     "actually", "after", "again", "always", "ancient", "anything", "around", "because", "before", "being",
     "below", "better", "calm", "can", "comment", "control", "costing", "delay", "every", "fact", "feel",
     "five", "focus", "from", "gets", "good", "have", "instant", "instantly", "just", "keep", "letting",
-    "life", "making", "minute", "minutes", "modernized", "more", "need", "next", "normal", "only", "phone",
+    "life", "making", "minute", "minutes", "modernized", "more", "need", "next", "normal", "only",
     "power", "practical", "put", "real", "really", "reply", "said", "saying", "scenario", "start", "still",
     "stop", "stoic", "stoicism", "subscribe", "takes", "than", "that", "their", "them", "then", "there",
     "these", "thing", "think", "this", "those", "through", "today", "tools", "urge", "use", "useful",
@@ -60,8 +72,53 @@ TOPIC_FAMILY_STOPWORDS = {
 TOPIC_FAMILY_TRIGGER_TOKENS = {
     "slack", "notification", "meeting", "boss", "coworker", "deadline", "burnout", "layoff", "email",
     "text", "ping", "message", "praise", "approval", "disrespect", "overexplaining", "overthinking", "rumination",
-    "ruminate", "anxiety", "politics", "priority", "pressure", "react",
+    "ruminate", "anxiety", "politics", "priority", "pressure", "react", "expense", "receipt",
+    "waiting", "silence", "reply", "agenda", "phone", "tabs", "scrolling", "inbox", "tired", "exhausted",
+    "boundary", "promotion", "raise", "metrics", "recognition", "status", "mistake", "reputation",
+    "projector", "crash", "delay", "late", "coffee", "printer", "elevator", "parking",
 }
+
+# These are useful context words, but too broad to prove a repeated subject by
+# themselves. They only count when paired with at least one more specific trigger.
+TOPIC_FAMILY_GENERIC_TRIGGER_TOKENS = {"meeting", "react", "pressure"}
+
+TOPIC_UMBRELLA_TOKENS = {
+    "conflict_friction": {
+        "boss", "coworker", "reject", "rejected", "refuse", "criticize", "criticism", "interrupt",
+        "blame", "credit", "disrespect", "argument", "politics", "pressure", "meeting",
+    },
+    "uncertainty_waiting": {
+        "waiting", "wait", "pending", "silence", "silent", "reply", "response", "email", "agenda",
+        "unknown", "decision", "delayed", "delay",
+    },
+    "loss_of_control": {
+        "projector", "crash", "software", "system", "late", "train", "calendar", "schedule",
+        "booked", "booking", "double", "printer", "jam", "broken",
+    },
+    "desire_ambition": {
+        "promotion", "raise", "metrics", "views", "analytics", "praise", "approval", "title",
+        "recognition", "status", "ambition",
+    },
+    "ego_reputation": {
+        "corrected", "correction", "mistake", "public", "ignored", "junior", "reputation",
+        "embarrassed", "wrong", "face",
+    },
+    "distraction_attention": {
+        "phone", "notification", "ping", "message", "tabs", "scrolling", "refresh", "inbox",
+        "focus", "attention", "feed",
+    },
+    "fatigue_boundaries": {
+        "burnout", "tired", "exhausted", "fatigue", "empty", "weekend", "restore", "yes",
+        "boundary", "boundaries", "energy", "calendar",
+    },
+    "everyday_inconvenience": {
+        "coffee", "elevator", "parking", "lunch", "printer", "jam", "broken", "slow",
+        "line", "queue", "noise",
+    },
+}
+
+UMBRELLA_BALANCE_WINDOW = 5
+UMBRELLA_BALANCE_MAX_SAME = 2
 
 BOSS_PRESSURE_CONTEXT_TOKENS = {
     "meeting",
@@ -222,6 +279,11 @@ class YouTubeUploader:
             return None
 
         subject_artifacts = self._recent_subject_artifacts()
+        umbrella_error = self._umbrella_balance_guardrail(
+            current_family_tokens, subject_artifacts, current_job_dir, "Upload"
+        )
+        if umbrella_error:
+            return umbrella_error
 
         checked_jobs = 0
         for metadata_path, other_metadata in subject_artifacts:
@@ -313,6 +375,11 @@ class YouTubeUploader:
             return None
 
         subject_artifacts = self._recent_subject_artifacts()
+        umbrella_error = self._umbrella_balance_guardrail(
+            current_family_tokens, subject_artifacts, current_job_dir, "Research"
+        )
+        if umbrella_error:
+            return umbrella_error
 
         checked_jobs = 0
         for metadata_path, other_metadata in subject_artifacts:
@@ -474,6 +541,68 @@ class YouTubeUploader:
             tokens.add(token)
         return tokens
 
+    def _topic_umbrellas(self, family_tokens: set[str]) -> set[str]:
+        umbrellas: set[str] = set()
+        for umbrella, triggers in TOPIC_UMBRELLA_TOKENS.items():
+            if family_tokens & triggers:
+                umbrellas.add(umbrella)
+        return umbrellas
+
+    def _umbrella_balance_guardrail(
+        self,
+        current_family_tokens: set[str],
+        subject_artifacts: list[tuple[Path, dict[str, Any]]],
+        current_job_dir: Path,
+        prefix: str,
+    ) -> Optional[str]:
+        """Prevent the daily feed from clustering around one situation type.
+
+        Duplicate checks catch exact subject-family repeats; this catches the broader
+        creative rut Rafael flagged, such as too many conflict/logistics videos in a
+        short run. A candidate is blocked only when one of its umbrellas already appears
+        at least `UMBRELLA_BALANCE_MAX_SAME` times in the recent window.
+        """
+        current_umbrellas = self._topic_umbrellas(current_family_tokens)
+        if not current_umbrellas:
+            return None
+
+        recent_counts = {umbrella: 0 for umbrella in current_umbrellas}
+        checked = 0
+        recent_examples: dict[str, str] = {}
+        for metadata_path, other_metadata in subject_artifacts:
+            other_job_dir = metadata_path.parent.parent.resolve()
+            if other_job_dir == current_job_dir or not self._job_matches_channel(other_job_dir):
+                continue
+            if not self._recent_subject_window_hit(metadata_path, other_metadata):
+                continue
+            other_title = self._normalize_video_text(str(other_metadata.get("title") or ""))
+            other_script = self._load_job_script_text(other_job_dir)
+            other_umbrellas = self._topic_umbrellas(self._topic_family_tokens(f"{other_title} {other_script}"))
+            for umbrella in current_umbrellas & other_umbrellas:
+                recent_counts[umbrella] += 1
+                recent_examples.setdefault(umbrella, str(other_metadata.get("title") or other_job_dir.name))
+            checked += 1
+            if checked >= UMBRELLA_BALANCE_WINDOW:
+                break
+
+        overused = [
+            u
+            for u, count in recent_counts.items()
+            if count >= UMBRELLA_BALANCE_MAX_SAME and u in {"conflict_friction", "loss_of_control"}
+        ]
+        if not overused:
+            return None
+
+        names = ", ".join(u.replace("_", " ") for u in sorted(overused))
+        example = recent_examples.get(overused[0], "a recent video")
+        verb = "Research" if prefix == "Research" else "Upload"
+        return (
+            f"{verb} blocked by subject-umbrella balance guardrail: recent videos already lean on "
+            f"{names} situations (for example '{example}'). Choose a different umbrella such as "
+            "uncertainty/waiting, distraction/attention, fatigue/boundaries, ambition/desire, "
+            "ego/reputation, or everyday inconvenience."
+        )
+
     def _metadata_datetime(self, metadata_path: Path, metadata: Optional[dict[str, Any]] = None) -> datetime | None:
         """Best-effort publication/artifact timestamp for monthly guardrails."""
         payload = metadata
@@ -535,6 +664,15 @@ class YouTubeUploader:
         now = datetime.now(UTC)
         return metadata_dt.year == now.year and metadata_dt.month == now.month
 
+    def _repeated_subject_trigger_overlap(self, concept_overlap: set[str]) -> set[str]:
+        trigger_overlap = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
+        specific_overlap = trigger_overlap - TOPIC_FAMILY_GENERIC_TRIGGER_TOKENS
+        if len(specific_overlap) >= 2:
+            return trigger_overlap
+        if len(specific_overlap) >= 1 and len(trigger_overlap) >= 2:
+            return trigger_overlap
+        return set()
+
     def _same_month_subject_hit(
         self,
         concept_overlap: set[str],
@@ -544,13 +682,13 @@ class YouTubeUploader:
         """Block repeated subject families for the whole calendar month.
 
         This is intentionally stricter than the rolling topic cooldown. A subject repeat
-        needs at least two overlapping trigger-level concepts (for example
-        `deadline` + `anxiety`) so generic Stoic/work words do not block unrelated videos.
+        needs overlapping trigger-level concepts with at least one specific workplace
+        trigger, so broad context words like `meeting` + `react` do not block unrelated
+        videos.
         """
         if not self._metadata_in_current_month(metadata_path, metadata):
             return False
-        trigger_overlap = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
-        return len(trigger_overlap) >= 2
+        return bool(self._repeated_subject_trigger_overlap(concept_overlap))
 
     def _recent_subject_window_hit(self, metadata_path: Path, metadata: Optional[dict[str, Any]] = None) -> bool:
         """Return true for the strict short-window freshness checks."""
@@ -595,8 +733,8 @@ class YouTubeUploader:
     ) -> bool:
         if len(concept_overlap) < 2:
             return False
-        trigger_overlap = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
-        if len(trigger_overlap) < 2:
+        trigger_overlap = self._repeated_subject_trigger_overlap(concept_overlap)
+        if not trigger_overlap:
             return False
         metadata_dt = self._metadata_datetime(metadata_path, metadata)
         if metadata_dt is None:
@@ -1307,6 +1445,8 @@ Write a description that:
 2. Ends with: "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
 3. Add these hashtags at the end: {hashtags}
 
+Boundary: never promise to send viewers anything. Do not ask viewers to comment, reply, DM, or message to receive a checklist, guide, template, link, PDF, resource, or worksheet.
+
 Keep it extremely tight. No bullet points. No timestamps. No filler. Output only the description text."""
 
         try:
@@ -1317,7 +1457,7 @@ Keep it extremely tight. No bullet points. No timestamps. No filler. Output only
                 "messages": [
                     {
                         "role": "system",
-                        "content": "You write very short, hook-driven YouTube descriptions. Max 50 words. No bullet points. No timestamps. No filler. Output plain text only.",
+                        "content": "You write very short, hook-driven YouTube descriptions. Max 50 words. No bullet points. No timestamps. No filler. Never promise to send viewers anything. Output plain text only.",
                     },
                     {"role": "user", "content": prompt},
                 ],
