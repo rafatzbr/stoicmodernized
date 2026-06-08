@@ -20,8 +20,17 @@ class ScriptGenerationError(RuntimeError):
     """Raised when real local-LLM script generation fails validation or transport."""
 
 
-RECENT_SCRIPT_LIMIT = 8
+RECENT_SCRIPT_LIMIT = 20
 RECENT_SCRIPT_SIMILARITY_THRESHOLD = 0.58
+OVERUSED_SOMATIC_OPENERS = [
+    "your chest tightens",
+    "chest tightens",
+    "your shoulders lock",
+    "your stomach drops",
+    "your jaw tightens",
+    "your heart races",
+    "your heart rate spikes",
+]
 
 
 class ScriptStage:
@@ -664,6 +673,52 @@ Rules:
                 patterns[pattern] += 1
         return patterns
 
+    def _recent_phrase_counts(self, phrases: list[str]) -> Counter[str]:
+        counts = Counter()
+        for record in self._recent_script_records(limit=RECENT_SCRIPT_LIMIT):
+            text = " ".join(
+                [
+                    str(record.get("title") or ""),
+                    str(record.get("hook") or ""),
+                    str(record.get("narration") or ""),
+                ]
+            ).lower()
+            for phrase in phrases:
+                if phrase in text:
+                    counts[phrase] += 1
+        return counts
+
+    def _normalized_title_key(self, title: str) -> str:
+        cleaned = re.sub(r"\|\s*stoic modernized\s*$", "", title or "", flags=re.IGNORECASE).lower()
+        cleaned = re.sub(r"[^a-z0-9]+", " ", cleaned)
+        return " ".join(cleaned.split()).strip()
+
+    def _title_formula_pattern(self, title: str) -> str:
+        key = self._normalized_title_key(title)
+        if re.match(r"why .+ makes .+ worse$", key):
+            return "why <trigger> makes <state> worse"
+        if re.match(r"why .+ keeps running your work life$", key):
+            return "why <inner struggle> keeps running your work life"
+        if re.match(r"your .+ only wins if you react$", key):
+            return "your <trigger> only wins if you react"
+        return ""
+
+    def _recent_title_issue(self, script: Script) -> str | None:
+        current_key = self._normalized_title_key(script.title or "")
+        if not current_key:
+            return None
+        current_pattern = self._title_formula_pattern(script.title or "")
+        matching_formula = 0
+        for record in self._recent_script_records(limit=RECENT_SCRIPT_LIMIT):
+            recent_title = str(record.get("title") or "")
+            if self._normalized_title_key(recent_title) == current_key:
+                return f"repeats recent title exactly: {script.title}"
+            if current_pattern and self._title_formula_pattern(recent_title) == current_pattern:
+                matching_formula += 1
+        if current_pattern and matching_formula >= 3:
+            return f"overuses recent title formula: {current_pattern}"
+        return None
+
     def _script_similarity_terms(self, text: str) -> set[str]:
         stop_words = {
             "about", "after", "again", "because", "before", "being", "could", "every", "from", "have",
@@ -706,6 +761,9 @@ Rules:
         for pattern in repeated_patterns:
             display = " ".join(word.capitalize() if idx == 0 else word for idx, word in enumerate(pattern.split()))
             lines.append(f"- Do not start with `{display}` again; choose a different concrete opener actor/action.")
+        repeated_phrases = [phrase for phrase, count in self._recent_phrase_counts(OVERUSED_SOMATIC_OPENERS).items() if count >= 2]
+        if repeated_phrases:
+            lines.append("- Avoid these overused body-reaction phrases entirely: " + ", ".join(f"`{phrase}`" for phrase in repeated_phrases) + ".")
         lines.append("- Do not reuse the same workplace scenario, title formula, hook structure, or first two spoken words from recent scripts.")
         lines.append("- If recent scripts use a boss/manager pressure frame (meeting, priority change, deadline, urgent request), switch to a different actor and trigger instead of another boss-pressure opener.")
         return "\n".join(lines)
@@ -948,6 +1006,7 @@ Rules:
 - Then name the Stoic principle.
 - Then show exactly how to use it at work this week.
 - End with a crisp CTA.
+- Never promise to send viewers anything. Do not ask viewers to comment, reply, DM, or message to receive a checklist, guide, template, link, PDF, or resource.
 - Exactly 4 chapters titled Hook, Stoic Principle, Workplace Application, CTA.
 - Use timestamps 0, 12, 30, 50.
 - Narration must be formatted as timed blocks like [0:00-0:12] Hook ...
@@ -1055,6 +1114,16 @@ Rules:
         if not candidate:
             return standard_cta
 
+        def promises_viewer_delivery(value: str) -> bool:
+            lowered_value = value.lower().replace("’", "'")
+            promise_patterns = [
+                r"\b(?:comment|reply|dm|message)\b.*\b(?:i|we)\s*(?:will|'ll|ill)\s+send\b",
+                r"\b(?:i|we)\s*(?:will|'ll|ill)\s+send\s+you\b",
+                r"\bsend\s+you\b.*\b(?:checklist|guide|template|pdf|link|resource|worksheet|one-page)\b",
+                r"\b(?:comment|reply|dm|message)\b.*\b(?:checklist|guide|template|pdf|link|resource|worksheet|one-page)\b",
+            ]
+            return any(re.search(pattern, lowered_value) for pattern in promise_patterns)
+
         def non_subscribe_sentences(value: str) -> list[str]:
             parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+", value) if part.strip()]
             if not parts:
@@ -1062,11 +1131,13 @@ Rules:
             kept: list[str] = []
             for part in parts:
                 lowered_part = part.lower()
+                if promises_viewer_delivery(part):
+                    continue
                 if "@stoic-modernized" in lowered_part:
                     continue
                 if re.search(r"\b(subscribe|follow)\b", lowered_part):
                     continue
-                kept.append(part.rstrip(".! ").strip())
+                kept.append(part.rstrip(".!? ").strip())
             return [part for part in kept if part]
 
         lowered = candidate.lower().rstrip(".! ")
@@ -1188,6 +1259,7 @@ SHORT VIDEO RULES:
 - Then name the Stoic principle.
 - Then show exactly how to use it at work this week.
 - End with a crisp CTA.
+- Never promise to send viewers anything. Do not ask viewers to comment, reply, DM, or message to receive a checklist, guide, template, link, PDF, or resource.
 
 TITLE RULES:
 - 4-9 words.
@@ -1411,6 +1483,16 @@ Output JSON only.
                 issues.append("short narration contains visual-direction artifacts")
             if "@stoic-modernized" not in (script.cta or "").lower():
                 issues.append("short CTA is missing @stoic-modernized")
+            promise_patterns = [
+                r"\b(?:comment|reply|dm|message)\b.*\b(?:i|we)\s*(?:will|'ll|ill)\s+send\b",
+                r"\b(?:i|we)\s*(?:will|'ll|ill)\s+send\s+you\b",
+                r"\bsend\s+you\b.*\b(?:checklist|guide|template|pdf|link|resource|worksheet|one-page)\b",
+                r"\b(?:comment|reply|dm|message)\b.*\b(?:checklist|guide|template|pdf|link|resource|worksheet|one-page)\b",
+            ]
+            narration_lower = narration_lower.replace("’", "'")
+            cta_lower = (script.cta or "").lower().replace("’", "'")
+            if any(re.search(pattern, narration_lower) or re.search(pattern, cta_lower) for pattern in promise_patterns):
+                issues.append("short CTA promises to send something to viewers")
             banned_phrases = [
                 "psychological safety",
                 "growth mindset",
@@ -1446,6 +1528,15 @@ Output JSON only.
             recent_patterns = self._recent_opening_patterns()
             if current_pattern and recent_patterns.get(current_pattern, 0) >= 2:
                 issues.append(f"repeats recent opener pattern: {current_pattern}")
+            phrase_counts = self._recent_phrase_counts(OVERUSED_SOMATIC_OPENERS)
+            current_text = " ".join([script.title or "", script.hook or "", spoken_narration]).lower()
+            for phrase in OVERUSED_SOMATIC_OPENERS:
+                if phrase in current_text and phrase_counts.get(phrase, 0) >= 2:
+                    issues.append(f"repeats overused body-reaction phrase: {phrase}")
+                    break
+            title_issue = self._recent_title_issue(script)
+            if title_issue:
+                issues.append(title_issue)
             similarity_issue = self._recent_script_similarity_issue(script)
             if similarity_issue:
                 issues.append(similarity_issue)

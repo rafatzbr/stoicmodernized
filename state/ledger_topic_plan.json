@@ -1,81 +1,74 @@
 {
-  "generated_at": "2026-06-01T09:40:59.776186+00:00",
+  "generated_at": "2026-06-08T05:17:50.337398+00:00",
   "niche": "stoicism for modern workers",
-  "strategy_generated_at": "2026-06-01T09:40:59.775159+00:00",
+  "strategy_generated_at": "2026-06-08T05:17:50.336244+00:00",
   "source_files": [
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-05-31.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-05-31.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-05-31.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-01.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-01.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-01.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-01.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-01.json"
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-07.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-07.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-07.json"
   ],
   "metric_signals": {
     "source_count": 9,
     "platform": {
-      "youtube_shorts_views": 1474.0,
+      "youtube_shorts_views": 1291.0,
       "youtube_search_minutes": 3.0,
-      "mobile_view_share": 0.857,
-      "unsubscribed_view_share": 0.955,
+      "mobile_view_share": 0.865,
+      "unsubscribed_view_share": 0.961,
       "subscribers_gained": 1.0,
-      "facebook_video_views": 488.0,
-      "facebook_post_engagements": 23.0,
-      "facebook_reach": 1662.0
+      "facebook_video_views": 493.0,
+      "facebook_post_engagements": 24.0,
+      "facebook_reach": 1669.0
     },
     "winning_themes": [
-      "workplace chaos / cleaning others' mess / boundary triggers",
-      "strategic patience / rushing / decision pause",
-      "approval pressure / disagreement / seeking validation",
-      "priority shifts / meetings / boss pressure",
-      "focus boundaries / over-accepting meetings",
+      "concrete operational frictions / ordinary objects — budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract stoic framing; keep the repeatable method but vary objects/processes",
+      "criticism / feedback without defensiveness — client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
+      "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
+      "resource constraints / doing useful work with less — budget cut was the strongest current-week post and coincided with the biggest follower gain day",
+      "ambition / promotion / desire control — promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
       "conflict",
-      "discipline systems",
-      "control"
+      "discipline systems"
     ],
     "youtube_top_titles": [
       "Stop Busy Idleness At Work | Stoic Modernized",
       "Your Coworkers Disrespect Only Wins If You React | Stoic Modernized",
-      "Use Death to Stop Procrastinating | Stoic Modernized",
       "Your Gossip Trigger Only Wins If You React | Stoic Modernized",
-      "Build Discipline Without Burning Out | Stoic Modernized"
+      "Stop Defending When Criticized | Stoic Modernized",
+      "Calm Is Not A Trait It Is A Skill | Stoic Modernized"
     ],
     "facebook_top_titles": [
-      "If a modern worker feels pressure but keeps giving that pressure control over attention an…",
-      "When a decision keeps getting reopened at work, your job is not to win the argument again.…",
-      "That dirty mug isn't a mess to fix; it's a trigger for your anxiety. Stop letting workplac…",
-      "That meeting invite spikes your heart rate and steals your focus. Stop giving that pressur…",
-      "The spreadsheet breaks five minutes before the forecast review. Your shoulders lock. You w…"
+      "That promotion opening can make your chest tighten and steal attention from the work in fr…",
+      "That rush drains your focus from the work right in front of you. Stop letting pressure con…",
+      "Finance rejects your expense report over one missing receipt. Your jaw tightens, but anger…",
+      "A budget cut can push a team into panic, resentment, and scattered decisions. This Stoic M…",
+      "When client feedback hits your ego, the first move is not to defend yourself. Pause, separ…"
     ],
-    "tiktok_top_titles": [
-      "Your colleague's disrespect isn't stealing your peace; your judgment of them is....",
-      "Stop Cleaning Their Mess",
-      "Why Rushing Makes Work Pressure Worse",
-      "Slow Down Before You Decide",
-      "Why Control Matters at Work Unfair treatment steals your focus and judgment at work."
-    ],
+    "tiktok_top_titles": [],
     "tiktok_weightings": [
       {
-        "label": "workplace chaos / cleaning others' mess / boundary triggers",
+        "label": "concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes",
         "weight": 35.0
       },
       {
-        "label": "strategic patience / rushing / decision pause",
+        "label": "criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
         "weight": 25.0
       },
       {
-        "label": "approval pressure / disagreement / seeking validation",
+        "label": "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
         "weight": 20.0
       },
       {
-        "label": "priority shifts / meetings / boss pressure",
-        "weight": 15.0
+        "label": "resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day",
+        "weight": 10.0
       },
       {
-        "label": "focus boundaries / over-accepting meetings",
-        "weight": 5.0
+        "label": "ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
+        "weight": 10.0
       }
     ],
     "format_steering": [
@@ -108,71 +101,71 @@
     "discovery": [
       {
         "objective": "discovery",
-        "title": "Their Mess Is Not Your Emergency",
-        "recommended_angle": "turn messy shared-workspace chaos into a boundaries-and-judgment scenario",
-        "why_now": "Ledger metric signals currently favor: workplace chaos / cleaning others' mess / boundary triggers",
+        "title": "When the Version Label Is Stale",
+        "recommended_angle": "turn a stale version label into a concrete verify-before-sending method",
+        "why_now": "Ledger metric signals currently favor: concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes",
         "experiment_tag": "discovery_batch",
-        "metric_signal": "workplace chaos / cleaning others' mess / boundary triggers"
+        "metric_signal": "concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes"
       },
       {
         "objective": "discovery",
-        "title": "Why Rushing Makes Work Pressure Worse",
-        "recommended_angle": "show how deadline pressure hijacks attention and how a short pause restores control",
-        "why_now": "Ledger metric signals currently favor: strategic patience / rushing / decision pause",
+        "title": "When the Client Note Needs One Clarifying Question",
+        "recommended_angle": "turn critical feedback into one clarifying question before defending or rewriting",
+        "why_now": "Ledger metric signals currently favor: criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
         "experiment_tag": "discovery_batch",
-        "metric_signal": "strategic patience / rushing / decision pause"
+        "metric_signal": "criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering"
       },
       {
         "objective": "discovery",
-        "title": "You Do Not Need Everyone at Work to Like You",
-        "recommended_angle": "turn approval-seeking into a disagreement-at-work scenario the viewer can recognize immediately",
-        "why_now": "Ledger metric signals currently favor: approval pressure / disagreement / seeking validation",
+        "title": "When the Calendar Block Gets Broken",
+        "recommended_angle": "show how to protect one work block after an interruption without spiraling",
+        "why_now": "Ledger metric signals currently favor: attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
         "experiment_tag": "discovery_batch",
-        "metric_signal": "approval pressure / disagreement / seeking validation"
+        "metric_signal": "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety"
       },
       {
         "objective": "discovery",
-        "title": "The Priority Shift Is Not the Emergency",
-        "recommended_angle": "show how sudden priority changes test composure before they test productivity",
-        "why_now": "Ledger metric signals currently favor: priority shifts / meetings / boss pressure",
+        "title": "When the Budget Line Gets Cut",
+        "recommended_angle": "show the three-column method: what still matters, what stops, and what can ship smaller",
+        "why_now": "Ledger metric signals currently favor: resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day",
         "experiment_tag": "discovery_batch",
-        "metric_signal": "priority shifts / meetings / boss pressure"
+        "metric_signal": "resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day"
       },
       {
         "objective": "discovery",
-        "title": "Stop Letting Work Steal Your Focus Before Noon",
-        "recommended_angle": "show one concrete focus leak and one Stoic boundary",
-        "why_now": "Ledger metric signals currently favor: focus boundaries / over-accepting meetings",
+        "title": "When the Promotion Window Opens",
+        "recommended_angle": "turn ambition into one controllable next action instead of attention theft",
+        "why_now": "Ledger metric signals currently favor: ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
         "experiment_tag": "discovery_batch",
-        "metric_signal": "focus boundaries / over-accepting meetings"
+        "metric_signal": "ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics"
       },
       {
         "objective": "discovery",
-        "title": "Your Coworker's Disrespect Only Wins If You React",
-        "recommended_angle": "turn workplace disrespect into a composure-vs-reactivity scenario",
-        "why_now": "TikTok data shows conflict/disrespect framing is currently the strongest reach lane",
-        "experiment_tag": "tiktok_conflict_batch"
+        "title": "When the Dashboard Filter Is Wrong",
+        "recommended_angle": "turn a wrong dashboard filter into a verify-before-react method",
+        "why_now": "keeps proven workplace-tension packaging while moving away from repeated conflict/rush subjects",
+        "experiment_tag": "operational_variety_batch"
       },
       {
         "objective": "discovery",
-        "title": "Strategic Patience Is a Workplace Power Move",
-        "recommended_angle": "frame patience as leverage, not passivity",
-        "why_now": "patience/power-move packaging is one of the strongest TikTok patterns",
-        "experiment_tag": "tiktok_conflict_batch"
+        "title": "When the Export Timestamp Is Stale",
+        "recommended_angle": "show how one timestamp check prevents a rushed bad decision",
+        "why_now": "concrete operational triggers give the channel fresher repeatable methods",
+        "experiment_tag": "operational_variety_batch"
       },
       {
         "objective": "discovery",
-        "title": "Stop Checking Slack Before Thinking",
-        "recommended_angle": "show how notifications hijack focus before real work begins",
-        "why_now": "mobile-first shorts feed rewards immediate workplace pain recognition",
-        "experiment_tag": "discovery_batch"
+        "title": "When the Handoff Has No Owner",
+        "recommended_angle": "clarify owner, next step, and evidence before absorbing the mess",
+        "why_now": "keeps boundary appeal without repeating coworker-disrespect framing",
+        "experiment_tag": "operational_variety_batch"
       },
       {
         "objective": "discovery",
-        "title": "What Marcus Aurelius Would Do Before Your 9 AM Meeting",
-        "recommended_angle": "use a specific work ritual instead of generic philosophy",
-        "why_now": "meeting-specific packaging matches proven concrete-work framing",
-        "experiment_tag": "discovery_batch"
+        "title": "When the Decision Record Is Incomplete",
+        "recommended_angle": "repair the audit trail calmly before arguing about memory",
+        "why_now": "tests non-conflict operational friction with a clear Stoic method",
+        "experiment_tag": "operational_variety_batch"
       }
     ],
     "conversion": [
@@ -211,71 +204,71 @@
   "ideas": [
     {
       "objective": "discovery",
-      "title": "Their Mess Is Not Your Emergency",
-      "recommended_angle": "turn messy shared-workspace chaos into a boundaries-and-judgment scenario",
-      "why_now": "Ledger metric signals currently favor: workplace chaos / cleaning others' mess / boundary triggers",
+      "title": "When the Version Label Is Stale",
+      "recommended_angle": "turn a stale version label into a concrete verify-before-sending method",
+      "why_now": "Ledger metric signals currently favor: concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes",
       "experiment_tag": "discovery_batch",
-      "metric_signal": "workplace chaos / cleaning others' mess / boundary triggers"
+      "metric_signal": "concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes"
     },
     {
       "objective": "discovery",
-      "title": "Why Rushing Makes Work Pressure Worse",
-      "recommended_angle": "show how deadline pressure hijacks attention and how a short pause restores control",
-      "why_now": "Ledger metric signals currently favor: strategic patience / rushing / decision pause",
+      "title": "When the Client Note Needs One Clarifying Question",
+      "recommended_angle": "turn critical feedback into one clarifying question before defending or rewriting",
+      "why_now": "Ledger metric signals currently favor: criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
       "experiment_tag": "discovery_batch",
-      "metric_signal": "strategic patience / rushing / decision pause"
+      "metric_signal": "criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering"
     },
     {
       "objective": "discovery",
-      "title": "You Do Not Need Everyone at Work to Like You",
-      "recommended_angle": "turn approval-seeking into a disagreement-at-work scenario the viewer can recognize immediately",
-      "why_now": "Ledger metric signals currently favor: approval pressure / disagreement / seeking validation",
+      "title": "When the Calendar Block Gets Broken",
+      "recommended_angle": "show how to protect one work block after an interruption without spiraling",
+      "why_now": "Ledger metric signals currently favor: attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
       "experiment_tag": "discovery_batch",
-      "metric_signal": "approval pressure / disagreement / seeking validation"
+      "metric_signal": "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety"
     },
     {
       "objective": "discovery",
-      "title": "The Priority Shift Is Not the Emergency",
-      "recommended_angle": "show how sudden priority changes test composure before they test productivity",
-      "why_now": "Ledger metric signals currently favor: priority shifts / meetings / boss pressure",
+      "title": "When the Budget Line Gets Cut",
+      "recommended_angle": "show the three-column method: what still matters, what stops, and what can ship smaller",
+      "why_now": "Ledger metric signals currently favor: resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day",
       "experiment_tag": "discovery_batch",
-      "metric_signal": "priority shifts / meetings / boss pressure"
+      "metric_signal": "resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day"
     },
     {
       "objective": "discovery",
-      "title": "Stop Letting Work Steal Your Focus Before Noon",
-      "recommended_angle": "show one concrete focus leak and one Stoic boundary",
-      "why_now": "Ledger metric signals currently favor: focus boundaries / over-accepting meetings",
+      "title": "When the Promotion Window Opens",
+      "recommended_angle": "turn ambition into one controllable next action instead of attention theft",
+      "why_now": "Ledger metric signals currently favor: ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
       "experiment_tag": "discovery_batch",
-      "metric_signal": "focus boundaries / over-accepting meetings"
+      "metric_signal": "ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics"
     },
     {
       "objective": "discovery",
-      "title": "Your Coworker's Disrespect Only Wins If You React",
-      "recommended_angle": "turn workplace disrespect into a composure-vs-reactivity scenario",
-      "why_now": "TikTok data shows conflict/disrespect framing is currently the strongest reach lane",
-      "experiment_tag": "tiktok_conflict_batch"
+      "title": "When the Dashboard Filter Is Wrong",
+      "recommended_angle": "turn a wrong dashboard filter into a verify-before-react method",
+      "why_now": "keeps proven workplace-tension packaging while moving away from repeated conflict/rush subjects",
+      "experiment_tag": "operational_variety_batch"
     },
     {
       "objective": "discovery",
-      "title": "Strategic Patience Is a Workplace Power Move",
-      "recommended_angle": "frame patience as leverage, not passivity",
-      "why_now": "patience/power-move packaging is one of the strongest TikTok patterns",
-      "experiment_tag": "tiktok_conflict_batch"
+      "title": "When the Export Timestamp Is Stale",
+      "recommended_angle": "show how one timestamp check prevents a rushed bad decision",
+      "why_now": "concrete operational triggers give the channel fresher repeatable methods",
+      "experiment_tag": "operational_variety_batch"
     },
     {
       "objective": "discovery",
-      "title": "Stop Checking Slack Before Thinking",
-      "recommended_angle": "show how notifications hijack focus before real work begins",
-      "why_now": "mobile-first shorts feed rewards immediate workplace pain recognition",
-      "experiment_tag": "discovery_batch"
+      "title": "When the Handoff Has No Owner",
+      "recommended_angle": "clarify owner, next step, and evidence before absorbing the mess",
+      "why_now": "keeps boundary appeal without repeating coworker-disrespect framing",
+      "experiment_tag": "operational_variety_batch"
     },
     {
       "objective": "discovery",
-      "title": "What Marcus Aurelius Would Do Before Your 9 AM Meeting",
-      "recommended_angle": "use a specific work ritual instead of generic philosophy",
-      "why_now": "meeting-specific packaging matches proven concrete-work framing",
-      "experiment_tag": "discovery_batch"
+      "title": "When the Decision Record Is Incomplete",
+      "recommended_angle": "repair the audit trail calmly before arguing about memory",
+      "why_now": "tests non-conflict operational friction with a clear Stoic method",
+      "experiment_tag": "operational_variety_batch"
     },
     {
       "objective": "conversion",

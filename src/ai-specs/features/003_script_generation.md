@@ -73,6 +73,7 @@ The script generation stage transforms research results into a structured video 
   - `VideoMode.SHORT`: Condensed narration for vertical/shorts format
 - **Title consistency**: Title from research is preserved and used across stages.
 - **Recent-script variety**: Short script prompts include recent titles/hooks as negative examples. Generated shorts are rejected before scene planning when they repeat an opener pattern used by at least two recent scripts (for example repeated `Your boss ...` starts), when title/hook/narration terms are too similar to a recent script, or when the script repeats a recent retry artifact that never reached metadata/upload packaging.
+- **Viewer-delivery boundary**: Stoic Modernized shorts must use a subscribe-style CTA only. Scripts may not promise to send viewers checklists, guides, templates, PDFs, links, or other resources in exchange for comments, replies, DMs, or messages; generation prompts include this rule and validation rejects any remaining delivery promise.
 
 ## Cross-Package References
 

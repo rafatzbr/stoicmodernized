@@ -170,6 +170,38 @@ class TestScriptStage:
         assert cta_block.strip() == "Breathe first. Reply second. Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
         assert cta_block.lower().count("subscribe") == 1
 
+    def test_short_cta_strips_comment_to_receive_resource_promise(self) -> None:
+        stage = ScriptStage(job_id="job-4-cta-promise", mock=False, video_mode=VideoMode.SHORT)
+        normalized = stage._normalize_council_script_payload(
+            {
+                "title": "Slow Down Promotion Panic",
+                "hook": "A promotion opening can steal your focus fast.",
+                "narration": "[0:00-0:12] Hook\nA promotion opening can steal your focus fast.\n\n[0:12-0:30] Stoic Principle\nControl the action in front of you, not the title you imagine.\n\n[0:30-0:50] Workplace Application\nPause for sixty seconds before you apply and name the next useful step.\n\n[0:50-0:58] CTA\nWant more steady focus? Comment 'Control' below and Ill send you the one-page checklist. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                "chapters": [],
+                "cta": "Comment 'Control' below and Ill send you the one-page checklist. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            }
+        )
+
+        cta_block = normalized["narration"].split("[0:50-0:58] CTA", 1)[1]
+        assert "Comment 'Control'" not in cta_block
+        assert "send you" not in cta_block
+        assert cta_block.strip() == "Want more steady focus. Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+
+    def test_short_quality_rejects_viewer_delivery_promise(self) -> None:
+        stage = ScriptStage(job_id="job-4-cta-promise-reject", mock=False, video_mode=VideoMode.SHORT)
+        script = Script(
+            title="Slow Down Promotion Panic",
+            hook="A promotion opening can steal your focus fast.",
+            narration="[0:00-0:12] Hook\nA promotion opening can steal your focus fast.\n\n[0:12-0:30] Stoic Principle\nControl the action in front of you, not the title you imagine.\n\n[0:30-0:50] Workplace Application\nPause for sixty seconds before you apply and name the next useful step.\n\n[0:50-0:58] CTA\nComment 'Control' below and Ill send you the one-page checklist. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            chapters=[],
+            cta="Comment 'Control' below and Ill send you the one-page checklist. Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            short_version="short",
+            generated_at=datetime.now(UTC),
+        )
+
+        with pytest.raises(ScriptGenerationError, match="promises to send"):
+            stage._enforce_generated_script_quality(script)
+
     def test_parse_script_response_does_not_prepend_hook_to_timed_short_script(self) -> None:
         stage = ScriptStage(job_id="job-4b", mock=False, video_mode=VideoMode.SHORT)
         script = stage._parse_script_response(
@@ -412,3 +444,59 @@ class TestScriptStage:
         assert "Your boss calls an emergency 9 AM meeting" in prompt
         assert "Do not start with `Your boss`" in prompt
         assert "different actor and trigger" in prompt
+
+    def test_short_quality_rejects_overused_chest_tightens_phrase(self, tmp_path: Path) -> None:
+        stage = ScriptStage(job_id="current-job", mock=False, video_mode=VideoMode.SHORT)
+        stage.job_dir = tmp_path / "current-job"
+        stage.script_dir = stage.job_dir / "script"
+        stage.script_dir.mkdir(parents=True, exist_ok=True)
+        for idx in range(2):
+            recent_dir = tmp_path / f"recent-chest-{idx}" / "script"
+            recent_dir.mkdir(parents=True, exist_ok=True)
+            (recent_dir / "script.json").write_text(
+                json.dumps(
+                    {
+                        "title": "Recent Script",
+                        "hook": "Your chest tightens when the email lands.",
+                        "narration": "Your chest tightens when the email lands. Separate fact from story before replying.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+        script = Script(
+            title="Check the Export Before Replying",
+            hook="Your chest tightens when the report number looks wrong.",
+            narration="[0:00-0:12] Hook\nYour chest tightens when the report number looks wrong, and you want to explain before you verify.\n\n[0:12-0:30] Stoic Principle\nSeparate the impression from the fact so the first feeling does not become your decision.\n\n[0:30-0:50] Workplace Application\nCheck the export time, the filter, and the source table. Then send one clean correction instead of a defensive story.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            chapters=[],
+            cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            short_version="short",
+            generated_at=datetime.now(UTC),
+        )
+
+        with pytest.raises(ScriptGenerationError, match="repeats overused body-reaction phrase: your chest tightens"):
+            stage._enforce_generated_script_quality(script)
+
+    def test_short_quality_rejects_repeated_recent_title(self, tmp_path: Path) -> None:
+        stage = ScriptStage(job_id="current-job", mock=False, video_mode=VideoMode.SHORT)
+        stage.job_dir = tmp_path / "current-job"
+        stage.script_dir = stage.job_dir / "script"
+        stage.script_dir.mkdir(parents=True, exist_ok=True)
+        recent_dir = tmp_path / "recent-title" / "script"
+        recent_dir.mkdir(parents=True, exist_ok=True)
+        (recent_dir / "script.json").write_text(
+            json.dumps({"title": "Why Rushing Makes Work Pressure Worse", "hook": "A report is due soon.", "narration": "A report is due soon. Pause and verify before sending."}),
+            encoding="utf-8",
+        )
+        script = Script(
+            title="Why Rushing Makes Work Pressure Worse",
+            hook="The export timestamp is stale, and speed will make the error louder.",
+            narration="[0:00-0:12] Hook\nThe export timestamp is stale, and speed will make the error louder.\n\n[0:12-0:30] Stoic Principle\nTreat urgency as an impression, not an order. You still control verification and the next sentence.\n\n[0:30-0:50] Workplace Application\nCheck the timestamp, filter, and source. Then send one correction with the evidence attached.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            chapters=[],
+            cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            short_version="short",
+            generated_at=datetime.now(UTC),
+        )
+
+        with pytest.raises(ScriptGenerationError, match="repeats recent title exactly"):
+            stage._enforce_generated_script_quality(script)

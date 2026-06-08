@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-06-01T09:40:59.775159+00:00",
+  "generated_at": "2026-06-08T05:17:50.336244+00:00",
   "source_files": [
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-05-31.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-05-31.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-05-31.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-01.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-01.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-01.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-01.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-01.json"
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-07.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-07.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-07.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-07.json"
   ],
   "evidence_excerpt": [
     "# Stoic Modernized Council Plan — 2026-05-10",
@@ -32,100 +32,93 @@
     "- **4 discovery videos**",
     "- **3 conversion videos**",
     "### Discovery lane",
-    "# Stoic Modernized YouTube Analytics — 2026-05-31",
+    "# Stoic Modernized YouTube Analytics — 2026-06-07",
     "## Window",
-    "- 2026-05-04 → 2026-05-31",
+    "- 2026-05-11 → 2026-06-07",
     "## Traffic sources",
-    "- SHORTS: 1,474 views, 111 minutes watched",
-    "- EXT_URL: 64 views, 28 minutes watched",
-    "- YT_OTHER_PAGE: 51 views, 5 minutes watched",
-    "- YT_SEARCH: 35 views, 3 minutes watched",
-    "- NO_LINK_OTHER: 27 views, 3 minutes watched",
-    "- YT_CHANNEL: 4 views, 0 minutes watched",
-    "- NOTIFICATION: 3 views, 1 minutes watched",
-    "- RELATED_VIDEO: 2 views, 0 minutes watched",
+    "- SHORTS: 1,291 views, 84 minutes watched",
+    "- EXT_URL: 49 views, 20 minutes watched",
+    "- YT_OTHER_PAGE: 39 views, 3 minutes watched",
+    "- YT_SEARCH: 34 views, 3 minutes watched",
+    "- NO_LINK_OTHER: 11 views, 0 minutes watched",
+    "- YT_CHANNEL: 3 views, 0 minutes watched",
+    "- NOTIFICATION: 3 views, 0 minutes watched",
     "- SUBSCRIBER: 1 views, 0 minutes watched",
+    "- RELATED_VIDEO: 0 views, 0 minutes watched",
     "## Subscriber status",
-    "- UNSUBSCRIBED: 1,586 views, 124 minutes watched",
-    "- SUBSCRIBED: 75 views, 30 minutes watched",
+    "- UNSUBSCRIBED: 1,375 views, 91 minutes watched",
+    "- SUBSCRIBED: 56 views, 21 minutes watched",
     "## Device types",
-    "- MOBILE: 1,335 views",
-    "- DESKTOP: 222 views",
-    "- TABLET: 84 views",
-    "# Stoic Modernized YouTube Metrics — 2026-05-31",
+    "- MOBILE: 1,155 views",
+    "- DESKTOP: 181 views",
+    "- TABLET: 75 views",
+    "# Stoic Modernized YouTube Metrics — 2026-06-07",
     "## Channel snapshot",
     "- Channel: Stoic Modernized",
     "- Channel ID: UCySgvb2LxpQkZRjiSY-T6Mw",
     "- Subscribers: 7",
-    "- Lifetime views: 2,165",
-    "- Lifetime videos: 43",
-    "## Analytics window (2026-05-04 → 2026-05-31)",
-    "- Views: 1,661",
-    "- Estimated minutes watched: 155"
+    "- Lifetime views: 2,398",
+    "- Lifetime videos: 50",
+    "## Analytics window (2026-05-11 → 2026-06-07)",
+    "- Views: 1,438",
+    "- Estimated minutes watched: 112"
   ],
   "metric_signals": {
     "source_count": 9,
     "platform": {
-      "youtube_shorts_views": 1474.0,
+      "youtube_shorts_views": 1291.0,
       "youtube_search_minutes": 3.0,
-      "mobile_view_share": 0.857,
-      "unsubscribed_view_share": 0.955,
+      "mobile_view_share": 0.865,
+      "unsubscribed_view_share": 0.961,
       "subscribers_gained": 1.0,
-      "facebook_video_views": 488.0,
-      "facebook_post_engagements": 23.0,
-      "facebook_reach": 1662.0
+      "facebook_video_views": 493.0,
+      "facebook_post_engagements": 24.0,
+      "facebook_reach": 1669.0
     },
     "winning_themes": [
-      "workplace chaos / cleaning others' mess / boundary triggers",
-      "strategic patience / rushing / decision pause",
-      "approval pressure / disagreement / seeking validation",
-      "priority shifts / meetings / boss pressure",
-      "focus boundaries / over-accepting meetings",
+      "concrete operational frictions / ordinary objects — budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract stoic framing; keep the repeatable method but vary objects/processes",
+      "criticism / feedback without defensiveness — client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
+      "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
+      "resource constraints / doing useful work with less — budget cut was the strongest current-week post and coincided with the biggest follower gain day",
+      "ambition / promotion / desire control — promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
       "conflict",
-      "discipline systems",
-      "control"
+      "discipline systems"
     ],
     "youtube_top_titles": [
       "Stop Busy Idleness At Work | Stoic Modernized",
       "Your Coworkers Disrespect Only Wins If You React | Stoic Modernized",
-      "Use Death to Stop Procrastinating | Stoic Modernized",
       "Your Gossip Trigger Only Wins If You React | Stoic Modernized",
-      "Build Discipline Without Burning Out | Stoic Modernized"
+      "Stop Defending When Criticized | Stoic Modernized",
+      "Calm Is Not A Trait It Is A Skill | Stoic Modernized"
     ],
     "facebook_top_titles": [
-      "If a modern worker feels pressure but keeps giving that pressure control over attention an…",
-      "When a decision keeps getting reopened at work, your job is not to win the argument again.…",
-      "That dirty mug isn't a mess to fix; it's a trigger for your anxiety. Stop letting workplac…",
-      "That meeting invite spikes your heart rate and steals your focus. Stop giving that pressur…",
-      "The spreadsheet breaks five minutes before the forecast review. Your shoulders lock. You w…"
+      "That promotion opening can make your chest tighten and steal attention from the work in fr…",
+      "That rush drains your focus from the work right in front of you. Stop letting pressure con…",
+      "Finance rejects your expense report over one missing receipt. Your jaw tightens, but anger…",
+      "A budget cut can push a team into panic, resentment, and scattered decisions. This Stoic M…",
+      "When client feedback hits your ego, the first move is not to defend yourself. Pause, separ…"
     ],
-    "tiktok_top_titles": [
-      "Your colleague's disrespect isn't stealing your peace; your judgment of them is....",
-      "Stop Cleaning Their Mess",
-      "Why Rushing Makes Work Pressure Worse",
-      "Slow Down Before You Decide",
-      "Why Control Matters at Work Unfair treatment steals your focus and judgment at work."
-    ],
+    "tiktok_top_titles": [],
     "tiktok_weightings": [
       {
-        "label": "workplace chaos / cleaning others' mess / boundary triggers",
+        "label": "concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes",
         "weight": 35.0
       },
       {
-        "label": "strategic patience / rushing / decision pause",
+        "label": "criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
         "weight": 25.0
       },
       {
-        "label": "approval pressure / disagreement / seeking validation",
+        "label": "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
         "weight": 20.0
       },
       {
-        "label": "priority shifts / meetings / boss pressure",
-        "weight": 15.0
+        "label": "resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day",
+        "weight": 10.0
       },
       {
-        "label": "focus boundaries / over-accepting meetings",
-        "weight": 5.0
+        "label": "ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
+        "weight": 10.0
       }
     ],
     "format_steering": [
@@ -237,20 +230,20 @@
   ],
   "research_steering": {
     "prioritize_scenarios": [
-      "workplace chaos / cleaning others' mess / boundary triggers",
-      "strategic patience / rushing / decision pause",
-      "approval pressure / disagreement / seeking validation",
-      "priority shifts / meetings / boss pressure",
-      "focus boundaries / over-accepting meetings",
+      "concrete operational frictions / ordinary objects — budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract stoic framing; keep the repeatable method but vary objects/processes",
+      "criticism / feedback without defensiveness — client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
+      "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
+      "resource constraints / doing useful work with less — budget cut was the strongest current-week post and coincided with the biggest follower gain day",
+      "ambition / promotion / desire control — promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
       "conflict",
-      "control",
       "coworker disrespect",
       "status games",
       "strategic patience",
       "discipline systems",
       "overexplaining",
       "meetings",
-      "focus friction"
+      "focus friction",
+      "burnout tied to control"
     ],
     "prioritize_emotions": [
       "reactivity",
