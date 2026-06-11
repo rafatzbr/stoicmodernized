@@ -4,7 +4,7 @@
 
 - If the Stoic daily pipeline repeats visceral openers or the same boss/coworker/meeting subjects, fix the upstream research selector first; script-level wording bans are not enough.
 - Research validation must reject source packets dominated by generic anxiety, burnout, performance-review, broad self-help, or generic Stoic-workplace pages unless at least two sources match the actual operational trigger.
-- Whiskers replacement/fallback topics should prefer concrete operational mechanisms (spreadsheet/reconciliation, password reset, build cache, file/version mismatch, dependency update, printer jam, dashboard filter, calendar interruption, approval queue) over generic conflict frames.
+- Whiskers replacement/fallback topics should generate breadth before selection: build a 30+ private slate across tools/process failure, ambiguous handoff, reputation/feedback, ambition/comparison, fatigue/boundaries, everyday inconvenience, attention distraction, ethical pressure, and interpersonal friction. Do not constrain Codex to the old tiny list of spreadsheet/password/build/printer/dashboard/calendar/approval topics.
 - Verify guardrail fixes by rechecking a known bad packet as well as running focused tests; a passing research command can still be bad if Whiskers converts weak sources into generic handoff fields.
 
 ## Media Explorer and YouTube Description Tags (May/June 2026)

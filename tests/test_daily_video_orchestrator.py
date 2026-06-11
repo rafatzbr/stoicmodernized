@@ -130,6 +130,17 @@ def test_daily_orchestrator_keeps_valid_fresh_whiskers_retry_topic_outside_ledge
     ]
 
 
+def test_daily_orchestrator_keeps_valid_initial_whiskers_topic_outside_ledger_plan():
+    orchestrator = load_daily_orchestrator()
+
+    topic = orchestrator.enforce_ledger_topic(
+        "When an Access Permission Blocks the File You Need",
+        {"ideas": [{"title": "When the Dashboard Filter Is Wrong"}]},
+    )
+
+    assert topic == "When an Access Permission Blocks the File You Need"
+
+
 def test_daily_orchestrator_default_safe_subject_retry_budget_is_increased():
     orchestrator = load_daily_orchestrator()
 

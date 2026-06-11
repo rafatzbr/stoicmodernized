@@ -63,21 +63,46 @@ SUBJECT_UMBRELLA_TRIGGER_MAP: dict[str, tuple[str, tuple[str, ...]]] = {
 }
 
 OPERATIONAL_TRIGGER_PATTERNS: tuple[tuple[str, str, list[str]], ...] = (
+    ("access permission", "uncertainty_waiting", ["access", "permission", "blocked file"]),
     ("dashboard filter", "loss_of_control", ["dashboard", "filter", "data quality"]),
     ("source date range", "loss_of_control", ["source", "date range", "scope"]),
     ("export timestamp", "loss_of_control", ["export", "timestamp", "stale data"]),
     ("version label", "loss_of_control", ["version", "label", "file"]),
+    ("missing attachment", "loss_of_control", ["attachment", "send", "verification"]),
+    ("automation breaks", "loss_of_control", ["automation", "failure", "manual fallback"]),
+    ("broken automation", "loss_of_control", ["automation", "failure", "manual fallback"]),
+    ("data import", "loss_of_control", ["import", "data", "retry"]),
+    ("failed import", "loss_of_control", ["import", "data", "retry"]),
     ("budget line", "loss_of_control", ["budget", "scope", "resource constraint"]),
     ("approval queue", "uncertainty_waiting", ["approval", "queue", "waiting"]),
     ("handoff owner", "uncertainty_waiting", ["handoff", "owner", "next action"]),
+    ("silent thread", "uncertainty_waiting", ["silence", "thread", "interpretation"]),
+    ("ticket has no clear owner", "uncertainty_waiting", ["ticket", "owner", "next action"]),
+    ("unclear ticket", "uncertainty_waiting", ["ticket", "owner", "next action"]),
     ("decision record", "ego_reputation", ["decision record", "audit trail", "memory"]),
     ("review comment", "ego_reputation", ["review", "comment", "feedback"]),
+    ("public correction", "ego_reputation", ["correction", "ego", "facts"]),
+    ("credit question", "ego_reputation", ["credit", "recognition", "facts"]),
     ("calendar block", "attention_distraction", ["calendar", "focus block", "interruption"]),
     ("checklist step", "attention_distraction", ["checklist", "step", "verification"]),
+    ("tab spiral", "attention_distraction", ["tab", "browser", "attention"]),
+    ("analytics refresh", "attention_distraction", ["analytics", "refresh", "attention"]),
     ("promotion window", "desire_ambition", ["promotion", "ambition", "next action"]),
     ("status game", "desire_ambition", ["status", "approval", "recognition"]),
+    ("credit comparison", "desire_ambition", ["credit", "comparison", "ambition"]),
+    ("metrics check", "desire_ambition", ["metrics", "comparison", "ambition"]),
     ("discipline system", "fatigue_boundaries", ["discipline", "boundary", "energy"]),
+    ("small request", "fatigue_boundaries", ["request", "boundary", "energy"]),
+    ("weekend message", "fatigue_boundaries", ["weekend", "boundary", "response"]),
+    ("meeting buffer", "fatigue_boundaries", ["buffer", "calendar", "energy"]),
     ("printer jam", "everyday_inconvenience", ["printer", "jam", "office equipment"]),
+    ("commute delay", "everyday_inconvenience", ["commute", "delay", "arrival"]),
+    ("workspace noise", "everyday_inconvenience", ["noise", "workspace", "focus"]),
+    ("noisy workspace", "everyday_inconvenience", ["noise", "workspace", "focus"]),
+    ("wrong room", "everyday_inconvenience", ["room", "booking", "reset"]),
+    ("answer before you verify", "conflict_friction", ["verification", "pressure", "integrity"]),
+    ("soft exaggeration", "conflict_friction", ["exaggeration", "status update", "truth"]),
+    ("asked to answer before verifying", "conflict_friction", ["verification", "pressure", "integrity"]),
 )
 
 
@@ -627,9 +652,9 @@ class LedgerStrategyManager:
                     "subject_family": matches[:3],
                 }
         return {
-            "subject_umbrella": "loss_of_control",
-            "operational_trigger": "concrete workplace process",
-            "subject_family": ["workplace process", "verification"],
+            "subject_umbrella": "uncertainty_waiting",
+            "operational_trigger": "unclear next action",
+            "subject_family": ["unclear next action", "waiting", "verification"],
         }
 
     def _with_topic_variety_metadata(self, idea: dict[str, Any]) -> dict[str, Any]:
@@ -651,6 +676,73 @@ class LedgerStrategyManager:
         used = [str(idea.get("subject_umbrella") or "") for idea in ideas[:5]]
         counts = {umbrella: used.count(umbrella) for umbrella in SUBJECT_UMBRELLA_TRIGGER_MAP}
         return [umbrella for umbrella, _count in sorted(counts.items(), key=lambda item: (item[1], item[0]))][:limit]
+
+    def _rotate_topic_umbrellas(
+        self,
+        ideas: list[dict[str, Any]],
+        *,
+        deprioritize: set[str] | None = None,
+        leading_umbrellas: int = 4,
+    ) -> list[dict[str, Any]]:
+        """Round-robin the slate so Whiskers sees breadth before hot lanes repeat.
+
+        Duplicate guardrails catch same concrete subjects, but the channel can still
+        feel repetitive when fresh concrete triggers all live under the same broad
+        umbrella. Preserve all candidates while interleaving subject umbrellas; put
+        temporarily hot umbrellas (for example loss_of_control) after the first
+        non-deprioritized pass instead of deleting them.
+        """
+
+        deprioritize = deprioritize or set()
+        by_umbrella: dict[str, list[dict[str, Any]]] = {}
+        fallback: list[dict[str, Any]] = []
+        for idea in ideas:
+            umbrella = str(idea.get("subject_umbrella") or "")
+            if umbrella:
+                by_umbrella.setdefault(umbrella, []).append(idea)
+            else:
+                fallback.append(idea)
+
+        ordered_umbrellas = [
+            umbrella
+            for umbrella in SUBJECT_UMBRELLA_TRIGGER_MAP
+            if umbrella in by_umbrella and umbrella not in deprioritize
+        ]
+        ordered_umbrellas.extend(
+            umbrella
+            for umbrella in SUBJECT_UMBRELLA_TRIGGER_MAP
+            if umbrella in by_umbrella and umbrella in deprioritize
+        )
+        ordered_umbrellas.extend(
+            umbrella
+            for umbrella in by_umbrella
+            if umbrella not in ordered_umbrellas
+        )
+
+        rotated: list[dict[str, Any]] = []
+        used_titles: set[str] = set()
+        made_progress = True
+        index = 0
+        while made_progress:
+            made_progress = False
+            for umbrella in ordered_umbrellas:
+                bucket = by_umbrella.get(umbrella, [])
+                if index >= len(bucket):
+                    continue
+                idea = bucket[index]
+                title = str(idea.get("title") or "")
+                if title and title not in used_titles:
+                    rotated.append(idea)
+                    used_titles.add(title)
+                    made_progress = True
+            index += 1
+
+        for idea in fallback:
+            title = str(idea.get("title") or "")
+            if title and title not in used_titles:
+                rotated.append(idea)
+                used_titles.add(title)
+        return rotated
 
     def _metric_topic_ideas(self, metric_signals: dict[str, Any]) -> list[dict[str, Any]]:
         templates = [
@@ -833,6 +925,41 @@ class LedgerStrategyManager:
             },
             {
                 "objective": "discovery",
+                "title": "When the Version Label Is Stale",
+                "recommended_angle": "verify the version label, source, and recipient before reacting to rework",
+                "why_now": "tests process precision without another boss or meeting story",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Missing Attachment Sends You Back",
+                "recommended_angle": "make the attachment check a calm verification ritual before blame starts",
+                "why_now": "turns a common work mistake into a repeatable Stoic method",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Automation Breaks at the Worst Time",
+                "recommended_angle": "separate the failed automation from the next controllable manual fallback",
+                "why_now": "modern workplace friction beyond interpersonal pressure",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Data Import Fails Twice",
+                "recommended_angle": "show a retry log, boundary, and next evidence step instead of panic",
+                "why_now": "fresh technical-process trigger with scene-ready specificity",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Budget Line Gets Cut",
+                "recommended_angle": "show the three-column method: what still matters, what stops, and what can ship smaller",
+                "why_now": "resource constraints performed well while staying concrete",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
                 "title": "When the Handoff Has No Owner",
                 "recommended_angle": "clarify owner, next step, and evidence before absorbing the mess",
                 "why_now": "keeps boundary appeal without repeating coworker-disrespect framing",
@@ -840,9 +967,107 @@ class LedgerStrategyManager:
             },
             {
                 "objective": "discovery",
+                "title": "When the Approval Queue Goes Silent",
+                "recommended_angle": "turn waiting into one clean follow-up and one controllable next task",
+                "why_now": "uncertainty without another conflict confrontation",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Ticket Has No Clear Owner",
+                "recommended_angle": "define owner, next action, and evidence before taking invisible work",
+                "why_now": "practical boundary topic with a concrete workflow object",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
                 "title": "When the Decision Record Is Incomplete",
                 "recommended_angle": "repair the audit trail calmly before arguing about memory",
                 "why_now": "tests non-conflict operational friction with a clear Stoic method",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When a Public Correction Hits Your Ego",
+                "recommended_angle": "split fact, tone, and next correction before defending yourself",
+                "why_now": "ego/reputation lane that is not the same boss-pressure setup",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Credit Question Distracts You",
+                "recommended_angle": "turn credit anxiety into a clean record of contribution and next useful act",
+                "why_now": "reputation and ambition without generic approval chasing",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Calendar Block Gets Broken",
+                "recommended_angle": "show how to protect one work block after an interruption without spiraling",
+                "why_now": "attention-control systems performed steadily when tied to actual workflow",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Checklist Has One Missing Step",
+                "recommended_angle": "show one concrete focus leak and one verification boundary before resuming work",
+                "why_now": "keeps focus practical instead of inspirational",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Browser Tabs Become the Work",
+                "recommended_angle": "make tab cleanup a visible attention boundary before the next task",
+                "why_now": "modern attention problem with simple visuals and method",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When You Keep Refreshing the Analytics",
+                "recommended_angle": "turn metrics checking into a scheduled review instead of attention theft",
+                "why_now": "ambition/attention overlap without repeating promotion stories",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Printer Jam Tests Your Patience",
+                "recommended_angle": "treat ordinary equipment friction as a small training ground for response discipline",
+                "why_now": "everyday inconvenience lane breaks the office-conflict loop",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Commute Delay Steals Your Plan",
+                "recommended_angle": "reset the first controllable action after arrival instead of rehearsing resentment",
+                "why_now": "workday friction with a different location and actor pattern",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Workspace Noise Won't Stop",
+                "recommended_angle": "show a concrete noise boundary and one task-selection move",
+                "why_now": "everyday sensory friction without social blame",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Meeting Room Is Booked Wrong",
+                "recommended_angle": "turn logistical annoyance into one reset, one message, and one next step",
+                "why_now": "ordinary workplace inconvenience with scene-ready action",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When the Status Update Wants a Soft Exaggeration",
+                "recommended_angle": "separate pressure to sound good from the useful truth the team needs",
+                "why_now": "ethical friction lane that broadens beyond tools and conflict",
+                "experiment_tag": "operational_variety_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When They Ask for an Answer Before You Verify",
+                "recommended_angle": "make verification the courageous move, not a delay tactic",
+                "why_now": "pressure story with a different moral mechanism than boss/coworker drama",
                 "experiment_tag": "operational_variety_batch",
             },
         ]
@@ -863,23 +1088,70 @@ class LedgerStrategyManager:
             },
             {
                 "objective": "conversion",
+                "title": "When Someone Else Gets the Credit",
+                "recommended_angle": "turn comparison into a contribution record and one useful next action",
+                "why_now": "desire/ambition lane with emotional pull and a concrete workplace trigger",
+                "experiment_tag": "conversion_batch",
+            },
+            {
+                "objective": "conversion",
+                "title": "When the Metrics Make You Check Again",
+                "recommended_angle": "turn metric craving into a scheduled review and a controllable input",
+                "why_now": "modern ambition trigger that avoids another interpersonal conflict",
+                "experiment_tag": "conversion_batch",
+            },
+            {
+                "objective": "conversion",
                 "title": "When the Calendar Has No White Space",
                 "recommended_angle": "make calm a practical boundary around energy and calendar load",
                 "why_now": "fatigue and overcommitment give the channel a fresher emotional-positioning lane",
                 "experiment_tag": "conversion_batch",
             },
+            {
+                "objective": "conversion",
+                "title": "When One More Small Request Breaks Your Focus",
+                "recommended_angle": "show a clean no/now/later boundary instead of quiet resentment",
+                "why_now": "fatigue/boundary lane with a highly recognizable work moment",
+                "experiment_tag": "conversion_batch",
+            },
+            {
+                "objective": "conversion",
+                "title": "When the Weekend Message Pulls You Back In",
+                "recommended_angle": "separate urgency from habit and choose a deliberate response window",
+                "why_now": "boundary topic with strong emotional recognition and concrete behavior",
+                "experiment_tag": "conversion_batch",
+            },
+            {
+                "objective": "conversion",
+                "title": "When Back-to-Back Meetings Leave No Buffer",
+                "recommended_angle": "make one recovery buffer the Stoic move before the next room",
+                "why_now": "fatigue without generic burnout language",
+                "experiment_tag": "conversion_batch",
+            },
         ]
-        balanced = []
-        if niche:
-            balanced.append(
-                {
-                    "objective": "balanced",
-                    "title": f"How Stoicism Helps When {niche.title()} Feels Heavy",
-                    "recommended_angle": "connect a concrete work burden to a calmer inner posture",
-                    "why_now": "tests whether mixed packaging can bridge reach and conversion",
-                    "experiment_tag": "balanced_batch",
-                }
-            )
+        balanced = [
+            {
+                "objective": "balanced",
+                "title": "When an Access Permission Blocks the File You Need",
+                "recommended_angle": "turn blocked access into one clean request, one fallback, and no story about disrespect",
+                "why_now": "simple workflow obstacle that tests patience and uncertainty",
+                "experiment_tag": "balanced_batch",
+            },
+            {
+                "objective": "balanced",
+                "title": "When the Client Note Needs One Clarifying Question",
+                "recommended_angle": "turn critical feedback into one clarifying question before defending or rewriting",
+                "why_now": "uses proven feedback interest while changing the actor and method",
+                "experiment_tag": "balanced_batch",
+            },
+            {
+                "objective": "balanced",
+                "title": "When the Review Comment Feels Personal",
+                "recommended_angle": "turn approval pressure into a concrete review-comment scenario with one verification move",
+                "why_now": "keeps feedback without collapsing into generic approval anxiety",
+                "experiment_tag": "balanced_batch",
+            },
+        ]
 
         if metric_ideas:
             by_title: dict[str, dict[str, Any]] = {}
@@ -890,7 +1162,7 @@ class LedgerStrategyManager:
         discovery = self._add_topic_variety_metadata(discovery)
         conversion = self._add_topic_variety_metadata(conversion)
         balanced = self._add_topic_variety_metadata(balanced)
-        ideas = discovery + conversion + balanced
+        ideas = self._rotate_topic_umbrellas(discovery + conversion + balanced, deprioritize={"loss_of_control"})
         payload = {
             "generated_at": datetime.now(UTC).isoformat(),
             "niche": niche,
@@ -898,7 +1170,8 @@ class LedgerStrategyManager:
             "source_files": strategy.get("source_files", []),
             "metric_signals": metric_signals,
             "format_steering": strategy.get("format_steering", []),
-            "subject_umbrella_policy": "Rotate subject_umbrella: no more than 2 of the last 5 videos from one umbrella; prefer at least 4 umbrellas per week.",
+            "subject_umbrella_policy": "Rotate subject_umbrella: no more than 2 of the last 5 videos from one umbrella; prefer at least 4 umbrellas per week; build a broad 24+ candidate pool before Whiskers selects.",
+            "umbrella_rotation_version": 3,
             "underused_subject_umbrellas": self._underused_subject_umbrellas(ideas),
             "batches": {
                 "discovery": discovery,
@@ -920,6 +1193,7 @@ class LedgerStrategyManager:
                 and payload.get("niche") == niche
                 and payload.get("strategy_generated_at") == strategy.get("generated_at")
                 and payload.get("subject_umbrella_policy")
+                and payload.get("umbrella_rotation_version") == 3
                 and all(isinstance(idea, dict) and idea.get("subject_umbrella") for idea in payload.get("ideas", [])[:5])
             ):
                 return payload

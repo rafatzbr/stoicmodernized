@@ -133,8 +133,9 @@ def test_global_strategy_derives_metric_signals_from_youtube_and_tiktok(tmp_path
 
     plan = manager.generate_topic_plan()
     assert plan["metric_signals"]["source_count"] == 3
-    assert plan["ideas"][0]["metric_signal"] == "conflict / disrespect / status games"
-    assert plan["ideas"][0]["title"] == "When the Review Comment Feels Personal"
+    leading_titles = [idea["title"] for idea in plan["ideas"][:6]]
+    assert "When the Review Comment Feels Personal" in leading_titles
+    assert any(idea.get("metric_signal") == "conflict / disrespect / status games" for idea in plan["ideas"][:6])
 
 
 def test_topic_plan_uses_new_tiktok_weighting_themes(tmp_path: Path) -> None:
@@ -156,7 +157,7 @@ def test_topic_plan_uses_new_tiktok_weighting_themes(tmp_path: Path) -> None:
     manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
     plan = manager.generate_topic_plan()
 
-    titles = [idea["title"] for idea in plan["ideas"][:5]]
+    titles = [idea["title"] for idea in plan["ideas"][:8]]
     assert "When the Review Comment Feels Personal" in titles
     assert "When the Export Timestamp Is Stale" in titles
     assert "Strategic Patience Is a Workplace Power Move" in titles
@@ -198,8 +199,9 @@ def test_topic_plan_uses_workplace_chaos_tiktok_weighting(tmp_path: Path) -> Non
 
     plan = manager.generate_topic_plan()
     assert plan["metric_signals"]["source_count"] == 1
-    assert plan["ideas"][0]["title"] == "When the Handoff Has No Owner"
-    assert plan["ideas"][0]["metric_signal"] == "workplace chaos / cleaning others' mess / boundary triggers"
+    handoff = next(idea for idea in plan["ideas"] if idea["title"] == "When the Handoff Has No Owner")
+    assert handoff["metric_signal"] == "workplace chaos / cleaning others' mess / boundary triggers"
+    assert plan["ideas"][0]["subject_umbrella"] != "loss_of_control"
 
 
 def test_topic_plan_maps_concrete_operational_weighting_to_fresh_process_subjects(tmp_path: Path) -> None:
@@ -222,7 +224,7 @@ def test_topic_plan_maps_concrete_operational_weighting_to_fresh_process_subject
     manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
     plan = manager.generate_topic_plan()
 
-    titles = [idea["title"] for idea in plan["ideas"][:8]]
+    titles = [idea["title"] for idea in plan["ideas"]]
     assert "When the Dashboard Filter Is Wrong" in titles
     assert "When the Version Label Is Stale" in titles
     assert "When the Client Note Needs One Clarifying Question" in titles
@@ -246,6 +248,62 @@ def test_topic_plan_carries_subject_umbrellas_and_rotates_first_week(tmp_path: P
     assert len(set(umbrellas)) >= 4
     assert all(idea.get("operational_trigger") for idea in first_eight)
     assert all(idea.get("subject_family") for idea in first_eight)
+
+
+def test_topic_plan_generates_broad_candidate_pool_before_whiskers_selection(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    (workspace / "artifacts").mkdir(parents=True, exist_ok=True)
+
+    manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
+    plan = manager.generate_topic_plan()
+
+    ideas = plan["ideas"]
+    umbrellas = [idea["subject_umbrella"] for idea in ideas]
+    triggers = [idea["operational_trigger"] for idea in ideas]
+    leading_umbrellas = umbrellas[:12]
+
+    assert len(ideas) >= 24
+    assert len(set(umbrellas)) >= 8
+    assert len(set(triggers)) >= 20
+    assert max(leading_umbrellas.count(umbrella) for umbrella in set(leading_umbrellas)) <= 2
+
+
+def test_topic_variety_metadata_handles_new_trigger_phrasings(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    (workspace / "artifacts").mkdir(parents=True, exist_ok=True)
+
+    manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
+    plan = manager.generate_topic_plan()
+    by_title = {idea["title"]: idea for idea in plan["ideas"]}
+
+    assert by_title["When the Data Import Fails Twice"]["subject_umbrella"] == "loss_of_control"
+    assert by_title["When the Automation Breaks at the Worst Time"]["operational_trigger"] == "automation breaks"
+    assert by_title["When the Workspace Noise Won't Stop"]["subject_umbrella"] == "everyday_inconvenience"
+    assert by_title["When They Ask for an Answer Before You Verify"]["operational_trigger"] == "answer before you verify"
+
+
+def test_topic_plan_deprioritizes_loss_of_control_in_leading_slate(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    artifacts = workspace / "artifacts"
+    artifacts.mkdir(parents=True, exist_ok=True)
+    (artifacts / "stoic-modernized-tiktok-metrics-2026-06-09.md").write_text(
+        """
+# Manual TikTok metrics
+## Recommended weighting for next batch
+- 35% concrete operational frictions / ordinary objects
+- 20% attention-control systems
+- 10% ambition / promotion / desire control
+""",
+        encoding="utf-8",
+    )
+
+    manager = LedgerStrategyManager(project_root=tmp_path, workspace_root=workspace)
+    plan = manager.generate_topic_plan()
+
+    leading_umbrellas = [idea.get("subject_umbrella") for idea in plan["ideas"][:4]]
+    assert "loss_of_control" not in leading_umbrellas
+    assert len(set(leading_umbrellas)) == 4
+    assert plan["umbrella_rotation_version"] == 3
 
 
 def test_job_packet_carries_metric_and_format_steering(tmp_path: Path) -> None:
