@@ -267,15 +267,16 @@ async def test_real_research_limits_expensive_source_enrichment(monkeypatch: pyt
     assert captured["count"] == stage.MAX_SOURCE_ENRICHMENT
 
 
-def test_stoic_topic_specificity_rejects_generic_review_conflict() -> None:
+def test_stoic_topic_specificity_allows_major_workplace_stressors() -> None:
     from src.config import Channel
 
     stage = ResearchStage(job_id="topic-specificity", mock=False, channel=Channel.STOIC_MODERNIZED)
 
-    error = stage._stoic_topic_specificity_error("When the Review Comment Feels Personal")
-
-    assert error is not None
-    assert "operational workplace mechanism" in error
+    assert stage._stoic_topic_specificity_error("When the Review Comment Feels Personal") is None
+    assert stage._stoic_topic_specificity_error("When FOMO Steals Your Career Focus") is None
+    assert stage._stoic_topic_specificity_error("When Layoff Rumors Steal the Workday") is None
+    assert stage._stoic_topic_specificity_error("When a Work Conflict Follows You Home") is None
+    assert stage._stoic_topic_specificity_error("When Office Politics Makes You Perform") is None
 
 
 def test_stoic_topic_specificity_accepts_source_date_range_mechanism() -> None:
@@ -284,6 +285,29 @@ def test_stoic_topic_specificity_accepts_source_date_range_mechanism() -> None:
     stage = ResearchStage(job_id="topic-specificity", mock=False, channel=Channel.STOIC_MODERNIZED)
 
     assert stage._stoic_topic_specificity_error("When the Source Date Range Is Missing") is None
+
+
+def test_stoic_topic_specificity_accepts_status_record_and_expense_upload_mechanisms() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="topic-specificity", mock=False, channel=Channel.STOIC_MODERNIZED)
+
+    assert stage._stoic_topic_specificity_error("When the Status Update Wants a Soft Exaggeration") is None
+    assert stage._stoic_topic_specificity_error("When the Decision Record Is Incomplete") is None
+    assert stage._stoic_topic_specificity_error("When the Expense Receipt Upload Times Out Again") is None
+    assert stage._stoic_topic_specificity_error("When the Staging Server Times Out During Deployment") is None
+    assert stage._stoic_topic_specificity_error("When the VPN Drops During the Compliance Upload") is None
+    assert stage._stoic_topic_specificity_error("When One More Small Request Breaks Your Focus") is None
+
+
+def test_stoic_research_candidates_do_not_reintroduce_cached_ledger_topics() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="topic-candidates", mock=False, channel=Channel.STOIC_MODERNIZED)
+
+    assert stage._candidate_topics("When the Staging Server Times Out During Deployment") == [
+        "When the Staging Server Times Out During Deployment"
+    ]
 
 
 def test_stoic_research_rejects_generic_self_help_source_mix() -> None:

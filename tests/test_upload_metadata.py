@@ -37,6 +37,18 @@ def test_load_steering_context_from_script_artifact(tmp_path: Path) -> None:
     assert steering["ledger_strategy"]["packaging_angle"] == "identity-level anxiety"
 
 
+def test_topic_umbrella_tokens_do_not_misclassify_calendar_or_printer_as_loss_of_control() -> None:
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+
+    calendar_tokens = uploader._topic_family_tokens("When the Calendar Has No White Space")
+    printer_tokens = uploader._topic_family_tokens("When the Printer Jammed Mid-Print")
+
+    assert "loss_of_control" not in uploader._topic_umbrellas(calendar_tokens)
+    assert "fatigue_boundaries" in uploader._topic_umbrellas(calendar_tokens)
+    assert "loss_of_control" not in uploader._topic_umbrellas(printer_tokens)
+    assert "everyday_inconvenience" in uploader._topic_umbrellas(printer_tokens)
+
+
 def test_generate_default_description_uses_steering_context() -> None:
     uploader = YouTubeUploader(mock=True)
     description = uploader._generate_default_description(
@@ -1222,6 +1234,37 @@ def test_umbrella_balance_blocks_overused_conflict_friction(monkeypatch, tmp_pat
     assert error is not None
     assert "subject-umbrella balance guardrail" in error
     assert "conflict friction" in error
+
+
+def test_umbrella_balance_allows_major_workplace_stressors_despite_hot_umbrella(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    (current_job / "script").mkdir(parents=True, exist_ok=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (current_job / "script" / "script.json").write_text(
+        json.dumps({"short_version": "Layoff rumors make job security feel fragile. Choose preparation over panic."}),
+        encoding="utf-8",
+    )
+    _write_subject_job(
+        jobs_dir,
+        "prior-conflict-1",
+        "Your Coworker Interrupts You Again | Stoic Modernized",
+        "A coworker interrupts the meeting. You do not need to win the room.",
+    )
+    _write_subject_job(
+        jobs_dir,
+        "prior-conflict-2",
+        "When Your Boss Rejects the Plan | Stoic Modernized",
+        "Your boss rejects the plan and the pressure rises.",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+
+    assert uploader.validate_topic_for_research("When Layoff Rumors Steal the Workday", str(current_job)) is None
+    assert uploader.validate_topic_for_research("When FOMO Steals Your Career Focus", str(current_job)) is None
+    assert uploader.validate_topic_for_research("When a Work Conflict Follows You Home", str(current_job)) is None
 
 
 def test_umbrella_balance_allows_underused_attention_topic(monkeypatch, tmp_path: Path) -> None:

@@ -76,6 +76,14 @@ TOPIC_FAMILY_TRIGGER_TOKENS = {
     "waiting", "silence", "reply", "agenda", "phone", "tabs", "scrolling", "inbox", "tired", "exhausted",
     "boundary", "promotion", "raise", "metrics", "recognition", "status", "mistake", "reputation",
     "projector", "crash", "delay", "late", "coffee", "printer", "elevator", "parking",
+    "fomo", "layoffs", "reorg", "job", "security", "conflict", "disagreement", "comparison",
+    "career", "feedback", "criticism", "review", "ego",
+}
+
+MAJOR_WORKPLACE_STRESSOR_TOKENS = {
+    "fomo", "layoff", "layoffs", "reorg", "job", "security", "conflict", "disagreement",
+    "politics", "status", "comparison", "career", "promotion", "feedback", "criticism", "review",
+    "reputation", "ego",
 }
 
 # These are useful context words, but too broad to prove a repeated subject by
@@ -86,14 +94,15 @@ TOPIC_UMBRELLA_TOKENS = {
     "conflict_friction": {
         "boss", "coworker", "reject", "rejected", "refuse", "criticize", "criticism", "interrupt",
         "blame", "credit", "disrespect", "argument", "politics", "pressure", "meeting",
+        "conflict", "disagreement", "office",
     },
     "uncertainty_waiting": {
         "waiting", "wait", "pending", "silence", "silent", "reply", "response", "email", "agenda",
         "unknown", "decision", "delayed", "delay",
     },
     "loss_of_control": {
-        "projector", "crash", "software", "system", "late", "train", "calendar", "schedule",
-        "booked", "booking", "double", "printer", "jam", "broken",
+        "projector", "crash", "software", "system", "late", "train", "schedule",
+        "booked", "booking", "double", "layoff", "layoffs", "reorg", "security",
     },
     "desire_ambition": {
         "promotion", "raise", "metrics", "views", "analytics", "praise", "approval", "title",
@@ -105,7 +114,7 @@ TOPIC_UMBRELLA_TOKENS = {
     },
     "distraction_attention": {
         "phone", "notification", "ping", "message", "tabs", "scrolling", "refresh", "inbox",
-        "focus", "attention", "feed",
+        "focus", "attention", "feed", "fomo", "career",
     },
     "fatigue_boundaries": {
         "burnout", "tired", "exhausted", "fatigue", "empty", "weekend", "restore", "yes",
@@ -564,6 +573,12 @@ class YouTubeUploader:
         """
         current_umbrellas = self._topic_umbrellas(current_family_tokens)
         if not current_umbrellas:
+            return None
+        # Major modern-work stressors (FOMO, layoffs/reorgs, office politics,
+        # status/reputation, conflict) are legitimate Stoic Modernized lanes.
+        # Do not globally suppress them just because their broad umbrella was
+        # used recently; exact-subject/monthly cooldowns still block true repeats.
+        if current_family_tokens & MAJOR_WORKPLACE_STRESSOR_TOKENS:
             return None
 
         recent_counts = {umbrella: 0 for umbrella in current_umbrellas}

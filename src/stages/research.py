@@ -44,7 +44,24 @@ STOIC_OPERATIONAL_EVIDENCE_TERMS = {
     "attention residue", "interruption", "notification", "inbox", "email", "message",
     "dashboard", "filter", "report", "spreadsheet", "cell", "reconciliation", "ledger",
     "export", "timestamp", "file", "filename", "version", "source", "date range", "scope", "password", "reset",
-    "build", "cache", "deployment", "ticket", "jira", "checklist", "printer", "keyboard shortcut",
+    "build", "cache", "deployment", "vpn", "compliance", "ticket", "jira", "checklist", "printer", "keyboard shortcut",
+    "status", "status update", "progress update", "project update", "record", "decision record",
+    "expense", "receipt", "upload", "timeout", "time out", "form", "attachment",
+    "staging", "server", "request", "small request", "focus",
+    # Major modern-work stressors are concrete enough for Stoic Modernized when
+    # the topic names the workplace stressor directly. These should not be
+    # collapsed into tiny object/process triggers such as printer jams.
+    "fomo", "fear of missing out", "layoff", "layoffs", "reorg", "reorganization",
+    "work conflict", "conflict", "disagreement", "office politics", "status game", "status games",
+    "comparison", "promotion", "career", "career focus", "job security", "uncertainty",
+    "reputation", "ego", "feedback", "criticism", "performance review", "review", "comment", "personal",
+}
+
+STOIC_MAJOR_WORKPLACE_STRESSOR_TERMS = {
+    "fomo", "fear of missing out", "layoff", "layoffs", "reorg", "reorganization",
+    "work conflict", "conflict", "disagreement", "office politics", "status game", "status games",
+    "comparison", "promotion", "career", "career focus", "job security", "uncertainty",
+    "reputation", "ego", "feedback", "criticism", "performance review", "review", "comment", "personal",
 }
 
 STOIC_OPERATIONAL_QUERY_TERMS = {
@@ -61,7 +78,19 @@ STOIC_OPERATIONAL_QUERY_TERMS = {
     "spreadsheet": ("spreadsheet error", "reconciliation process", "data validation", "audit trail"),
     "password": ("password reset", "account lockout", "access management", "workflow interruption"),
     "build": ("build cache", "continuous integration", "developer workflow", "deployment delay"),
+    "vpn": ("vpn outage", "remote access", "network connectivity", "workflow interruption"),
+    "compliance": ("compliance upload", "audit workflow", "control evidence", "deadline pressure"),
     "printer": ("printer jam", "office equipment", "workflow interruption", "service desk"),
+    "status": ("project status reporting", "status update", "progress reporting", "project transparency"),
+    "update": ("project status reporting", "status update", "progress reporting", "team communication"),
+    "record": ("decision record", "audit trail", "decision log", "project documentation"),
+    "receipt": ("expense receipt", "expense report", "upload timeout", "workflow interruption"),
+    "expense": ("expense receipt", "expense report", "reimbursement workflow", "upload timeout"),
+    "upload": ("file upload", "upload timeout", "expense report", "workflow interruption"),
+    "staging": ("staging server", "deployment timeout", "software deployment", "incident response"),
+    "server": ("staging server", "deployment timeout", "software deployment", "incident response"),
+    "deployment": ("deployment timeout", "continuous delivery", "software deployment", "incident response"),
+    "request": ("small request", "work interruption", "context switching", "focus block"),
 }
 
 
@@ -210,6 +239,14 @@ class ResearchStage:
         raise RuntimeError(f"No research topic passed validation. {details}")
 
     def _candidate_topics(self, topic: str, limit: int = 12) -> list[str]:
+        # Stoic Modernized's daily orchestrator already owns subject retries and
+        # carries a blacklist across attempts. Falling back inside the research
+        # stage to cached Ledger topics reintroduced stale/duplicate subjects and
+        # made Whiskers look artificially narrow. Validate the requested topic
+        # only; let the orchestrator ask Whiskers for the next candidate.
+        if self.channel == Channel.STOIC_MODERNIZED:
+            return [topic]
+
         strategy = self.strategy_manager.load_global_strategy()
         objective = self.strategy_manager._classify_objective(topic, strategy)
         plan = self.strategy_manager.load_topic_plan()
@@ -244,17 +281,21 @@ class ResearchStage:
         lowered = (topic or "").lower()
         title_operational_terms = {
             "approval", "spreadsheet", "reconciliation", "dashboard", "filter", "export", "timestamp",
-            "password", "reset", "build", "cache", "dependency", "printer", "keyboard", "shortcut",
+            "password", "reset", "build", "cache", "vpn", "compliance", "dependency", "printer", "keyboard", "shortcut",
             "file", "version", "calendar", "handoff", "checklist", "ticket", "queue", "blocked",
             "cell", "reconcile", "review queue", "sign-off", "signoff", "source", "date range", "range",
-            "decision record", "owner", "scope", "form", "attachment", "version label",
+            "decision record", "record", "owner", "scope", "form", "attachment", "version label",
+            "status update", "status", "progress update", "truth", "verification",
+            "expense", "receipt", "upload", "timeout", "time out",
+            "staging", "server", "deployment", "small request", "request", "focus",
         }
-        if any(term in lowered for term in title_operational_terms):
+        if any(term in lowered for term in title_operational_terms | STOIC_MAJOR_WORKPLACE_STRESSOR_TERMS):
             return None
         return (
-            "topic specificity guardrail: choose a concrete operational workplace mechanism "
-            "(spreadsheet/reconciliation, password reset, build cache, file/version mismatch, dependency update, "
-            "printer jam, dashboard filter, calendar interruption, approval queue) instead of a generic conflict or self-help frame."
+            "topic specificity guardrail: choose a concrete workplace mechanism or major modern-work stressor "
+            "(FOMO, layoffs, work conflict, status games, performance review, spreadsheet/reconciliation, "
+            "password reset, build cache, file/version mismatch, dependency update, printer jam, dashboard filter, "
+            "calendar interruption, approval queue) instead of a generic self-help frame."
         )
 
     def _validate_research_result(self, topic: str, result: ResearchResult) -> Optional[str]:
@@ -1378,6 +1419,11 @@ Article text:
         # Require at least two requested-topic terms unless the exact title phrase is present.
         exact_topic = " ".join((topic or "").lower().split())
         exact_phrase_hit = exact_topic and exact_topic in text
+        topic_is_major_stressor = any(
+            term in (topic or "").lower() for term in STOIC_MAJOR_WORKPLACE_STRESSOR_TERMS
+        )
+        if topic_is_major_stressor and has_work_context and topic_overlap >= 1:
+            return True
         return has_operational_term and (exact_phrase_hit or (topic_overlap >= 2 and has_work_context))
 
     def _topic_match_count(self, topic: str, text: str) -> int:

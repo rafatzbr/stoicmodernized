@@ -52,18 +52,28 @@ CONVERSION_KEYWORDS = {
 }
 
 SUBJECT_UMBRELLA_TRIGGER_MAP: dict[str, tuple[str, tuple[str, ...]]] = {
-    "attention_distraction": ("attention/distraction", ("phone", "notification", "inbox", "tab", "focus", "calendar block")),
+    "attention_distraction": ("attention/distraction", ("phone", "notification", "inbox", "tab", "focus", "calendar block", "fomo", "fear of missing out")),
     "fatigue_boundaries": ("fatigue/boundaries", ("calendar", "white space", "weekend", "energy", "boundary", "overcommit")),
-    "loss_of_control": ("loss of control", ("dashboard", "filter", "export", "timestamp", "version", "source", "date range", "password", "build", "printer", "broken", "budget")),
-    "uncertainty_waiting": ("uncertainty/waiting", ("approval", "pending", "waiting", "handoff", "owner", "decision", "clarifying", "queue")),
-    "desire_ambition": ("desire/ambition", ("promotion", "raise", "metrics", "recognition", "status", "ambition")),
-    "ego_reputation": ("ego/reputation", ("review", "comment", "feedback", "criticism", "personal", "corrected", "decision record")),
-    "conflict_friction": ("conflict/friction", ("boss", "coworker", "client", "meeting", "disagreement", "disrespect")),
+    "loss_of_control": ("loss of control", ("dashboard", "filter", "export", "timestamp", "version", "source", "date range", "password", "build", "printer", "broken", "budget", "layoff", "layoffs", "reorg", "job security")),
+    "uncertainty_waiting": ("uncertainty/waiting", ("approval", "pending", "waiting", "handoff", "owner", "decision", "clarifying", "queue", "uncertainty")),
+    "desire_ambition": ("desire/ambition", ("promotion", "raise", "metrics", "recognition", "status", "ambition", "comparison")),
+    "ego_reputation": ("ego/reputation", ("review", "comment", "feedback", "criticism", "personal", "corrected", "decision record", "reputation", "ego")),
+    "conflict_friction": ("conflict/friction", ("boss", "coworker", "client", "meeting", "disagreement", "disrespect", "work conflict", "conflict", "office politics")),
     "everyday_inconvenience": ("everyday inconvenience", ("coffee", "elevator", "parking", "lunch", "printer jam", "noise")),
 }
 
 OPERATIONAL_TRIGGER_PATTERNS: tuple[tuple[str, str, list[str]], ...] = (
     ("access permission", "uncertainty_waiting", ["access", "permission", "blocked file"]),
+    ("fomo", "attention_distraction", ["fomo", "comparison", "career focus"]),
+    ("fear of missing out", "attention_distraction", ["fomo", "comparison", "career focus"]),
+    ("layoff", "loss_of_control", ["layoff", "job security", "uncertainty"]),
+    ("layoffs", "loss_of_control", ["layoffs", "job security", "uncertainty"]),
+    ("reorg", "loss_of_control", ["reorg", "job security", "uncertainty"]),
+    ("work conflict", "conflict_friction", ["conflict", "boundary", "professionalism"]),
+    ("office politics", "conflict_friction", ["office politics", "status", "boundary"]),
+    ("status games", "desire_ambition", ["status", "approval", "recognition"]),
+    ("status game", "desire_ambition", ["status", "approval", "recognition"]),
+    ("performance review", "ego_reputation", ["review", "feedback", "reputation"]),
     ("dashboard filter", "loss_of_control", ["dashboard", "filter", "data quality"]),
     ("source date range", "loss_of_control", ["source", "date range", "scope"]),
     ("export timestamp", "loss_of_control", ["export", "timestamp", "stale data"]),
@@ -909,6 +919,34 @@ class LedgerStrategyManager:
         metric_signals = strategy.get("metric_signals", {}) if isinstance(strategy.get("metric_signals"), dict) else {}
         metric_ideas = self._metric_topic_ideas(metric_signals)
         discovery = [
+            {
+                "objective": "discovery",
+                "title": "When FOMO Steals Your Career Focus",
+                "recommended_angle": "turn comparison into one controllable work block instead of chasing every signal",
+                "why_now": "major modern-work stressor: ambition and attention pressure without reducing the topic to a tiny tool failure",
+                "experiment_tag": "major_work_stressor_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When Layoff Rumors Steal the Workday",
+                "recommended_angle": "separate job-security uncertainty from the next useful action and one practical preparation step",
+                "why_now": "major modern-work stressor: uncertainty and loss of control with high emotional recognition",
+                "experiment_tag": "major_work_stressor_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When a Work Conflict Follows You Home",
+                "recommended_angle": "close the loop with one fact, one boundary, and one next professional move",
+                "why_now": "major modern-work stressor: conflict handled as a repeatable Stoic method rather than suppressed as repetitive",
+                "experiment_tag": "major_work_stressor_batch",
+            },
+            {
+                "objective": "discovery",
+                "title": "When Office Politics Makes You Perform",
+                "recommended_angle": "notice the status-performance impulse and return to the useful contribution",
+                "why_now": "major modern-work stressor: status games and reputation pressure are central workplace Stoic subjects",
+                "experiment_tag": "major_work_stressor_batch",
+            },
             {
                 "objective": "discovery",
                 "title": "When the Dashboard Filter Is Wrong",
