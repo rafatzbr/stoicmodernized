@@ -71,3 +71,54 @@ def test_approval_pressure_prompt_is_specific_not_generic() -> None:
         "symbolic insert shot",
     ]
     assert not any(phrase in prompt_lower for phrase in banned)
+
+
+def test_detailed_scene_prompt_is_binding_source_of_truth() -> None:
+    prompt = build_narrative_scene_prompt(
+        subject="Why A Work Argument Ruins Your Night",
+        scene_prompt=(
+            "vertical 9:16 candid editorial photograph, worker sitting alone at a modern office desk "
+            "in dim evening light, head resting on hand with a look of mental exhaustion, "
+            "face-down smartphone on the desk, a capped pen, and a half-finished notebook, "
+            "shallow depth of field, natural office lighting, no readable text, no logos, no watermark"
+        ),
+        narration_segment=(
+            "You just walked away from a heated team argument, but your mind is still replaying every word. "
+            "That tension is now following you into your dinner, your commute, and your sleep."
+        ),
+        overlay="Replay Loop",
+        mode="over_shoulder",
+        steering_hint="scenario cue: conflict follows home",
+    )
+
+    prompt_lower = prompt.lower()
+    assert "specific stoic modernized workplace scene for: why a work argument ruins your night" in prompt_lower
+    assert "depict exactly this scene" in prompt_lower
+    assert "heated team argument" in prompt_lower
+    assert "face-down smartphone" in prompt_lower
+    assert "half-finished notebook" in prompt_lower
+    assert "dim evening light" in prompt_lower
+    assert "generic office" in prompt_lower
+    assert "back seat of a rideshare" not in prompt_lower
+    assert "conference table" not in prompt_lower
+
+
+def test_specific_conflict_scene_does_not_trigger_approval_template() -> None:
+    prompt = build_narrative_scene_prompt(
+        subject="When a Work Conflict Follows You Home",
+        scene_prompt=(
+            "vertical 9:16 candid editorial photograph, professional standing in a quiet office hallway, "
+            "eyes closed taking a slow breath, business casual shirt, blurred office corridor behind them, "
+            "phone and access badge held at their side, no readable text, no logos, no watermark"
+        ),
+        narration_segment="To stop this cycle, practice a deliberate pause before you leave the office.",
+        overlay="The Pause",
+        mode="environment",
+    )
+
+    prompt_lower = prompt.lower()
+    assert "quiet office hallway" in prompt_lower
+    assert "access badge" in prompt_lower
+    assert "before you leave the office" in prompt_lower
+    assert "anonymous feedback" not in prompt_lower
+    assert "long conference table" not in prompt_lower

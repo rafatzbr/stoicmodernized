@@ -876,6 +876,82 @@ def _scene_rng(*parts: object) -> random.Random:
     return random.Random(seed)
 
 
+def _strip_scene_prompt_style_noise(scene_prompt: str) -> str:
+    """Keep scene subject/action/props; drop reusable style/provider boilerplate."""
+    cleaned = " ".join(str(scene_prompt or "").split()).strip()
+    if not cleaned:
+        return ""
+
+    removals = [
+        r"\bvertical\s+9:16\s+(?:candid\s+)?(?:editorial\s+)?photograph,?\s*",
+        r"\bvertical\s+9:16\s+(?:frame|composition),?\s*",
+        r"\bcandid\s+editorial\s+photograph,?\s*",
+        r"\bshallow\s+depth\s+of\s+field,?\s*",
+        r"\bnatural\s+office\s+light(?:ing)?,?\s*",
+        r"\bsoft\s+daylight,?\s*",
+        r"\bfocus(?:ing)?\s+on\s+[^,]+,?\s*",
+        r"\bno\s+readable\s+text,?\s*",
+        r"\bno\s+text,?\s*",
+        r"\bno\s+logos?,?\s*",
+        r"\bno\s+watermark,?\s*",
+    ]
+    for pattern in removals:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*,\s*,+", ", ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,.")
+    return cleaned[0].upper() + cleaned[1:] if cleaned else ""
+
+
+def _scene_prompt_is_specific(scene_prompt: str) -> bool:
+    """True when the scene planner supplied concrete details that must remain source-of-truth."""
+    cleaned = _strip_scene_prompt_style_noise(scene_prompt)
+    if len(cleaned.split()) < 12:
+        return False
+    lower = cleaned.lower()
+    subject_terms = [
+        "worker", "professional", "office", "manager", "coworker", "engineer", "designer",
+        "analyst", "employee", "team", "person", "hands", "hand",
+    ]
+    action_terms = [
+        "sitting", "standing", "writing", "pushing", "closing", "gathering", "walking",
+        "looking", "turning", "sliding", "placing", "resting", "holding", "leaving",
+    ]
+    prop_terms = [
+        "laptop", "phone", "smartphone", "notebook", "pen", "desk", "badge", "bag",
+        "papers", "meeting", "conference", "hallway", "commute", "calendar", "whiteboard",
+        "spreadsheet", "keyboard", "monitor", "water glass",
+    ]
+    return (
+        any(term in lower for term in subject_terms)
+        and any(term in lower for term in action_terms)
+        and any(term in lower for term in prop_terms)
+    )
+
+
+def _scene_bound_prompt(subject: str, scene_prompt: str, narration_segment: str, overlay: object) -> str:
+    """Bind a detailed scene prompt to the exact subject/narration so images cannot drift generic."""
+    cleaned_scene = _strip_scene_prompt_style_noise(scene_prompt)
+    narration = " ".join(str(narration_segment or "").split()).strip()
+    if len(narration) > 180:
+        narration = narration[:177].rstrip() + "..."
+    overlay_text = " ".join(str(overlay or "").split()).strip()
+
+    parts = [
+        f"Specific Stoic Modernized workplace scene for: {subject}",
+        f"Depict exactly this scene: {cleaned_scene}",
+    ]
+    if narration:
+        parts.append(f"Narration beat to match: {narration}")
+    if overlay_text:
+        parts.append(f"Scene cue: {overlay_text}")
+    parts.append(
+        "Do not substitute a generic office, generic worker portrait, abstract mood board, mascot, quote card, or unrelated still life"
+    )
+    parts.append("Keep all named props, location, action, and workplace stressor visible")
+    parts.append("no readable text, no logo, no watermark")
+    return ", ".join(parts)
+
+
 def _scene_tags(text: str) -> set[str]:
     tags: set[str] = set()
     if any(word in text for word in ["phone", "reply", "scroll", "notification", "slack", "email", "message", "inbox"]):
@@ -1012,14 +1088,17 @@ def build_narrative_scene_prompt(
     mode: str,
     steering_hint: str = "",
 ) -> str:
-    scene_key = _normalize_scene_key(overlay, scene_prompt, narration_segment)
-    if scene_key:
-        effective_mode = mode
-        if scene_key == "pause first" and mode == "hands_only":
-            effective_mode = "object_only"
-        base = BOUNDARY_SCENE_TEMPLATES[scene_key].get(effective_mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
+    if _scene_prompt_is_specific(scene_prompt):
+        base = _scene_bound_prompt(subject, scene_prompt, narration_segment, overlay)
     else:
-        base = _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
+        scene_key = _normalize_scene_key(overlay, scene_prompt, narration_segment)
+        if scene_key:
+            effective_mode = mode
+            if scene_key == "pause first" and mode == "hands_only":
+                effective_mode = "object_only"
+            base = BOUNDARY_SCENE_TEMPLATES[scene_key].get(effective_mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
+        else:
+            base = _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
     if steering_hint:
         return f"{base}, {steering_hint}"
     return base
@@ -1412,9 +1491,11 @@ class ImageGenerationStage:
         request = (
             "Use the image_generate tool to generate exactly one high-quality Stoic Modernized scene image. "
             f"Aspect ratio: {settings.codex_image_aspect_ratio}. "
-            "Create a specific photographed workplace micro-scene, not a generic mood board or abstract office still-life. "
-            "Show concrete location, visible tension, specific props, camera angle, and natural cinematic light. "
-            "No readable text, no logo, no watermark, no fake UI text. "
+            "The Prompt below is a binding shot list, not loose inspiration: preserve its named location, action, props, "
+            "workplace stressor, and narration beat. Do not replace it with a generic office, generic portrait, mascot, "
+            "quote card, abstract mood board, or unrelated still life. The image should look like a specific photographed "
+            "workplace micro-scene from this exact video. Show visible tension through the exact props and body action; "
+            "use natural cinematic light and a vertical mobile composition. No readable text, no logo, no watermark, no fake UI text. "
             "Return only the generated image URL or MEDIA:/absolute/path on one line; do not add commentary.\n\n"
             f"Prompt:\n{prompt}"
         )
