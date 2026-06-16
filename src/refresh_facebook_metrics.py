@@ -1,4 +1,4 @@
-"""Fetch fresh Facebook Page/Reels metrics artifacts and regenerate Ledger strategy.
+"""Fetch fresh Facebook Page/Reels metrics artifacts and regenerate Milo strategy.
 
 Usage:
     python -m src.refresh_facebook_metrics
@@ -272,7 +272,7 @@ def _write_analytics_md(path: Path, analytics_data: dict[str, Any], generated_at
     ]
     for key, value in page_totals.items():
         lines.append(f"- {key}: {_fmt_int(value)}")
-    lines.extend(["", "## Notes for Ledger", "- Join with YouTube and manual TikTok artifacts before the next topic batch or script council run."])
+    lines.extend(["", "## Notes for Milo", "- Join with YouTube and manual TikTok artifacts before the next topic batch or script council run."])
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -314,7 +314,7 @@ def run(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Refresh Stoic Modernized Facebook metrics artifacts and Ledger strategy.")
+    parser = argparse.ArgumentParser(description="Refresh Stoic Modernized Facebook metrics artifacts and Milo strategy.")
     parser.add_argument("--lookback-days", type=int, default=28, help="Number of trailing days to query from Meta Page insights.")
     parser.add_argument("--video-limit", type=int, default=25, help="Number of recent Page videos/Reels to inspect.")
     args = parser.parse_args()

@@ -69,7 +69,7 @@ class TestScriptStage:
             ledger_strategy={"audience_job": "conversion", "packaging_angle": "identity-level anxiety"},
         )
 
-        assert "Ledger strategy:" in prompt
+        assert "Milo strategy:" in prompt
         assert "identity-level anxiety" in prompt
         assert "conversion" in prompt
 

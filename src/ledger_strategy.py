@@ -905,7 +905,7 @@ class LedgerStrategyManager:
                             "objective": "discovery" if keyword not in {"anxiety"} else "conversion",
                             "title": title,
                             "recommended_angle": angle,
-                            "why_now": f"Ledger metric signals currently favor: {signal}",
+                            "why_now": f"Milo metric signals currently favor: {signal}",
                             "experiment_tag": "tiktok_conflict_batch" if keyword in {"conflict", "disrespect", "status", "strategic patience", "patience"} else "discovery_batch",
                             "metric_signal": signal,
                         }

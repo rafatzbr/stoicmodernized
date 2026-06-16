@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-06-08T05:17:50.337398+00:00",
+  "generated_at": "2026-06-15T08:29:33.928037+00:00",
   "niche": "stoicism for modern workers",
-  "strategy_generated_at": "2026-06-08T05:17:50.336244+00:00",
+  "strategy_generated_at": "2026-06-15T08:29:33.926411+00:00",
   "source_files": [
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-07.md",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-07.md",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-07.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-07.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-07.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-07.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-07.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-07.json"
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-15.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-15.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-15.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.json"
   ],
   "metric_signals": {
     "source_count": 9,
@@ -21,18 +21,19 @@
       "mobile_view_share": 0.865,
       "unsubscribed_view_share": 0.961,
       "subscribers_gained": 1.0,
-      "facebook_video_views": 493.0,
-      "facebook_post_engagements": 24.0,
-      "facebook_reach": 1669.0
+      "facebook_video_views": 308.0,
+      "facebook_post_engagements": 23.0,
+      "facebook_reach": 992.0
     },
     "winning_themes": [
-      "concrete operational frictions / ordinary objects — budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract stoic framing; keep the repeatable method but vary objects/processes",
-      "criticism / feedback without defensiveness — client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
-      "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
-      "resource constraints / doing useful work with less — budget cut was the strongest current-week post and coincided with the biggest follower gain day",
-      "ambition / promotion / desire control — promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
+      "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
+      "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+      "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+      "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
+      "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
       "conflict",
-      "discipline systems"
+      "discipline systems",
+      "control"
     ],
     "youtube_top_titles": [
       "Stop Busy Idleness At Work | Stoic Modernized",
@@ -42,32 +43,38 @@
       "Calm Is Not A Trait It Is A Skill | Stoic Modernized"
     ],
     "facebook_top_titles": [
-      "That promotion opening can make your chest tighten and steal attention from the work in fr…",
-      "That rush drains your focus from the work right in front of you. Stop letting pressure con…",
-      "Finance rejects your expense report over one missing receipt. Your jaw tightens, but anger…",
-      "A budget cut can push a team into panic, resentment, and scattered decisions. This Stoic M…",
-      "When client feedback hits your ego, the first move is not to defend yourself. Pause, separ…"
+      "You've done the work, but fear of looking arrogant silences you. Yet your voice is the dif…",
+      "When the Reorg Rumor Steals Your Focus If when the reorg rumor steals your focus, this vid…",
+      "Your Focus Dies When The Calendar Dings If a modern worker feels pressure but keeps giving…",
+      "Why Your Compliance Upload Fails When You Rush The VPN drops the moment you hit upload, tr…",
+      "Why Password Reset Loops Get Worse When You Rush Finance locks you out. The link expires. …"
     ],
-    "tiktok_top_titles": [],
+    "tiktok_top_titles": [
+      "Your Focus Dies When The Calendar Dings If a modern worker feels pressure but keeps giving that pressure control over attention...",
+      "When Budget Cuts Land, Stay Useful A budget cut can push a team into panic, resentment, and scattered decisions. This Stoic Mod...",
+      "Why Rushing Makes Work Pressure Worse When a deadline hits, rushing is exactly why the pressure gets worse. You're surrendering...",
+      "Clear the Build Cache First If clear the build cache first, this video shows a practical Stoic move you can use at work. Use on...",
+      "Missing Range, Clean Request The urge to guess when details are missing feels urgent, but pretending you know creates chaos. A ..."
+    ],
     "tiktok_weightings": [
       {
-        "label": "concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes",
+        "label": "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
         "weight": 35.0
       },
       {
-        "label": "criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
+        "label": "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
         "weight": 25.0
       },
       {
-        "label": "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
+        "label": "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
         "weight": 20.0
       },
       {
-        "label": "resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day",
+        "label": "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
         "weight": 10.0
       },
       {
-        "label": "ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
+        "label": "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
         "weight": 10.0
       }
     ],
@@ -97,206 +104,1126 @@
     "for TikTok reuse, prefer scenario-first captions and 2-4 focused hashtags",
     "join Facebook Reels/Page metrics with YouTube and TikTok before choosing the next content batch"
   ],
+  "subject_umbrella_policy": "Rotate subject_umbrella: no more than 2 of the last 5 videos from one umbrella; prefer at least 4 umbrellas per week; build a broad 24+ candidate pool before Whiskers selects.",
+  "umbrella_rotation_version": 3,
+  "underused_subject_umbrellas": [
+    "conflict_friction",
+    "everyday_inconvenience",
+    "loss_of_control",
+    "attention_distraction"
+  ],
   "batches": {
     "discovery": [
       {
         "objective": "discovery",
-        "title": "When the Version Label Is Stale",
-        "recommended_angle": "turn a stale version label into a concrete verify-before-sending method",
-        "why_now": "Ledger metric signals currently favor: concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes",
-        "experiment_tag": "discovery_batch",
-        "metric_signal": "concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes"
-      },
-      {
-        "objective": "discovery",
-        "title": "When the Client Note Needs One Clarifying Question",
-        "recommended_angle": "turn critical feedback into one clarifying question before defending or rewriting",
-        "why_now": "Ledger metric signals currently favor: criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
-        "experiment_tag": "discovery_batch",
-        "metric_signal": "criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering"
-      },
-      {
-        "objective": "discovery",
         "title": "When the Calendar Block Gets Broken",
         "recommended_angle": "show how to protect one work block after an interruption without spiraling",
-        "why_now": "Ledger metric signals currently favor: attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
+        "why_now": "Milo metric signals currently favor: attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
         "experiment_tag": "discovery_batch",
-        "metric_signal": "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety"
-      },
-      {
-        "objective": "discovery",
-        "title": "When the Budget Line Gets Cut",
-        "recommended_angle": "show the three-column method: what still matters, what stops, and what can ship smaller",
-        "why_now": "Ledger metric signals currently favor: resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day",
-        "experiment_tag": "discovery_batch",
-        "metric_signal": "resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day"
+        "metric_signal": "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+        "subject_umbrella": "attention_distraction",
+        "operational_trigger": "calendar block",
+        "subject_family": [
+          "calendar",
+          "focus block",
+          "interruption"
+        ]
       },
       {
         "objective": "discovery",
         "title": "When the Promotion Window Opens",
         "recommended_angle": "turn ambition into one controllable next action instead of attention theft",
-        "why_now": "Ledger metric signals currently favor: ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
+        "why_now": "Milo metric signals currently favor: ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
         "experiment_tag": "discovery_batch",
-        "metric_signal": "ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics"
+        "metric_signal": "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+        "subject_umbrella": "desire_ambition",
+        "operational_trigger": "promotion window",
+        "subject_family": [
+          "promotion",
+          "ambition",
+          "next action"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Export Timestamp Is Stale",
+        "recommended_angle": "replace generic rushing with a concrete timestamp-check method before sending work",
+        "why_now": "Milo metric signals currently favor: pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
+        "subject_umbrella": "loss_of_control",
+        "operational_trigger": "export timestamp",
+        "subject_family": [
+          "export",
+          "timestamp",
+          "stale data"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Checklist Has One Missing Step",
+        "recommended_angle": "show one concrete focus leak and one verification boundary before resuming work",
+        "why_now": "Milo metric signals currently favor: attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+        "experiment_tag": "discovery_batch",
+        "metric_signal": "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+        "subject_umbrella": "attention_distraction",
+        "operational_trigger": "checklist step",
+        "subject_family": [
+          "checklist",
+          "step",
+          "verification"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "Stop Playing Status Games At Work",
+        "recommended_angle": "show how status friction loses power when the viewer stops performing for approval",
+        "why_now": "Milo metric signals currently favor: ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+        "experiment_tag": "tiktok_conflict_batch",
+        "metric_signal": "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+        "subject_umbrella": "desire_ambition",
+        "operational_trigger": "status games",
+        "subject_family": [
+          "status",
+          "approval",
+          "recognition"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When FOMO Steals Your Career Focus",
+        "recommended_angle": "turn comparison into one controllable work block instead of chasing every signal",
+        "why_now": "major modern-work stressor: ambition and attention pressure without reducing the topic to a tiny tool failure",
+        "experiment_tag": "major_work_stressor_batch",
+        "subject_umbrella": "attention_distraction",
+        "operational_trigger": "fomo",
+        "subject_family": [
+          "fomo",
+          "comparison",
+          "career focus"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When Layoff Rumors Steal the Workday",
+        "recommended_angle": "separate job-security uncertainty from the next useful action and one practical preparation step",
+        "why_now": "major modern-work stressor: uncertainty and loss of control with high emotional recognition",
+        "experiment_tag": "major_work_stressor_batch",
+        "subject_umbrella": "loss_of_control",
+        "operational_trigger": "layoff",
+        "subject_family": [
+          "layoff",
+          "job security",
+          "uncertainty"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When a Work Conflict Follows You Home",
+        "recommended_angle": "close the loop with one fact, one boundary, and one next professional move",
+        "why_now": "major modern-work stressor: conflict handled as a repeatable Stoic method rather than suppressed as repetitive",
+        "experiment_tag": "major_work_stressor_batch",
+        "subject_umbrella": "conflict_friction",
+        "operational_trigger": "work conflict",
+        "subject_family": [
+          "conflict",
+          "boundary",
+          "professionalism"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When Office Politics Makes You Perform",
+        "recommended_angle": "notice the status-performance impulse and return to the useful contribution",
+        "why_now": "major modern-work stressor: status games and reputation pressure are central workplace Stoic subjects",
+        "experiment_tag": "major_work_stressor_batch",
+        "subject_umbrella": "conflict_friction",
+        "operational_trigger": "office politics",
+        "subject_family": [
+          "office politics",
+          "status",
+          "boundary"
+        ]
       },
       {
         "objective": "discovery",
         "title": "When the Dashboard Filter Is Wrong",
         "recommended_angle": "turn a wrong dashboard filter into a verify-before-react method",
         "why_now": "keeps proven workplace-tension packaging while moving away from repeated conflict/rush subjects",
-        "experiment_tag": "operational_variety_batch"
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "loss_of_control",
+        "operational_trigger": "dashboard filter",
+        "subject_family": [
+          "dashboard",
+          "filter",
+          "data quality"
+        ]
       },
       {
         "objective": "discovery",
-        "title": "When the Export Timestamp Is Stale",
-        "recommended_angle": "show how one timestamp check prevents a rushed bad decision",
-        "why_now": "concrete operational triggers give the channel fresher repeatable methods",
-        "experiment_tag": "operational_variety_batch"
+        "title": "When the Version Label Is Stale",
+        "recommended_angle": "verify the version label, source, and recipient before reacting to rework",
+        "why_now": "tests process precision without another boss or meeting story",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "loss_of_control",
+        "operational_trigger": "version label",
+        "subject_family": [
+          "version",
+          "label",
+          "file"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Missing Attachment Sends You Back",
+        "recommended_angle": "make the attachment check a calm verification ritual before blame starts",
+        "why_now": "turns a common work mistake into a repeatable Stoic method",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "loss_of_control",
+        "operational_trigger": "missing attachment",
+        "subject_family": [
+          "attachment",
+          "send",
+          "verification"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Automation Breaks at the Worst Time",
+        "recommended_angle": "separate the failed automation from the next controllable manual fallback",
+        "why_now": "modern workplace friction beyond interpersonal pressure",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "loss_of_control",
+        "operational_trigger": "automation breaks",
+        "subject_family": [
+          "automation",
+          "failure",
+          "manual fallback"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Data Import Fails Twice",
+        "recommended_angle": "show a retry log, boundary, and next evidence step instead of panic",
+        "why_now": "fresh technical-process trigger with scene-ready specificity",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "loss_of_control",
+        "operational_trigger": "data import",
+        "subject_family": [
+          "import",
+          "data",
+          "retry"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Budget Line Gets Cut",
+        "recommended_angle": "show the three-column method: what still matters, what stops, and what can ship smaller",
+        "why_now": "resource constraints performed well while staying concrete",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "loss_of_control",
+        "operational_trigger": "budget line",
+        "subject_family": [
+          "budget",
+          "scope",
+          "resource constraint"
+        ]
       },
       {
         "objective": "discovery",
         "title": "When the Handoff Has No Owner",
         "recommended_angle": "clarify owner, next step, and evidence before absorbing the mess",
         "why_now": "keeps boundary appeal without repeating coworker-disrespect framing",
-        "experiment_tag": "operational_variety_batch"
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "uncertainty_waiting",
+        "operational_trigger": "handoff owner",
+        "subject_family": [
+          "handoff",
+          "owner",
+          "next action"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Approval Queue Goes Silent",
+        "recommended_angle": "turn waiting into one clean follow-up and one controllable next task",
+        "why_now": "uncertainty without another conflict confrontation",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "uncertainty_waiting",
+        "operational_trigger": "approval queue",
+        "subject_family": [
+          "approval",
+          "queue",
+          "waiting"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Ticket Has No Clear Owner",
+        "recommended_angle": "define owner, next action, and evidence before taking invisible work",
+        "why_now": "practical boundary topic with a concrete workflow object",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "uncertainty_waiting",
+        "operational_trigger": "ticket has no clear owner",
+        "subject_family": [
+          "ticket",
+          "owner",
+          "next action"
+        ]
       },
       {
         "objective": "discovery",
         "title": "When the Decision Record Is Incomplete",
         "recommended_angle": "repair the audit trail calmly before arguing about memory",
         "why_now": "tests non-conflict operational friction with a clear Stoic method",
-        "experiment_tag": "operational_variety_batch"
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "ego_reputation",
+        "operational_trigger": "decision record",
+        "subject_family": [
+          "decision record",
+          "audit trail",
+          "memory"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When a Public Correction Hits Your Ego",
+        "recommended_angle": "split fact, tone, and next correction before defending yourself",
+        "why_now": "ego/reputation lane that is not the same boss-pressure setup",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "ego_reputation",
+        "operational_trigger": "public correction",
+        "subject_family": [
+          "correction",
+          "ego",
+          "facts"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Credit Question Distracts You",
+        "recommended_angle": "turn credit anxiety into a clean record of contribution and next useful act",
+        "why_now": "reputation and ambition without generic approval chasing",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "ego_reputation",
+        "operational_trigger": "credit question",
+        "subject_family": [
+          "credit",
+          "recognition",
+          "facts"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Browser Tabs Become the Work",
+        "recommended_angle": "make tab cleanup a visible attention boundary before the next task",
+        "why_now": "modern attention problem with simple visuals and method",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "attention_distraction",
+        "operational_trigger": "tab",
+        "subject_family": [
+          "tab"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When You Keep Refreshing the Analytics",
+        "recommended_angle": "turn metrics checking into a scheduled review instead of attention theft",
+        "why_now": "ambition/attention overlap without repeating promotion stories",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "attention_distraction",
+        "operational_trigger": "analytics refresh",
+        "subject_family": [
+          "analytics",
+          "refresh",
+          "attention"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Printer Jam Tests Your Patience",
+        "recommended_angle": "treat ordinary equipment friction as a small training ground for response discipline",
+        "why_now": "everyday inconvenience lane breaks the office-conflict loop",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "everyday_inconvenience",
+        "operational_trigger": "printer jam",
+        "subject_family": [
+          "printer",
+          "jam",
+          "office equipment"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Commute Delay Steals Your Plan",
+        "recommended_angle": "reset the first controllable action after arrival instead of rehearsing resentment",
+        "why_now": "workday friction with a different location and actor pattern",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "everyday_inconvenience",
+        "operational_trigger": "commute delay",
+        "subject_family": [
+          "commute",
+          "delay",
+          "arrival"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Workspace Noise Won't Stop",
+        "recommended_angle": "show a concrete noise boundary and one task-selection move",
+        "why_now": "everyday sensory friction without social blame",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "everyday_inconvenience",
+        "operational_trigger": "workspace noise",
+        "subject_family": [
+          "noise",
+          "workspace",
+          "focus"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Meeting Room Is Booked Wrong",
+        "recommended_angle": "turn logistical annoyance into one reset, one message, and one next step",
+        "why_now": "ordinary workplace inconvenience with scene-ready action",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "everyday_inconvenience",
+        "operational_trigger": "wrong room",
+        "subject_family": [
+          "room",
+          "booking",
+          "reset"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When the Status Update Wants a Soft Exaggeration",
+        "recommended_angle": "separate pressure to sound good from the useful truth the team needs",
+        "why_now": "ethical friction lane that broadens beyond tools and conflict",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "conflict_friction",
+        "operational_trigger": "soft exaggeration",
+        "subject_family": [
+          "exaggeration",
+          "status update",
+          "truth"
+        ]
+      },
+      {
+        "objective": "discovery",
+        "title": "When They Ask for an Answer Before You Verify",
+        "recommended_angle": "make verification the courageous move, not a delay tactic",
+        "why_now": "pressure story with a different moral mechanism than boss/coworker drama",
+        "experiment_tag": "operational_variety_batch",
+        "subject_umbrella": "conflict_friction",
+        "operational_trigger": "answer before you verify",
+        "subject_family": [
+          "verification",
+          "pressure",
+          "integrity"
+        ]
       }
     ],
     "conversion": [
       {
         "objective": "conversion",
-        "title": "Why Your Anxiety Wants a Script",
-        "recommended_angle": "frame anxiety as a learned pattern the viewer can catch and interrupt",
-        "why_now": "identity/emotion framing has shown the strongest subscriber conversion on YouTube, but needs sharper scenarios on TikTok",
-        "experiment_tag": "conversion_batch"
+        "title": "When the Phone Wins the Morning",
+        "recommended_angle": "turn attention theft into one visible phone-boundary move before the first work block",
+        "why_now": "identity/emotion framing converts better when attached to a concrete attention object",
+        "experiment_tag": "conversion_batch",
+        "subject_umbrella": "attention_distraction",
+        "operational_trigger": "phone",
+        "subject_family": [
+          "phone"
+        ]
       },
       {
         "objective": "conversion",
-        "title": "You Do Not Need Everyone at Work to Like You",
-        "recommended_angle": "approval-seeking at work becomes the central emotional trap",
-        "why_now": "unsubscribed viewers may convert when the struggle feels personally seen",
-        "experiment_tag": "conversion_batch"
+        "title": "When the Promotion Window Opens",
+        "recommended_angle": "turn ambition into one controllable next action instead of attention theft",
+        "why_now": "desire and status can convert without becoming another conflict story",
+        "experiment_tag": "conversion_batch",
+        "subject_umbrella": "desire_ambition",
+        "operational_trigger": "promotion window",
+        "subject_family": [
+          "promotion",
+          "ambition",
+          "next action"
+        ]
       },
       {
         "objective": "conversion",
-        "title": "Calm Is a Skill, Not a Personality",
-        "recommended_angle": "reframe calm as trained self-command under pressure",
-        "why_now": "gives the channel a repeatable emotional-positioning lane",
-        "experiment_tag": "conversion_batch"
+        "title": "When Someone Else Gets the Credit",
+        "recommended_angle": "turn comparison into a contribution record and one useful next action",
+        "why_now": "desire/ambition lane with emotional pull and a concrete workplace trigger",
+        "experiment_tag": "conversion_batch",
+        "subject_umbrella": "desire_ambition",
+        "operational_trigger": "credit comparison",
+        "subject_family": [
+          "credit",
+          "comparison",
+          "ambition"
+        ]
+      },
+      {
+        "objective": "conversion",
+        "title": "When the Metrics Make You Check Again",
+        "recommended_angle": "turn metric craving into a scheduled review and a controllable input",
+        "why_now": "modern ambition trigger that avoids another interpersonal conflict",
+        "experiment_tag": "conversion_batch",
+        "subject_umbrella": "desire_ambition",
+        "operational_trigger": "metrics check",
+        "subject_family": [
+          "metrics",
+          "comparison",
+          "ambition"
+        ]
+      },
+      {
+        "objective": "conversion",
+        "title": "When the Calendar Has No White Space",
+        "recommended_angle": "make calm a practical boundary around energy and calendar load",
+        "why_now": "fatigue and overcommitment give the channel a fresher emotional-positioning lane",
+        "experiment_tag": "conversion_batch",
+        "subject_umbrella": "fatigue_boundaries",
+        "operational_trigger": "calendar",
+        "subject_family": [
+          "calendar",
+          "white space",
+          "energy"
+        ]
+      },
+      {
+        "objective": "conversion",
+        "title": "When One More Small Request Breaks Your Focus",
+        "recommended_angle": "show a clean no/now/later boundary instead of quiet resentment",
+        "why_now": "fatigue/boundary lane with a highly recognizable work moment",
+        "experiment_tag": "conversion_batch",
+        "subject_umbrella": "fatigue_boundaries",
+        "operational_trigger": "small request",
+        "subject_family": [
+          "request",
+          "boundary",
+          "energy"
+        ]
+      },
+      {
+        "objective": "conversion",
+        "title": "When the Weekend Message Pulls You Back In",
+        "recommended_angle": "separate urgency from habit and choose a deliberate response window",
+        "why_now": "boundary topic with strong emotional recognition and concrete behavior",
+        "experiment_tag": "conversion_batch",
+        "subject_umbrella": "fatigue_boundaries",
+        "operational_trigger": "weekend message",
+        "subject_family": [
+          "weekend",
+          "boundary",
+          "response"
+        ]
+      },
+      {
+        "objective": "conversion",
+        "title": "When Back-to-Back Meetings Leave No Buffer",
+        "recommended_angle": "make one recovery buffer the Stoic move before the next room",
+        "why_now": "fatigue without generic burnout language",
+        "experiment_tag": "conversion_batch",
+        "subject_umbrella": "fatigue_boundaries",
+        "operational_trigger": "meeting buffer",
+        "subject_family": [
+          "buffer",
+          "calendar",
+          "energy"
+        ]
       }
     ],
     "balanced": [
       {
         "objective": "balanced",
-        "title": "How Stoicism Helps When Stoicism For Modern Workers Feels Heavy",
-        "recommended_angle": "connect a concrete work burden to a calmer inner posture",
-        "why_now": "tests whether mixed packaging can bridge reach and conversion",
-        "experiment_tag": "balanced_batch"
+        "title": "When an Access Permission Blocks the File You Need",
+        "recommended_angle": "turn blocked access into one clean request, one fallback, and no story about disrespect",
+        "why_now": "simple workflow obstacle that tests patience and uncertainty",
+        "experiment_tag": "balanced_batch",
+        "subject_umbrella": "uncertainty_waiting",
+        "operational_trigger": "access permission",
+        "subject_family": [
+          "access",
+          "permission",
+          "blocked file"
+        ]
+      },
+      {
+        "objective": "balanced",
+        "title": "When the Client Note Needs One Clarifying Question",
+        "recommended_angle": "turn critical feedback into one clarifying question before defending or rewriting",
+        "why_now": "uses proven feedback interest while changing the actor and method",
+        "experiment_tag": "balanced_batch",
+        "subject_umbrella": "uncertainty_waiting",
+        "operational_trigger": "clarifying",
+        "subject_family": [
+          "clarifying"
+        ]
+      },
+      {
+        "objective": "balanced",
+        "title": "When the Review Comment Feels Personal",
+        "recommended_angle": "turn approval pressure into a concrete review-comment scenario with one verification move",
+        "why_now": "keeps feedback without collapsing into generic approval anxiety",
+        "experiment_tag": "balanced_batch",
+        "subject_umbrella": "ego_reputation",
+        "operational_trigger": "review comment",
+        "subject_family": [
+          "review",
+          "comment",
+          "feedback"
+        ]
       }
     ]
   },
   "ideas": [
     {
       "objective": "discovery",
-      "title": "When the Version Label Is Stale",
-      "recommended_angle": "turn a stale version label into a concrete verify-before-sending method",
-      "why_now": "Ledger metric signals currently favor: concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes",
-      "experiment_tag": "discovery_batch",
-      "metric_signal": "concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes"
-    },
-    {
-      "objective": "discovery",
-      "title": "When the Client Note Needs One Clarifying Question",
-      "recommended_angle": "turn critical feedback into one clarifying question before defending or rewriting",
-      "why_now": "Ledger metric signals currently favor: criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
-      "experiment_tag": "discovery_batch",
-      "metric_signal": "criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering"
-    },
-    {
-      "objective": "discovery",
       "title": "When the Calendar Block Gets Broken",
       "recommended_angle": "show how to protect one work block after an interruption without spiraling",
-      "why_now": "Ledger metric signals currently favor: attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
+      "why_now": "Milo metric signals currently favor: attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
       "experiment_tag": "discovery_batch",
-      "metric_signal": "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety"
+      "metric_signal": "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+      "subject_umbrella": "attention_distraction",
+      "operational_trigger": "calendar block",
+      "subject_family": [
+        "calendar",
+        "focus block",
+        "interruption"
+      ]
     },
     {
-      "objective": "discovery",
-      "title": "When the Budget Line Gets Cut",
-      "recommended_angle": "show the three-column method: what still matters, what stops, and what can ship smaller",
-      "why_now": "Ledger metric signals currently favor: resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day",
-      "experiment_tag": "discovery_batch",
-      "metric_signal": "resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day"
-    },
-    {
-      "objective": "discovery",
-      "title": "When the Promotion Window Opens",
-      "recommended_angle": "turn ambition into one controllable next action instead of attention theft",
-      "why_now": "Ledger metric signals currently favor: ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
-      "experiment_tag": "discovery_batch",
-      "metric_signal": "ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics"
-    },
-    {
-      "objective": "discovery",
-      "title": "When the Dashboard Filter Is Wrong",
-      "recommended_angle": "turn a wrong dashboard filter into a verify-before-react method",
-      "why_now": "keeps proven workplace-tension packaging while moving away from repeated conflict/rush subjects",
-      "experiment_tag": "operational_variety_batch"
-    },
-    {
-      "objective": "discovery",
-      "title": "When the Export Timestamp Is Stale",
-      "recommended_angle": "show how one timestamp check prevents a rushed bad decision",
-      "why_now": "concrete operational triggers give the channel fresher repeatable methods",
-      "experiment_tag": "operational_variety_batch"
+      "objective": "conversion",
+      "title": "When the Calendar Has No White Space",
+      "recommended_angle": "make calm a practical boundary around energy and calendar load",
+      "why_now": "fatigue and overcommitment give the channel a fresher emotional-positioning lane",
+      "experiment_tag": "conversion_batch",
+      "subject_umbrella": "fatigue_boundaries",
+      "operational_trigger": "calendar",
+      "subject_family": [
+        "calendar",
+        "white space",
+        "energy"
+      ]
     },
     {
       "objective": "discovery",
       "title": "When the Handoff Has No Owner",
       "recommended_angle": "clarify owner, next step, and evidence before absorbing the mess",
       "why_now": "keeps boundary appeal without repeating coworker-disrespect framing",
-      "experiment_tag": "operational_variety_batch"
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "uncertainty_waiting",
+      "operational_trigger": "handoff owner",
+      "subject_family": [
+        "handoff",
+        "owner",
+        "next action"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Promotion Window Opens",
+      "recommended_angle": "turn ambition into one controllable next action instead of attention theft",
+      "why_now": "Milo metric signals currently favor: ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+      "subject_umbrella": "desire_ambition",
+      "operational_trigger": "promotion window",
+      "subject_family": [
+        "promotion",
+        "ambition",
+        "next action"
+      ]
     },
     {
       "objective": "discovery",
       "title": "When the Decision Record Is Incomplete",
       "recommended_angle": "repair the audit trail calmly before arguing about memory",
       "why_now": "tests non-conflict operational friction with a clear Stoic method",
-      "experiment_tag": "operational_variety_batch"
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "ego_reputation",
+      "operational_trigger": "decision record",
+      "subject_family": [
+        "decision record",
+        "audit trail",
+        "memory"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When a Work Conflict Follows You Home",
+      "recommended_angle": "close the loop with one fact, one boundary, and one next professional move",
+      "why_now": "major modern-work stressor: conflict handled as a repeatable Stoic method rather than suppressed as repetitive",
+      "experiment_tag": "major_work_stressor_batch",
+      "subject_umbrella": "conflict_friction",
+      "operational_trigger": "work conflict",
+      "subject_family": [
+        "conflict",
+        "boundary",
+        "professionalism"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Printer Jam Tests Your Patience",
+      "recommended_angle": "treat ordinary equipment friction as a small training ground for response discipline",
+      "why_now": "everyday inconvenience lane breaks the office-conflict loop",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "everyday_inconvenience",
+      "operational_trigger": "printer jam",
+      "subject_family": [
+        "printer",
+        "jam",
+        "office equipment"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Export Timestamp Is Stale",
+      "recommended_angle": "replace generic rushing with a concrete timestamp-check method before sending work",
+      "why_now": "Milo metric signals currently favor: pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
+      "subject_umbrella": "loss_of_control",
+      "operational_trigger": "export timestamp",
+      "subject_family": [
+        "export",
+        "timestamp",
+        "stale data"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Checklist Has One Missing Step",
+      "recommended_angle": "show one concrete focus leak and one verification boundary before resuming work",
+      "why_now": "Milo metric signals currently favor: attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+      "experiment_tag": "discovery_batch",
+      "metric_signal": "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+      "subject_umbrella": "attention_distraction",
+      "operational_trigger": "checklist step",
+      "subject_family": [
+        "checklist",
+        "step",
+        "verification"
+      ]
     },
     {
       "objective": "conversion",
-      "title": "Why Your Anxiety Wants a Script",
-      "recommended_angle": "frame anxiety as a learned pattern the viewer can catch and interrupt",
-      "why_now": "identity/emotion framing has shown the strongest subscriber conversion on YouTube, but needs sharper scenarios on TikTok",
-      "experiment_tag": "conversion_batch"
+      "title": "When One More Small Request Breaks Your Focus",
+      "recommended_angle": "show a clean no/now/later boundary instead of quiet resentment",
+      "why_now": "fatigue/boundary lane with a highly recognizable work moment",
+      "experiment_tag": "conversion_batch",
+      "subject_umbrella": "fatigue_boundaries",
+      "operational_trigger": "small request",
+      "subject_family": [
+        "request",
+        "boundary",
+        "energy"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Approval Queue Goes Silent",
+      "recommended_angle": "turn waiting into one clean follow-up and one controllable next task",
+      "why_now": "uncertainty without another conflict confrontation",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "uncertainty_waiting",
+      "operational_trigger": "approval queue",
+      "subject_family": [
+        "approval",
+        "queue",
+        "waiting"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "Stop Playing Status Games At Work",
+      "recommended_angle": "show how status friction loses power when the viewer stops performing for approval",
+      "why_now": "Milo metric signals currently favor: ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+      "experiment_tag": "tiktok_conflict_batch",
+      "metric_signal": "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+      "subject_umbrella": "desire_ambition",
+      "operational_trigger": "status games",
+      "subject_family": [
+        "status",
+        "approval",
+        "recognition"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When a Public Correction Hits Your Ego",
+      "recommended_angle": "split fact, tone, and next correction before defending yourself",
+      "why_now": "ego/reputation lane that is not the same boss-pressure setup",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "ego_reputation",
+      "operational_trigger": "public correction",
+      "subject_family": [
+        "correction",
+        "ego",
+        "facts"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When Office Politics Makes You Perform",
+      "recommended_angle": "notice the status-performance impulse and return to the useful contribution",
+      "why_now": "major modern-work stressor: status games and reputation pressure are central workplace Stoic subjects",
+      "experiment_tag": "major_work_stressor_batch",
+      "subject_umbrella": "conflict_friction",
+      "operational_trigger": "office politics",
+      "subject_family": [
+        "office politics",
+        "status",
+        "boundary"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Commute Delay Steals Your Plan",
+      "recommended_angle": "reset the first controllable action after arrival instead of rehearsing resentment",
+      "why_now": "workday friction with a different location and actor pattern",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "everyday_inconvenience",
+      "operational_trigger": "commute delay",
+      "subject_family": [
+        "commute",
+        "delay",
+        "arrival"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When Layoff Rumors Steal the Workday",
+      "recommended_angle": "separate job-security uncertainty from the next useful action and one practical preparation step",
+      "why_now": "major modern-work stressor: uncertainty and loss of control with high emotional recognition",
+      "experiment_tag": "major_work_stressor_batch",
+      "subject_umbrella": "loss_of_control",
+      "operational_trigger": "layoff",
+      "subject_family": [
+        "layoff",
+        "job security",
+        "uncertainty"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When FOMO Steals Your Career Focus",
+      "recommended_angle": "turn comparison into one controllable work block instead of chasing every signal",
+      "why_now": "major modern-work stressor: ambition and attention pressure without reducing the topic to a tiny tool failure",
+      "experiment_tag": "major_work_stressor_batch",
+      "subject_umbrella": "attention_distraction",
+      "operational_trigger": "fomo",
+      "subject_family": [
+        "fomo",
+        "comparison",
+        "career focus"
+      ]
     },
     {
       "objective": "conversion",
-      "title": "You Do Not Need Everyone at Work to Like You",
-      "recommended_angle": "approval-seeking at work becomes the central emotional trap",
-      "why_now": "unsubscribed viewers may convert when the struggle feels personally seen",
-      "experiment_tag": "conversion_batch"
+      "title": "When the Weekend Message Pulls You Back In",
+      "recommended_angle": "separate urgency from habit and choose a deliberate response window",
+      "why_now": "boundary topic with strong emotional recognition and concrete behavior",
+      "experiment_tag": "conversion_batch",
+      "subject_umbrella": "fatigue_boundaries",
+      "operational_trigger": "weekend message",
+      "subject_family": [
+        "weekend",
+        "boundary",
+        "response"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Ticket Has No Clear Owner",
+      "recommended_angle": "define owner, next action, and evidence before taking invisible work",
+      "why_now": "practical boundary topic with a concrete workflow object",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "uncertainty_waiting",
+      "operational_trigger": "ticket has no clear owner",
+      "subject_family": [
+        "ticket",
+        "owner",
+        "next action"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Credit Question Distracts You",
+      "recommended_angle": "turn credit anxiety into a clean record of contribution and next useful act",
+      "why_now": "reputation and ambition without generic approval chasing",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "ego_reputation",
+      "operational_trigger": "credit question",
+      "subject_family": [
+        "credit",
+        "recognition",
+        "facts"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Status Update Wants a Soft Exaggeration",
+      "recommended_angle": "separate pressure to sound good from the useful truth the team needs",
+      "why_now": "ethical friction lane that broadens beyond tools and conflict",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "conflict_friction",
+      "operational_trigger": "soft exaggeration",
+      "subject_family": [
+        "exaggeration",
+        "status update",
+        "truth"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Workspace Noise Won't Stop",
+      "recommended_angle": "show a concrete noise boundary and one task-selection move",
+      "why_now": "everyday sensory friction without social blame",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "everyday_inconvenience",
+      "operational_trigger": "workspace noise",
+      "subject_family": [
+        "noise",
+        "workspace",
+        "focus"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Dashboard Filter Is Wrong",
+      "recommended_angle": "turn a wrong dashboard filter into a verify-before-react method",
+      "why_now": "keeps proven workplace-tension packaging while moving away from repeated conflict/rush subjects",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "loss_of_control",
+      "operational_trigger": "dashboard filter",
+      "subject_family": [
+        "dashboard",
+        "filter",
+        "data quality"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Browser Tabs Become the Work",
+      "recommended_angle": "make tab cleanup a visible attention boundary before the next task",
+      "why_now": "modern attention problem with simple visuals and method",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "attention_distraction",
+      "operational_trigger": "tab",
+      "subject_family": [
+        "tab"
+      ]
     },
     {
       "objective": "conversion",
-      "title": "Calm Is a Skill, Not a Personality",
-      "recommended_angle": "reframe calm as trained self-command under pressure",
-      "why_now": "gives the channel a repeatable emotional-positioning lane",
-      "experiment_tag": "conversion_batch"
+      "title": "When Back-to-Back Meetings Leave No Buffer",
+      "recommended_angle": "make one recovery buffer the Stoic move before the next room",
+      "why_now": "fatigue without generic burnout language",
+      "experiment_tag": "conversion_batch",
+      "subject_umbrella": "fatigue_boundaries",
+      "operational_trigger": "meeting buffer",
+      "subject_family": [
+        "buffer",
+        "calendar",
+        "energy"
+      ]
     },
     {
       "objective": "balanced",
-      "title": "How Stoicism Helps When Stoicism For Modern Workers Feels Heavy",
-      "recommended_angle": "connect a concrete work burden to a calmer inner posture",
-      "why_now": "tests whether mixed packaging can bridge reach and conversion",
-      "experiment_tag": "balanced_batch"
+      "title": "When an Access Permission Blocks the File You Need",
+      "recommended_angle": "turn blocked access into one clean request, one fallback, and no story about disrespect",
+      "why_now": "simple workflow obstacle that tests patience and uncertainty",
+      "experiment_tag": "balanced_batch",
+      "subject_umbrella": "uncertainty_waiting",
+      "operational_trigger": "access permission",
+      "subject_family": [
+        "access",
+        "permission",
+        "blocked file"
+      ]
+    },
+    {
+      "objective": "conversion",
+      "title": "When Someone Else Gets the Credit",
+      "recommended_angle": "turn comparison into a contribution record and one useful next action",
+      "why_now": "desire/ambition lane with emotional pull and a concrete workplace trigger",
+      "experiment_tag": "conversion_batch",
+      "subject_umbrella": "desire_ambition",
+      "operational_trigger": "credit comparison",
+      "subject_family": [
+        "credit",
+        "comparison",
+        "ambition"
+      ]
+    },
+    {
+      "objective": "balanced",
+      "title": "When the Review Comment Feels Personal",
+      "recommended_angle": "turn approval pressure into a concrete review-comment scenario with one verification move",
+      "why_now": "keeps feedback without collapsing into generic approval anxiety",
+      "experiment_tag": "balanced_batch",
+      "subject_umbrella": "ego_reputation",
+      "operational_trigger": "review comment",
+      "subject_family": [
+        "review",
+        "comment",
+        "feedback"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When They Ask for an Answer Before You Verify",
+      "recommended_angle": "make verification the courageous move, not a delay tactic",
+      "why_now": "pressure story with a different moral mechanism than boss/coworker drama",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "conflict_friction",
+      "operational_trigger": "answer before you verify",
+      "subject_family": [
+        "verification",
+        "pressure",
+        "integrity"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Meeting Room Is Booked Wrong",
+      "recommended_angle": "turn logistical annoyance into one reset, one message, and one next step",
+      "why_now": "ordinary workplace inconvenience with scene-ready action",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "everyday_inconvenience",
+      "operational_trigger": "wrong room",
+      "subject_family": [
+        "room",
+        "booking",
+        "reset"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Version Label Is Stale",
+      "recommended_angle": "verify the version label, source, and recipient before reacting to rework",
+      "why_now": "tests process precision without another boss or meeting story",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "loss_of_control",
+      "operational_trigger": "version label",
+      "subject_family": [
+        "version",
+        "label",
+        "file"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When You Keep Refreshing the Analytics",
+      "recommended_angle": "turn metrics checking into a scheduled review instead of attention theft",
+      "why_now": "ambition/attention overlap without repeating promotion stories",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "attention_distraction",
+      "operational_trigger": "analytics refresh",
+      "subject_family": [
+        "analytics",
+        "refresh",
+        "attention"
+      ]
+    },
+    {
+      "objective": "balanced",
+      "title": "When the Client Note Needs One Clarifying Question",
+      "recommended_angle": "turn critical feedback into one clarifying question before defending or rewriting",
+      "why_now": "uses proven feedback interest while changing the actor and method",
+      "experiment_tag": "balanced_batch",
+      "subject_umbrella": "uncertainty_waiting",
+      "operational_trigger": "clarifying",
+      "subject_family": [
+        "clarifying"
+      ]
+    },
+    {
+      "objective": "conversion",
+      "title": "When the Metrics Make You Check Again",
+      "recommended_angle": "turn metric craving into a scheduled review and a controllable input",
+      "why_now": "modern ambition trigger that avoids another interpersonal conflict",
+      "experiment_tag": "conversion_batch",
+      "subject_umbrella": "desire_ambition",
+      "operational_trigger": "metrics check",
+      "subject_family": [
+        "metrics",
+        "comparison",
+        "ambition"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Missing Attachment Sends You Back",
+      "recommended_angle": "make the attachment check a calm verification ritual before blame starts",
+      "why_now": "turns a common work mistake into a repeatable Stoic method",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "loss_of_control",
+      "operational_trigger": "missing attachment",
+      "subject_family": [
+        "attachment",
+        "send",
+        "verification"
+      ]
+    },
+    {
+      "objective": "conversion",
+      "title": "When the Phone Wins the Morning",
+      "recommended_angle": "turn attention theft into one visible phone-boundary move before the first work block",
+      "why_now": "identity/emotion framing converts better when attached to a concrete attention object",
+      "experiment_tag": "conversion_batch",
+      "subject_umbrella": "attention_distraction",
+      "operational_trigger": "phone",
+      "subject_family": [
+        "phone"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Automation Breaks at the Worst Time",
+      "recommended_angle": "separate the failed automation from the next controllable manual fallback",
+      "why_now": "modern workplace friction beyond interpersonal pressure",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "loss_of_control",
+      "operational_trigger": "automation breaks",
+      "subject_family": [
+        "automation",
+        "failure",
+        "manual fallback"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Data Import Fails Twice",
+      "recommended_angle": "show a retry log, boundary, and next evidence step instead of panic",
+      "why_now": "fresh technical-process trigger with scene-ready specificity",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "loss_of_control",
+      "operational_trigger": "data import",
+      "subject_family": [
+        "import",
+        "data",
+        "retry"
+      ]
+    },
+    {
+      "objective": "discovery",
+      "title": "When the Budget Line Gets Cut",
+      "recommended_angle": "show the three-column method: what still matters, what stops, and what can ship smaller",
+      "why_now": "resource constraints performed well while staying concrete",
+      "experiment_tag": "operational_variety_batch",
+      "subject_umbrella": "loss_of_control",
+      "operational_trigger": "budget line",
+      "subject_family": [
+        "budget",
+        "scope",
+        "resource constraint"
+      ]
     }
   ]
 }

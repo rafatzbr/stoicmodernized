@@ -299,11 +299,11 @@ class ScriptStage:
             max_tokens=900,
         )
 
-        self._progress("[ScriptStage] Council step: Ledger strategy")
+        self._progress("[ScriptStage] Council step: Milo strategy")
         ledger_strategy = await self._call_council_agent(
-            agent_name="Ledger",
+            agent_name="Milo",
             role_prompt=(
-                "You are Ledger, the Stoic Modernized analytics and growth strategist. Read the latest channel evidence, "
+                "You are Milo, the Stoic Modernized analytics and growth strategist. Read the latest channel evidence, "
                 "separate reach from conversion, and translate it into concrete packaging guidance for this specific video."
             ),
             task_prompt=self._build_ledger_prompt(research_packet, whiskers_brief),
@@ -778,7 +778,7 @@ Research packet:
 Whiskers brief:
 {json.dumps(whiskers_brief, ensure_ascii=False, indent=2)}
 
-Ledger strategy:
+Milo strategy:
 {json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}{recent_block}
 
 {self._script_json_contract()}
@@ -796,7 +796,7 @@ Research packet:
 Scratch draft:
 {json.dumps(draft_script, ensure_ascii=False, indent=2)}
 
-Ledger strategy:
+Milo strategy:
 {json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}
 
 {self._script_json_contract()}
@@ -816,7 +816,7 @@ Research packet:
 Script:
 {json.dumps(script_payload, ensure_ascii=False, indent=2)}
 
-Ledger strategy:
+Milo strategy:
 {json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}
 
 Return JSON only:
@@ -844,7 +844,7 @@ Research packet:
 Working script:
 {json.dumps(merged, ensure_ascii=False, indent=2)}
 
-Ledger strategy:
+Milo strategy:
 {json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}
 
 {self._script_json_contract()}
@@ -865,7 +865,7 @@ Research packet:
 Candidate script:
 {json.dumps(script_payload, ensure_ascii=False, indent=2)}
 
-Ledger strategy:
+Milo strategy:
 {json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}
 
 Return JSON only:
@@ -898,7 +898,7 @@ Research packet:
 Mittens review:
 {json.dumps(mittens_review, ensure_ascii=False, indent=2)}
 
-Ledger strategy:
+Milo strategy:
 {json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}
 
 Return JSON only:
@@ -941,7 +941,7 @@ Mittens review:
 Previous Mr. Jim review:
 {json.dumps(mr_jim_review, ensure_ascii=False, indent=2)}
 
-Ledger strategy:
+Milo strategy:
 {json.dumps(ledger_strategy or {}, ensure_ascii=False, indent=2)}
 
 Return JSON only:

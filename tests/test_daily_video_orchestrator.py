@@ -141,6 +141,97 @@ def test_daily_orchestrator_keeps_valid_initial_whiskers_topic_outside_ledger_pl
     assert topic == "When an Access Permission Blocks the File You Need"
 
 
+def test_daily_orchestrator_matches_ledger_topic_with_channel_suffix():
+    orchestrator = load_daily_orchestrator()
+
+    topic = orchestrator.enforce_ledger_topic(
+        "When the Version Label Is Stale | Stoic Modernized",
+        {
+            "ideas": [
+                {"title": "When the Calendar Block Gets Broken"},
+                {"title": "When the Version Label Is Stale"},
+            ]
+        },
+    )
+
+    assert topic == "When the Version Label Is Stale"
+
+
+def test_daily_orchestrator_accepts_status_update_workplace_topic():
+    orchestrator = load_daily_orchestrator()
+
+    assert orchestrator.topic_quality_rejection_reason("When the Status Update Wants a Soft Exaggeration") is None
+
+
+def test_daily_orchestrator_accepts_recent_operational_replacement_topics():
+    orchestrator = load_daily_orchestrator()
+
+    assert orchestrator.topic_quality_rejection_reason("When the Decision Record Is Incomplete") is None
+    assert orchestrator.topic_quality_rejection_reason("When the Expense Receipt Upload Times Out Again") is None
+    assert orchestrator.topic_quality_rejection_reason("When the Staging Server Times Out During Deployment") is None
+    assert orchestrator.topic_quality_rejection_reason("When the VPN Drops During the Compliance Upload") is None
+    assert orchestrator.topic_quality_rejection_reason("When One More Small Request Breaks Your Focus") is None
+
+
+def test_daily_orchestrator_rejects_research_validated_topic_already_rejected(monkeypatch, tmp_path):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
+    agent_dir = tmp_path / "agent-notes"
+    agent_dir.mkdir()
+    monkeypatch.setattr(orchestrator, "AGENT_DIR", agent_dir)
+
+    asked_prompts: list[str] = []
+
+    def fake_agent(profile, prompt, note_name, *, timeout=orchestrator.AGENT_TIMEOUT):
+        asked_prompts.append(prompt)
+        if "new Stoic Modernized video subject" in prompt:
+            return "When the Calendar Block Gets Broken"
+        return "PASS"
+
+    def fake_run_cmd(args, *, timeout, env=None, check=True):
+        stage = args[3]
+        topic_or_job = args[4]
+        if stage == "research" and topic_or_job == "When an Access Permission Blocks the File You Need":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-access-1\n", stderr=None)
+        if stage == "script" and topic_or_job == "job-access-1":
+            return subprocess.CompletedProcess(
+                args,
+                1,
+                stdout="Script Subject Validation Failed!\nReason: subject-umbrella balance guardrail\n",
+                stderr=None,
+            )
+        if stage == "research" and topic_or_job == "When the Calendar Block Gets Broken":
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                stdout="Job ID: job-calendar\nValidated topic: When an Access Permission Blocks the File You Need\n",
+                stderr=None,
+            )
+        if stage == "research" and topic_or_job == "When the Status Update Wants a Soft Exaggeration":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-status\n", stderr=None)
+        if stage == "script" and topic_or_job == "job-status":
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        raise AssertionError(f"unexpected command: {args}")
+
+    monkeypatch.setattr(orchestrator, "agent", fake_agent)
+    monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(
+        orchestrator,
+        "choose_fallback_topic",
+        lambda ledger_context, rejected_topics: "When the Status Update Wants a Soft Exaggeration",
+    )
+
+    job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
+        "When an Access Permission Blocks the File You Need",
+        {"ideas": [{"title": "When the Calendar Block Gets Broken"}]},
+        max_attempts=3,
+    )
+
+    assert job_id == "job-status"
+    assert accepted_topic == "When the Status Update Wants a Soft Exaggeration"
+    assert any("already rejected validated topic" in p for p in asked_prompts)
+
+
 def test_daily_orchestrator_default_safe_subject_retry_budget_is_increased():
     orchestrator = load_daily_orchestrator()
 
@@ -212,7 +303,7 @@ def test_daily_orchestrator_falls_back_to_concrete_operational_lane_when_ledger_
         ["When the Handoff Has No Owner"],
     )
 
-    assert topic == "When a Spreadsheet Cell Breaks Your Patience During Reconciliation"
+    assert topic == "When FOMO Steals Your Career Focus"
     assert orchestrator.topic_quality_rejection_reason(topic) is None
 
 

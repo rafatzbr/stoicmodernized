@@ -1,4 +1,4 @@
-"""Fetch fresh YouTube analytics artifacts and regenerate Ledger strategy.
+"""Fetch fresh YouTube analytics artifacts and regenerate Milo strategy.
 
 Usage:
     python -m src.refresh_youtube_analytics
@@ -271,7 +271,7 @@ def _write_analytics_md(path: Path, analytics_data: dict[str, Any], generated_at
     lines.extend(["", "## Device types"])
     for row in analytics_data.get("device_type", []):
         lines.append(f"- {row.get('deviceType', 'unknown')}: {_fmt_int(row.get('views', 0))} views")
-    lines.extend(["", "## Notes for Ledger", "- Refresh global strategy from these artifacts before the next topic batch or script council run."])
+    lines.extend(["", "## Notes for Milo", "- Refresh global strategy from these artifacts before the next topic batch or script council run."])
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -312,7 +312,7 @@ def run(lookback_days: int = 28, workspace_root: Path | None = None, project_roo
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Refresh Stoic Modernized YouTube analytics artifacts and Ledger strategy.")
+    parser = argparse.ArgumentParser(description="Refresh Stoic Modernized YouTube analytics artifacts and Milo strategy.")
     parser.add_argument("--lookback-days", type=int, default=28, help="Number of trailing days to query from YouTube Analytics.")
     args = parser.parse_args()
     result = run(lookback_days=args.lookback_days)

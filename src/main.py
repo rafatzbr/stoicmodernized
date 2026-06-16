@@ -465,7 +465,7 @@ def idea(
         title = idea_data.get("title", "Untitled")
         console.print(f"[green]✓[/green] {i}. [{objective}] {title}")
     console.print()
-    console.print("[dim]Generated from current Ledger strategy. Use 'python -m src.main research <your-topic>' to start a job[/dim]")
+    console.print("[dim]Generated from current Milo strategy. Use 'python -m src.main research <your-topic>' to start a job[/dim]")
 
 
 @app.command()

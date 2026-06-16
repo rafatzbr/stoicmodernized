@@ -781,7 +781,7 @@ You are reading a source article for Stoic Modernized.
 Topic: {topic}
 Source title: {source.title}
 URL: {source.url}
-Ledger steering: {json.dumps(self.last_ledger_packet or {}, ensure_ascii=False)}
+Milo steering: {json.dumps(self.last_ledger_packet or {}, ensure_ascii=False)}
 
 Read the article text and return JSON only:
 {{"summary": "string"}}
@@ -790,7 +790,7 @@ Rules:
 - summarize the source in 2-3 concise sentences
 - capture the core Stoic idea or practical argument in the text
 - emphasize what is useful for modern work or daily practice when present
-- if Ledger steering suggests a discovery or conversion angle, note details that help that angle without inventing anything
+- if Milo steering suggests a discovery or conversion angle, note details that help that angle without inventing anything
 - do not invent details that are not in the text
 - output JSON only
 

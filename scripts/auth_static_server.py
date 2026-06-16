@@ -3,7 +3,9 @@
 
 The public media origin intentionally serves generated review/upload artifacts.
 Run this behind the existing media.zweb.ca tunnel to require one shared username
-and password before any explorer page, video, or file is returned.
+and password only for the media explorer page. Job folders, MP4s, policy pages,
+and OAuth callback files remain public so platform crawlers and pull-from-URL
+upload APIs can fetch them directly.
 """
 
 from __future__ import annotations
@@ -20,9 +22,18 @@ REALM = os.environ.get("STOIC_MEDIA_AUTH_REALM", "Stoic Modernized Media")
 
 
 class AuthenticatedStaticHandler(SimpleHTTPRequestHandler):
-    """SimpleHTTPRequestHandler with HTTP Basic Auth on every request."""
+    """SimpleHTTPRequestHandler with HTTP Basic Auth on protected explorer paths."""
 
     server_version = "StoicMediaAuthHTTP/1.0"
+    protected_paths = {"/videos.html"}
+
+    def _request_path(self) -> str:
+        """Return the URL path without query/fragment for auth decisions."""
+        return self.path.split("?", 1)[0].split("#", 1)[0]
+
+    def _requires_auth(self) -> bool:
+        path = self._request_path()
+        return path in self.protected_paths
 
     def _expected_credentials(self) -> tuple[str, str]:
         username = os.environ.get("STOIC_MEDIA_USERNAME", "")
@@ -59,13 +70,13 @@ class AuthenticatedStaticHandler(SimpleHTTPRequestHandler):
         self.wfile.write(b"Authentication required.\n")
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
-        if not self._authorized():
+        if self._requires_auth() and not self._authorized():
             self._send_auth_required()
             return
         super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802 - stdlib handler API
-        if not self._authorized():
+        if self._requires_auth() and not self._authorized():
             self._send_auth_required()
             return
         super().do_HEAD()
@@ -102,7 +113,7 @@ def main() -> None:
     )
     server = ReuseAddressThreadingHTTPServer((args.bind, args.port), handler)
     print(
-        f"Serving {directory} on http://{args.bind}:{args.port}/ with Basic Auth",
+        f"Serving {directory} on http://{args.bind}:{args.port}/ with Basic Auth on /videos.html",
         flush=True,
     )
     try:

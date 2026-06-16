@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-06-08T05:17:50.336244+00:00",
+  "generated_at": "2026-06-15T08:29:33.926411+00:00",
   "source_files": [
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-07.md",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-07.md",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-07.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-07.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-07.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-07.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-07.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-07.json"
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-15.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-15.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-15.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.json"
   ],
   "evidence_excerpt": [
     "# Stoic Modernized Council Plan — 2026-05-10",
@@ -71,18 +71,19 @@
       "mobile_view_share": 0.865,
       "unsubscribed_view_share": 0.961,
       "subscribers_gained": 1.0,
-      "facebook_video_views": 493.0,
-      "facebook_post_engagements": 24.0,
-      "facebook_reach": 1669.0
+      "facebook_video_views": 308.0,
+      "facebook_post_engagements": 23.0,
+      "facebook_reach": 992.0
     },
     "winning_themes": [
-      "concrete operational frictions / ordinary objects — budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract stoic framing; keep the repeatable method but vary objects/processes",
-      "criticism / feedback without defensiveness — client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
-      "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
-      "resource constraints / doing useful work with less — budget cut was the strongest current-week post and coincided with the biggest follower gain day",
-      "ambition / promotion / desire control — promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
+      "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
+      "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+      "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+      "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
+      "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
       "conflict",
-      "discipline systems"
+      "discipline systems",
+      "control"
     ],
     "youtube_top_titles": [
       "Stop Busy Idleness At Work | Stoic Modernized",
@@ -92,32 +93,38 @@
       "Calm Is Not A Trait It Is A Skill | Stoic Modernized"
     ],
     "facebook_top_titles": [
-      "That promotion opening can make your chest tighten and steal attention from the work in fr…",
-      "That rush drains your focus from the work right in front of you. Stop letting pressure con…",
-      "Finance rejects your expense report over one missing receipt. Your jaw tightens, but anger…",
-      "A budget cut can push a team into panic, resentment, and scattered decisions. This Stoic M…",
-      "When client feedback hits your ego, the first move is not to defend yourself. Pause, separ…"
+      "You've done the work, but fear of looking arrogant silences you. Yet your voice is the dif…",
+      "When the Reorg Rumor Steals Your Focus If when the reorg rumor steals your focus, this vid…",
+      "Your Focus Dies When The Calendar Dings If a modern worker feels pressure but keeps giving…",
+      "Why Your Compliance Upload Fails When You Rush The VPN drops the moment you hit upload, tr…",
+      "Why Password Reset Loops Get Worse When You Rush Finance locks you out. The link expires. …"
     ],
-    "tiktok_top_titles": [],
+    "tiktok_top_titles": [
+      "Your Focus Dies When The Calendar Dings If a modern worker feels pressure but keeps giving that pressure control over attention...",
+      "When Budget Cuts Land, Stay Useful A budget cut can push a team into panic, resentment, and scattered decisions. This Stoic Mod...",
+      "Why Rushing Makes Work Pressure Worse When a deadline hits, rushing is exactly why the pressure gets worse. You're surrendering...",
+      "Clear the Build Cache First If clear the build cache first, this video shows a practical Stoic move you can use at work. Use on...",
+      "Missing Range, Clean Request The urge to guess when details are missing feels urgent, but pretending you know creates chaos. A ..."
+    ],
     "tiktok_weightings": [
       {
-        "label": "concrete operational frictions / ordinary objects — Budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract Stoic framing; keep the repeatable method but vary objects/processes",
+        "label": "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
         "weight": 35.0
       },
       {
-        "label": "criticism / feedback without defensiveness — Client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
+        "label": "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
         "weight": 25.0
       },
       {
-        "label": "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
+        "label": "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
         "weight": 20.0
       },
       {
-        "label": "resource constraints / doing useful work with less — Budget cut was the strongest current-week post and coincided with the biggest follower gain day",
+        "label": "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
         "weight": 10.0
       },
       {
-        "label": "ambition / promotion / desire control — Promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
+        "label": "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
         "weight": 10.0
       }
     ],
@@ -230,20 +237,20 @@
   ],
   "research_steering": {
     "prioritize_scenarios": [
-      "concrete operational frictions / ordinary objects — budget cut, dirty mug, expense receipt, and checklist-style triggers outperformed abstract stoic framing; keep the repeatable method but vary objects/processes",
-      "criticism / feedback without defensiveness — client criticism had strong views and likes; use sparingly with different actors/situations to avoid conflict over-clustering",
-      "attention-control systems — 11-minute interruption/focus and decision-loop posts performed steadily; make these about actual workflows, not generic anxiety",
-      "resource constraints / doing useful work with less — budget cut was the strongest current-week post and coincided with the biggest follower gain day",
-      "ambition / promotion / desire control — promotion post had high likes and good views; use as a counterweight to conflict/pressure topics",
+      "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
+      "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+      "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+      "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
+      "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
       "conflict",
+      "control",
       "coworker disrespect",
       "status games",
       "strategic patience",
       "discipline systems",
       "overexplaining",
       "meetings",
-      "focus friction",
-      "burnout tied to control"
+      "focus friction"
     ],
     "prioritize_emotions": [
       "reactivity",
