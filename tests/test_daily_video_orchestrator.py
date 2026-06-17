@@ -52,6 +52,7 @@ def test_daily_orchestrator_asks_whiskers_for_new_subject_after_script_guardrail
 
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "How to Stay Calm When Your Boss Changes Priorities",
@@ -114,6 +115,7 @@ def test_daily_orchestrator_keeps_valid_fresh_whiskers_retry_topic_outside_ledge
 
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "How to Stay Calm When Your Boss Changes Priorities",
@@ -215,6 +217,7 @@ def test_daily_orchestrator_rejects_research_validated_topic_already_rejected(mo
 
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
     monkeypatch.setattr(
         orchestrator,
         "choose_fallback_topic",
@@ -230,6 +233,63 @@ def test_daily_orchestrator_rejects_research_validated_topic_already_rejected(mo
     assert job_id == "job-status"
     assert accepted_topic == "When the Status Update Wants a Soft Exaggeration"
     assert any("already rejected validated topic" in p for p in asked_prompts)
+
+
+def test_daily_orchestrator_preflights_duplicate_topic_before_research(monkeypatch, tmp_path):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
+    agent_dir = tmp_path / "agent-notes"
+    agent_dir.mkdir()
+    monkeypatch.setattr(orchestrator, "AGENT_DIR", agent_dir)
+
+    commands: list[list[str]] = []
+
+    def fake_agent(profile, prompt, note_name, *, timeout=orchestrator.AGENT_TIMEOUT):
+        return "PASS"
+
+    def fake_run_cmd(args, *, timeout, env=None, check=True):
+        commands.append(list(args))
+        stage = args[3]
+        topic_or_job = args[4]
+        if stage == "research" and topic_or_job == "When Feedback Threatens Your Reputation":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-safe\n", stderr=None)
+        if stage == "research" and topic_or_job == "When Your Boss Changes Priorities Again":
+            return subprocess.CompletedProcess(
+                args,
+                1,
+                stdout="Research blocked by duplicate-topic guardrail\n",
+                stderr=None,
+            )
+        if stage == "script" and topic_or_job == "job-safe":
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        raise AssertionError(f"unexpected command: {args}")
+
+    monkeypatch.setattr(orchestrator, "agent", fake_agent)
+    monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(
+        orchestrator,
+        "topic_guardrail_rejection_reason",
+        lambda topic: "Research blocked by duplicate-topic guardrail" if "Boss" in topic else None,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        orchestrator,
+        "choose_fallback_topic",
+        lambda ledger_context, rejected_topics: "When Feedback Threatens Your Reputation",
+    )
+
+    job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
+        "When Your Boss Changes Priorities Again",
+        {"ideas": [{"title": "When Feedback Threatens Your Reputation"}]},
+        max_attempts=2,
+    )
+
+    assert job_id == "job-safe"
+    assert accepted_topic == "When Feedback Threatens Your Reputation"
+    assert [cmd[3:5] for cmd in commands] == [
+        ["research", "When Feedback Threatens Your Reputation"],
+        ["script", "job-safe"],
+    ]
 
 
 def test_daily_orchestrator_default_safe_subject_retry_budget_is_increased():
@@ -295,8 +355,9 @@ def test_daily_orchestrator_accepts_natural_workplace_replacement_topic():
     assert reason is None
 
 
-def test_daily_orchestrator_falls_back_to_concrete_operational_lane_when_ledger_is_exhausted():
+def test_daily_orchestrator_falls_back_to_concrete_operational_lane_when_ledger_is_exhausted(monkeypatch):
     orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
 
     topic = orchestrator.choose_fallback_topic(
         {"ideas": [{"title": "When the Handoff Has No Owner"}]},
