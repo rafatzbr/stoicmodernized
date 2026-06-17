@@ -288,12 +288,17 @@ class ResearchStage:
             "status update", "status", "progress update", "truth", "verification",
             "expense", "receipt", "upload", "timeout", "time out",
             "staging", "server", "deployment", "small request", "request", "focus",
+            "access", "permission", "permissions", "shared drive", "drive link", "access denied",
+            "import", "failed import", "workspace", "noise", "noisy workspace", "open office",
+            "coworker", "co-worker", "peer", "credit", "passive aggressive", "blame", "gossip",
+            "excluded", "interruption", "interrupts", "questions you", "takes credit",
         }
         if any(term in lowered for term in title_operational_terms | STOIC_MAJOR_WORKPLACE_STRESSOR_TERMS):
             return None
         return (
             "topic specificity guardrail: choose a concrete workplace mechanism or major modern-work stressor "
-            "(FOMO, layoffs, work conflict, status games, performance review, spreadsheet/reconciliation, "
+            "(FOMO, layoffs, coworker relations, work conflict, status games, performance review, "
+            "spreadsheet/reconciliation, access permissions/shared drive, failed import, noisy workspace, "
             "password reset, build cache, file/version mismatch, dependency update, printer jam, dashboard filter, "
             "calendar interruption, approval queue) instead of a generic self-help frame."
         )

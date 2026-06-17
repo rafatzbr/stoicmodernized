@@ -103,6 +103,23 @@ def test_search_queries_include_ledger_preferred_queries(tmp_path: Path) -> None
     assert captured[: len(preferred)] == preferred
 
 
+def test_stoic_topic_specificity_accepts_prompted_modern_work_mechanisms() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="specificity-job", mock=False, channel=Channel.STOIC_MODERNIZED)
+
+    accepted_topics = [
+        "When a Shared Drive Link Opens to Access Denied",
+        "When a Failed Import Turns a Simple Task Into a Long Morning",
+        "When a Noisy Workspace Turns One Email Into an Afternoon",
+        "When a Coworker Takes Credit for Your Work",
+        "When a Coworker's Passive Aggressive Comment Follows You Home",
+    ]
+
+    for topic in accepted_topics:
+        assert stage._stoic_topic_specificity_error(topic) is None
+
+
 @pytest.mark.asyncio
 async def test_mock_research_uses_stoic_fixture_for_stoic_channel() -> None:
     from src.config import Channel

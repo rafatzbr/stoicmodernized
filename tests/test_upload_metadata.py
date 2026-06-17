@@ -330,6 +330,77 @@ def test_topic_cooldown_guardrail_blocks_same_concept_family(monkeypatch, tmp_pa
     assert "same-month subject guardrail" in error
 
 
+def test_same_month_guardrail_allows_distinct_topic_with_only_soft_sentiment_overlap(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_job.mkdir(parents=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+
+    prior_job = jobs_dir / "prior-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "Why Promotion Anxiety Gets Worse When You Rush | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps({"short_version": "Promotion anxiety makes you react to every review signal as a verdict."}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+    error = uploader.validate_topic_for_research(
+        "When Job Security Fear Takes Over the Morning",
+        str(current_job),
+    )
+
+    assert error is None
+
+
+def test_same_month_guardrail_blocks_same_coworker_grievance_but_allows_different_one(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    current_job = jobs_dir / "current-job"
+    current_job.mkdir(parents=True)
+    (current_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+
+    prior_job = jobs_dir / "prior-job"
+    prior_metadata_dir = prior_job / "metadata"
+    prior_script_dir = prior_job / "script"
+    prior_metadata_dir.mkdir(parents=True, exist_ok=True)
+    prior_script_dir.mkdir(parents=True, exist_ok=True)
+    (prior_job / "job.json").write_text(json.dumps({"channel": Channel.STOIC_MODERNIZED.value}), encoding="utf-8")
+    (prior_metadata_dir / "metadata.json").write_text(
+        json.dumps({"title": "When a Coworker Takes Credit for Your Work | Stoic Modernized"}),
+        encoding="utf-8",
+    )
+    (prior_script_dir / "script.json").write_text(
+        json.dumps({"short_version": "A coworker takes credit for your work, and resentment wants to take over."}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("src.stages.upload.settings.jobs_dir", jobs_dir)
+
+    uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
+
+    same_grievance = uploader.validate_topic_for_research(
+        "When a Coworker Takes Credit for the Work You Delivered",
+        str(current_job),
+    )
+    different_grievance = uploader.validate_topic_for_research(
+        "When a Coworker's Passive Aggressive Comment Follows You Home",
+        str(current_job),
+    )
+
+    assert same_grievance is not None
+    assert "guardrail" in same_grievance
+    assert different_grievance is None
+
+
 def test_topic_cooldown_uses_stable_artifact_date_not_metadata_edit_mtime(monkeypatch, tmp_path: Path) -> None:
     """Editing old metadata must not make upload stricter than early validation.
 

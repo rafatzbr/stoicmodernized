@@ -13,6 +13,15 @@
 - Whiskers replacement/fallback topics should generate breadth before selection: build a 30+ private slate across tools/process failure, ambiguous handoff, reputation/feedback, ambition/comparison, fatigue/boundaries, everyday inconvenience, attention distraction, ethical pressure, and interpersonal friction. Do not constrain Codex to the old tiny list of spreadsheet/password/build/printer/dashboard/calendar/approval topics.
 - Verify guardrail fixes by rechecking a known bad packet as well as running focused tests; a passing research command can still be bad if Whiskers converts weak sources into generic handoff fields.
 
+## Daily Topic Freshness vs. Sentiment Guardrails (June 2026)
+
+- Correction: stale daily runs can be two separate problems at once: the topic generator/fallback may be proposing already-used ideas, while guardrails may be over-blocking distinct ideas because of shared soft sentiment words.
+- Rule: do not weaken exact duplicate protection. Split hard subject signals (promotion, layoff/job security, access permissions, failed imports, coworker credit/blame/gossip, etc.) from soft sentiment signals (anxiety, fear, stress, worry, panic, react/rumination). Soft sentiment overlap alone must not create a same-month subject collision.
+- Rule: keep prompt guidance and validators in sync. If prompts allow access denied, failed imports, noisy workspaces, or coworker grievances, `_stoic_topic_specificity_error()` must whitelist those concrete mechanisms too.
+- Rule: coworker relations are a valid major topic lane, but vary both the grievance and the sentiment: credit resentment, interruption frustration, public-correction embarrassment, gossip distrust, exclusion hurt, and blame anger are different creative lanes.
+- Rule: daily fallback topics should be lane-based and recent-aware. Build a blocklist from recent `metadata_complete`/uploaded jobs plus `script_blocked`/`research_failed` attempts so fallback does not keep feeding the guardrails stale titles.
+- Regression coverage: specificity whitelist in `tests/test_research_stage.py`, soft-vs-hard/coworker guardrails in `tests/test_upload_metadata.py`, and recent-aware/coworker fallback prompts in `tests/test_daily_video_orchestrator.py`.
+
 ## Media Explorer and YouTube Description Tags (May/June 2026)
 
 - Media explorer/helper-page descriptions should not blindly copy the first metadata tags into hashtags.

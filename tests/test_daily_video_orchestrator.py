@@ -358,14 +358,57 @@ def test_daily_orchestrator_accepts_natural_workplace_replacement_topic():
 def test_daily_orchestrator_falls_back_to_concrete_operational_lane_when_ledger_is_exhausted(monkeypatch):
     orchestrator = load_daily_orchestrator()
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: ["When FOMO Steals Your Career Focus"])
 
     topic = orchestrator.choose_fallback_topic(
         {"ideas": [{"title": "When the Handoff Has No Owner"}]},
         ["When the Handoff Has No Owner"],
     )
 
-    assert topic == "When FOMO Steals Your Career Focus"
+    assert topic != "When FOMO Steals Your Career Focus"
     assert orchestrator.topic_quality_rejection_reason(topic) is None
+
+
+def test_daily_orchestrator_fallback_includes_coworker_relations_lane(monkeypatch):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+
+    blocked = [title for lane in orchestrator.CURATED_OPERATIONAL_FALLBACK_TOPICS.values() for title in lane]
+    topic = orchestrator.choose_fallback_topic({"ideas": []}, blocked[:-1])
+
+    assert topic == blocked[-1]
+    assert "coworker" in topic.lower() or "peer" in topic.lower()
+    assert orchestrator.topic_quality_rejection_reason(topic) is None
+
+
+def test_daily_orchestrator_replacement_prompt_lists_recently_blocked_topics(monkeypatch):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(
+        orchestrator,
+        "recent_topic_blocklist",
+        lambda limit=80: ["When the Export Timestamp Is Stale", "When the Calendar Has No White Space"],
+    )
+
+    prompt = orchestrator.replacement_topic_prompt(
+        rejected_topic="When the Handoff Has No Owner",
+        rejection_output="duplicate-topic guardrail",
+        ledger_context={"ideas": []},
+        rejected_topics=["When the Handoff Has No Owner"],
+    )
+
+    assert "Recently used or failed topics to avoid" in prompt
+    assert "When the Export Timestamp Is Stale" in prompt
+    assert "When the Calendar Has No White Space" in prompt
+
+
+def test_daily_orchestrator_topic_prompt_names_coworker_grievance_lane():
+    orchestrator = load_daily_orchestrator()
+
+    prompt = orchestrator.format_ledger_topic_prompt({"ideas": []})
+
+    assert "coworker" in prompt.lower()
+    assert "grievance" in prompt.lower()
 
 
 def test_daily_orchestrator_topic_prompt_explains_underused_umbrellas_and_slate():

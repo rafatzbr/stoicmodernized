@@ -1,12 +1,30 @@
-# Try-harder Stoic Modernized recovery
+# Guardrail/topic freshness fix plan
 
-- [ ] Investigate why the current subject guardrail blocks operationally distinct topics.
-- [ ] Add a regression test for generic workplace token overlap (`meeting`/`react`) not blocking distinct operational subjects.
-- [ ] Patch the guardrail with the smallest durable distinction between generic and specific trigger overlap.
-- [ ] Run targeted tests and syntax checks.
-- [ ] Produce a valid distinct video for today using a concrete operational workplace subject.
-- [ ] Verify MP4 metadata, image/provider provenance, and deliver the final artifact.
+## Objective
 
-## Review
+Fix daily Stoic Modernized topic selection so it preserves strict duplicate protection while allowing distinct modern-work topics, including coworker-relations grievances with different sentiment handling.
 
-Pending.
+## Tasks
+
+- [ ] Add regression tests first:
+  - specificity accepts access/shared-drive, failed import, noisy workspace, and coworker-relations mechanisms.
+  - same-month guardrail ignores soft emotional overlap alone (`anxiety`, `react`, `fear`, etc.).
+  - exact duplicate/recent-title guardrail remains strict.
+  - daily orchestrator fallback skips recent/rejected stale titles and includes coworker-relations lane.
+- [ ] Implement project guardrail changes:
+  - split hard concrete trigger signals from soft sentiment signals.
+  - add coworker-relations hard triggers and grievance/sentiment terms.
+  - align research specificity whitelist with prompt examples.
+- [ ] Implement daily orchestrator changes:
+  - build recent topic/failure blocklist from project DB.
+  - pass recent blocked topics into Whiskers prompts.
+  - replace stale static fallback behavior with lane-aware candidates and skip recent/rejected titles.
+- [x] Verify:
+  - targeted pytest files.
+  - full pytest suite.
+  - py_compile daily orchestrator and touched project stages.
+  - confirmed daily orchestrator has no safe `--check` flag, so did not run the cron script with guessed args.
+
+## Review notes
+
+Implemented and verified. Full suite: `uv run python -m pytest` → 252 passed.

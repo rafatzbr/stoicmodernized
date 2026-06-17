@@ -72,29 +72,36 @@ TOPIC_FAMILY_STOPWORDS = {
 TOPIC_FAMILY_TRIGGER_TOKENS = {
     "slack", "notification", "meeting", "boss", "coworker", "deadline", "burnout", "layoff", "email",
     "text", "ping", "message", "praise", "approval", "disrespect", "overexplaining", "overthinking", "rumination",
-    "ruminate", "anxiety", "politics", "priority", "pressure", "react", "expense", "receipt",
+    "ruminate", "anxiety", "fear", "stress", "worry", "panic", "politics", "priority", "pressure", "react", "expense", "receipt",
     "waiting", "silence", "reply", "agenda", "phone", "tabs", "scrolling", "inbox", "tired", "exhausted",
     "boundary", "promotion", "raise", "metrics", "recognition", "status", "mistake", "reputation",
     "projector", "crash", "delay", "late", "coffee", "printer", "elevator", "parking",
     "fomo", "layoffs", "reorg", "job", "security", "conflict", "disagreement", "comparison",
-    "career", "feedback", "criticism", "review", "ego",
+    "career", "feedback", "criticism", "review", "ego", "access", "permission", "drive", "link",
+    "denied", "import", "workspace", "noise", "credit", "passive", "aggressive", "blame", "gossip",
+    "excluded", "interrupt", "interrupted",
 }
 
 MAJOR_WORKPLACE_STRESSOR_TOKENS = {
     "fomo", "layoff", "layoffs", "reorg", "job", "security", "conflict", "disagreement",
     "politics", "status", "comparison", "career", "promotion", "feedback", "criticism", "review",
-    "reputation", "ego",
+    "reputation", "ego", "coworker", "credit", "passive", "aggressive", "blame", "gossip",
 }
 
-# These are useful context words, but too broad to prove a repeated subject by
-# themselves. They only count when paired with at least one more specific trigger.
-TOPIC_FAMILY_GENERIC_TRIGGER_TOKENS = {"meeting", "react", "pressure"}
+# These are useful sentiment/context words, but too broad to prove a repeated subject by
+# themselves. They only count when paired with at least one more concrete trigger.
+TOPIC_FAMILY_GENERIC_TRIGGER_TOKENS = {
+    "meeting", "react", "pressure", "anxiety", "fear", "stress", "worry", "panic", "rumination", "ruminate",
+}
 
 TOPIC_UMBRELLA_TOKENS = {
     "conflict_friction": {
-        "boss", "coworker", "reject", "rejected", "refuse", "criticize", "criticism", "interrupt",
-        "blame", "credit", "disrespect", "argument", "politics", "pressure", "meeting",
-        "conflict", "disagreement", "office",
+        "boss", "reject", "rejected", "refuse", "criticize", "criticism", "interrupt",
+        "argument", "politics", "pressure", "meeting", "conflict", "disagreement", "office",
+    },
+    "coworker_relations": {
+        "coworker", "peer", "credit", "disrespect", "blame", "gossip", "excluded", "interrupt",
+        "interrupted", "passive", "aggressive", "resentment",
     },
     "uncertainty_waiting": {
         "waiting", "wait", "pending", "silence", "silent", "reply", "response", "email", "agenda",
