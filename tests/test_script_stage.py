@@ -135,7 +135,8 @@ class TestScriptStage:
         assert normalized["chapters"][0]["title"] == "Hook"
         assert "[0:00-0:12] Hook" in normalized["narration"]
         assert "[0:50-0:58] CTA" in normalized["narration"]
-        assert "@stoic-modernized" in normalized["narration"]
+        assert "Subscribe to Stoic Modernized" in normalized["narration"]
+        assert "@stoic-modernized" not in normalized["narration"]
 
     def test_parse_script_response_trims_short_title_and_keeps_cta_handle(self) -> None:
         stage = ScriptStage(job_id="job-4", mock=False, video_mode=VideoMode.SHORT)
@@ -167,8 +168,27 @@ class TestScriptStage:
         )
 
         cta_block = normalized["narration"].split("[0:50-0:58] CTA", 1)[1]
-        assert cta_block.strip() == "Breathe first. Reply second. Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        assert cta_block.strip() == "Breathe first. Reply second. Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
+        assert "@stoic-modernized" not in cta_block
+        assert "at stoic modernized" not in cta_block.lower()
         assert cta_block.lower().count("subscribe") == 1
+
+    def test_parse_script_response_keeps_handle_in_cta_but_not_spoken_narration(self) -> None:
+        stage = ScriptStage(job_id="job-4-cta-spoken", mock=False, video_mode=VideoMode.SHORT)
+        script = stage._parse_script_response(
+            {
+                "title": "Stop Replaying Bad Meetings",
+                "hook": "You keep replaying the meeting after it ended.",
+                "narration": "[0:00-0:12] Hook\nYou keep replaying the meeting after it ended, and your body acts like the conversation is still happening.\n\n[0:12-0:30] Stoic Principle\nSeparate the event from the story you add to it so the old meeting stops borrowing attention from the current task.\n\n[0:30-0:50] Workplace Application\nBefore your next reply, name what is in your control, answer the actual problem, and leave the imagined trial alone.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                "chapters": [],
+                "cta": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            },
+            topic="bad meetings",
+        )
+
+        assert script.cta == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        assert "Subscribe to Stoic Modernized for practical Stoic tools you can use at work." in script.narration
+        assert "@stoic-modernized" not in script.narration
 
     def test_short_cta_strips_comment_to_receive_resource_promise(self) -> None:
         stage = ScriptStage(job_id="job-4-cta-promise", mock=False, video_mode=VideoMode.SHORT)
@@ -185,7 +205,7 @@ class TestScriptStage:
         cta_block = normalized["narration"].split("[0:50-0:58] CTA", 1)[1]
         assert "Comment 'Control'" not in cta_block
         assert "send you" not in cta_block
-        assert cta_block.strip() == "Want more steady focus. Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        assert cta_block.strip() == "Want more steady focus. Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
 
     def test_short_quality_rejects_viewer_delivery_promise(self) -> None:
         stage = ScriptStage(job_id="job-4-cta-promise-reject", mock=False, video_mode=VideoMode.SHORT)
@@ -326,7 +346,8 @@ class TestScriptStage:
         )
 
         assert "Protect your energy." in normalized["narration"]
-        assert "@stoic-modernized" in normalized["narration"]
+        assert "Subscribe to Stoic Modernized" in normalized["narration"]
+        assert "@stoic-modernized" not in normalized["narration"]
 
     def test_short_quality_uses_spoken_words_not_timing_labels(self) -> None:
         stage = ScriptStage(job_id="job-7", mock=False, video_mode=VideoMode.SHORT)

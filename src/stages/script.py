@@ -451,8 +451,9 @@ class ScriptStage:
             ]
             hook = str(normalized.get("hook") or "").strip()
             narration = str(normalized.get("narration") or "").strip()
-            cta = str(normalized.get("cta") or "").strip()
+            cta = self._ensure_cta_handle(str(normalized.get("cta") or "").strip())
             narration = self._normalize_short_narration_blocks(hook, narration, cta)
+            normalized["cta"] = cta
             normalized["narration"] = narration
             normalized["short_version"] = narration
         return normalized
@@ -1006,6 +1007,8 @@ Rules:
 - Then name the Stoic principle.
 - Then show exactly how to use it at work this week.
 - End with a crisp CTA.
+- CTA field must start with `Subscribe to @stoic-modernized` followed by a short benefit phrase.
+- Spoken narration must say `Subscribe to Stoic Modernized`, not `Subscribe to @stoic-modernized` or `subscribe to at stoic modernized`.
 - Never promise to send viewers anything. Do not ask viewers to comment, reply, DM, or message to receive a checklist, guide, template, link, PDF, or resource.
 - Exactly 4 chapters titled Hook, Stoic Principle, Workplace Application, CTA.
 - Use timestamps 0, 12, 30, 50.
@@ -1149,6 +1152,26 @@ Rules:
         prefix = ". ".join(prefix_parts).rstrip(".! ")
         return f"{prefix}. {standard_cta}"
 
+    def _make_cta_spoken(self, text: str) -> str:
+        """Convert handle-based CTA text into narration-safe speech."""
+        spoken = " ".join((text or "").split()).strip()
+        if not spoken:
+            return "Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
+        spoken = re.sub(
+            r"\bSubscribe\s+to\s+@stoic-modernized\b",
+            "Subscribe to Stoic Modernized",
+            spoken,
+            flags=re.IGNORECASE,
+        )
+        spoken = re.sub(r"@stoic-modernized\b", "Stoic Modernized", spoken, flags=re.IGNORECASE)
+        spoken = re.sub(
+            r"\bSubscribe\s+to\s+at\s+stoic\s+modernized\b",
+            "Subscribe to Stoic Modernized",
+            spoken,
+            flags=re.IGNORECASE,
+        )
+        return spoken
+
     def _normalize_short_narration_blocks(self, hook: str, narration: str, cta: str) -> str:
         text = narration.strip()
         sections = self._parse_short_timed_sections(text)
@@ -1192,7 +1215,7 @@ Rules:
             principle_text = hook_text or text
         if not application_text:
             application_text = text if text not in {hook_text, principle_text} else "Use the Stoic move on the next concrete task in front of you."
-        cta_text = self._ensure_cta_handle(cta_text)
+        cta_text = self._make_cta_spoken(self._ensure_cta_handle(cta_text))
 
         blocks = [
             f"[0:00-0:12] Hook\n{hook_text}".strip(),
@@ -1259,6 +1282,8 @@ SHORT VIDEO RULES:
 - Then name the Stoic principle.
 - Then show exactly how to use it at work this week.
 - End with a crisp CTA.
+- CTA field must start with `Subscribe to @stoic-modernized` followed by a short benefit phrase.
+- Spoken narration must say `Subscribe to Stoic Modernized`, not `Subscribe to @stoic-modernized` or `subscribe to at stoic modernized`.
 - Never promise to send viewers anything. Do not ask viewers to comment, reply, DM, or message to receive a checklist, guide, template, link, PDF, or resource.
 
 TITLE RULES:
@@ -1279,7 +1304,8 @@ CHAPTER RULES:
 CTA RULES:
 - One sentence.
 - Invite subscription.
-- Explicitly mention `@stoic-modernized`.
+- The metadata/CTA field must follow this template exactly: `Subscribe to @stoic-modernized <short benefit phrase>`.
+- The narration must say the channel name aloud as `Stoic Modernized`, never `at stoic modernized`.
 - Mention practical Stoic tools for work.
 
 No markdown.
@@ -1360,6 +1386,9 @@ Output JSON only.
         hook = str(script_data.get("hook") or f"What if I told you that 2000 years of wisdom could help you handle {topic} better? Welcome to Stoic Modernized.")
         narration = str(script_data.get("narration") or self._generate_mock_narration(topic))
         cta = self._ensure_cta_handle(str(script_data.get("cta") or "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."))
+
+        if self.video_mode == VideoMode.SHORT:
+            narration = self._normalize_short_narration_blocks(hook, narration, cta)
 
         if self.video_mode == VideoMode.SHORT and hook:
             sections = self._parse_short_timed_sections(narration)
