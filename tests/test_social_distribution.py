@@ -100,16 +100,16 @@ def test_mock_social_distribution_writes_auditable_manifest(monkeypatch, tmp_pat
     assert result["job_id"] == "job-123"
     assert result["status"] == "mock_completed"
     assert result["video_path"].endswith("remotion_output.mp4")
-    assert result["public_video_url"] == "https://media.example.test/job-123/remotion_output.mp4"
+    assert result["public_video_url"] == "https://media.example.test/stoic-modernized/job-123/remotion_output.mp4"
     assert {platform["platform"] for platform in result["platforms"]} == {"tiktok", "instagram", "facebook"}
     assert all(platform["status"] == "mock_uploaded" for platform in result["platforms"])
     manifest_path = job_dir / "distribution" / "social_uploads.json"
     assert manifest_path.exists()
     saved = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert saved["captions"]["tiktok"] == result["captions"]["tiktok"]
-    page_path = jobs_dir.parent / "social_public" / "job-123" / "index.html"
+    page_path = job_dir / "index.html"
     assert page_path.exists()
-    assert result["manual_instagram_page_url"] == "https://media.example.test/job-123/"
+    assert result["manual_instagram_page_url"] == "https://media.example.test/stoic-modernized/job-123/"
     page_html = page_path.read_text(encoding="utf-8")
     assert "REEL<br>PACKAGE" not in page_html
     assert "Instagram Semi-Manual Upload Kit" not in page_html
@@ -159,20 +159,21 @@ def test_metadata_command_always_publishes_video_to_media_explorer(monkeypatch, 
     main.metadata(job_id="job-654", mock=True)
 
     public_dir = jobs_dir.parent / "social_public"
-    public_video = public_dir / "job-654" / "remotion_output.mp4"
-    page_path = public_dir / "job-654" / "index.html"
+    public_video = public_dir / "stoic-modernized" / "job-654" / "remotion_output.mp4"
+    page_path = job_dir / "index.html"
     explorer_path = public_dir / "videos.html"
     assert public_video.read_bytes() == b"fake mp4"
     assert page_path.exists()
     page_html = page_path.read_text(encoding="utf-8")
     assert "<video controls" in page_html
-    assert "https://stoicmodernized.zweb.ca/job-654/remotion_output.mp4" in page_html
+    assert "https://stoicmodernized.zweb.ca/stoic-modernized/job-654/remotion_output.mp4" in page_html
     assert explorer_path.exists()
     explorer_html = explorer_path.read_text(encoding="utf-8")
+    assert "stoic-modernized" in explorer_html
     assert "job-654" in explorer_html
     assert "remotion_output.mp4" in explorer_html
     assert '"title":"Stop Resenting Last Minute Priority Shifts"' in explorer_html
-    assert explorer_html.count('"title":"Stop Resenting Last Minute Priority Shifts"') == 2
+    assert explorer_html.count('"title":"Stop Resenting Last Minute Priority Shifts"') >= 2
     assert "function displayName(item)" in explorer_html
     assert "let sortKey = 'modified'; let sortDir = 'desc';" in explorer_html
     assert "function matchesQuery(item, q)" in explorer_html

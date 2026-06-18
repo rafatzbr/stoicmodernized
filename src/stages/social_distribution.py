@@ -18,7 +18,7 @@ from typing import Any
 
 import requests
 
-from scripts.generate_social_public_explorer import generate_explorer
+from scripts.generate_social_public_explorer import ensure_channel_links, generate_explorer
 from src.config import ENV_FILE, settings
 from src.utils import load_json, save_json
 
@@ -131,6 +131,48 @@ def _truncate_at_word(text: str, limit: int) -> str:
     return text[: limit - 3].rsplit(" ", 1)[0].rstrip(" ,;:-") + "..."
 
 
+def _metadata_display_title(raw_title: str, channel_name: str) -> str:
+    title = str(raw_title or "Untitled Video").strip()
+    suffixes = {
+        f" | {channel_name}",
+        f" - {channel_name}",
+        " | Scam Drills",
+        " - Scam Drills",
+        " | Stoic Modernized",
+        " - Stoic Modernized",
+        " | The AI Signal",
+        " - The AI Signal",
+    }
+    for suffix in suffixes:
+        if title.endswith(suffix):
+            return title[: -len(suffix)].strip()
+    return title
+
+
+def channel_slug() -> str:
+    channel = getattr(settings, "default_channel", "stoic-modernized")
+    return str(getattr(channel, "value", channel))
+
+
+def media_explorer_public_root() -> Path:
+    configured = getattr(settings, "media_explorer_public_root", None)
+    if configured:
+        return Path(configured).expanduser()
+    default_jobs_dir = settings.project_root / "output" / "jobs"
+    if settings.project_root.name == "scam-drills" and settings.jobs_dir == default_jobs_dir:
+        return settings.project_root.parent / "stoic-modernized" / "output" / "social_public"
+    return settings.jobs_dir.parent / "social_public"
+
+
+def channel_job_roots() -> dict[str, Path]:
+    roots = {
+        "stoic-modernized": settings.project_root.parent / "stoic-modernized" / "output" / "jobs",
+        "scam-drills": settings.project_root.parent / "scam-drills" / "output" / "jobs",
+    }
+    roots[channel_slug()] = settings.jobs_dir
+    return roots
+
+
 def build_social_captions(metadata: dict[str, Any], channel_name: str = "Stoic Modernized") -> dict[str, str]:
     """Build platform-specific captions from YouTube metadata.
 
@@ -138,7 +180,7 @@ def build_social_captions(metadata: dict[str, Any], channel_name: str = "Stoic M
     compact Shorts/Reels/TikTok-friendly body plus a small hashtag set.
     """
     raw_description = str(metadata.get("description") or "")
-    raw_title = str(metadata.get("title") or "Untitled Video").replace(f" | {channel_name}", "").strip()
+    raw_title = _metadata_display_title(str(metadata.get("title") or "Untitled Video"), channel_name)
     body = _strip_youtube_boilerplate(raw_description) or raw_title
     raw_tags = metadata.get("tags")
     tags: list[Any] = raw_tags if isinstance(raw_tags, list) else []
@@ -157,12 +199,12 @@ def build_social_captions(metadata: dict[str, Any], channel_name: str = "Stoic M
     }
 
 
-def public_media_url(job_id: str, filename: str) -> str | None:
+def public_media_url(job_id: str, filename: str, slug: str | None = None) -> str | None:
     """Return the public HTTPS URL for a staged social_public job artifact."""
     base_url = settings.social_video_public_base_url
     if not base_url:
         return None
-    return f"{base_url.rstrip('/')}/{job_id}/{filename}"
+    return f"{base_url.rstrip('/')}/{slug or channel_slug()}/{job_id}/{filename}"
 
 
 def publish_media_explorer_artifacts(
@@ -182,18 +224,20 @@ def publish_media_explorer_artifacts(
         raise FileNotFoundError(f"Rendered video not found for media explorer publish: {source_video_path}")
 
     captions = captions or build_social_captions(metadata, channel_name=settings.channel_name)
-    public_root = settings.jobs_dir.parent / "social_public"
-    public_dir = public_root / job_id
+    slug = channel_slug()
+    public_root = media_explorer_public_root()
+    ensure_channel_links(public_root=public_root, channel_job_roots=channel_job_roots())
+    public_dir = settings.jobs_dir / job_id
     public_dir.mkdir(parents=True, exist_ok=True)
 
     public_video_path = public_dir / source_video_path.name
     if source_video_path.resolve() != public_video_path.resolve():
         shutil.copy2(source_video_path, public_video_path)
 
-    title = str(metadata.get("title") or "Untitled Video").replace(f" | {settings.channel_name}", "").strip()
+    title = _metadata_display_title(str(metadata.get("title") or "Untitled Video"), settings.channel_name)
     description = captions.get("instagram") or _strip_youtube_boilerplate(str(metadata.get("description") or "")) or title
-    public_video_url = public_media_url(job_id, public_video_path.name)
-    public_page_url = f"{settings.social_video_public_base_url.rstrip('/')}/{job_id}/" if settings.social_video_public_base_url else None
+    public_video_url = public_media_url(job_id, public_video_path.name, slug=slug)
+    public_page_url = f"{settings.social_video_public_base_url.rstrip('/')}/{slug}/{job_id}/" if settings.social_video_public_base_url else None
     page_path = public_dir / "index.html"
     page_path.write_text(
         _render_instagram_upload_page(
@@ -205,7 +249,7 @@ def publish_media_explorer_artifacts(
         ),
         encoding="utf-8",
     )
-    explorer_path = generate_explorer(public_root=public_root)
+    explorer_path = generate_explorer(public_root=public_root, channel_job_roots=channel_job_roots())
     return {
         "path": page_path,
         "url": public_page_url,
@@ -319,16 +363,10 @@ class SocialDistributionStage:
         base_url = settings.social_video_public_base_url
         if not base_url:
             return None
-        try:
-            job_relative = video_path.resolve().relative_to(settings.jobs_dir.resolve())
-            if len(job_relative.parts) >= 2:
-                return f"{base_url.rstrip('/')}/{job_relative.parts[0]}/{video_path.name}"
-        except ValueError:
-            pass
-        return f"{base_url.rstrip('/')}/{video_path.name}"
+        return public_media_url(self.job_id, video_path.name)
 
     def _social_public_job_dir(self) -> Path:
-        return settings.jobs_dir.parent / "social_public" / self.job_id
+        return settings.jobs_dir / self.job_id
 
     def _write_instagram_manual_upload_page(
         self, video_path: Path, metadata: dict[str, Any], captions: dict[str, str]

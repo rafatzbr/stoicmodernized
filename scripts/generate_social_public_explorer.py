@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""Generate output/social_public/videos.html as a static file explorer."""
+"""Generate output/social_public/videos.html as a static channel/job explorer."""
 
 from __future__ import annotations
 
 import datetime as dt
 import html
 import json
+import os
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_ROOT = ROOT / "output" / "social_public"
+PROJECTS_ROOT = ROOT.parent
+PUBLIC_ROOT = Path(os.environ.get("MEDIA_EXPLORER_PUBLIC_ROOT", ROOT / "output" / "social_public"))
 OUTPUT = PUBLIC_ROOT / "videos.html"
+CHANNEL_JOB_ROOTS = {
+    "stoic-modernized": PROJECTS_ROOT / "stoic-modernized" / "output" / "jobs",
+    "scam-drills": PROJECTS_ROOT / "scam-drills" / "output" / "jobs",
+}
 
 HTML_TEMPLATE = """<!doctype html>
 <html lang=\"en\">
@@ -98,7 +104,39 @@ def title_for_directory(path: Path) -> str | None:
     return html.unescape(title) or None
 
 
-def node_for(path: Path, public_root: Path = PUBLIC_ROOT, inherited_title: str | None = None) -> dict:
+def ensure_channel_links(
+    public_root: Path = PUBLIC_ROOT,
+    channel_job_roots: dict[str, Path] | None = None,
+) -> dict[str, Path]:
+    """Expose each channel's output/jobs directory as a top-level folder.
+
+    The media origin serves ``public_root``.  Symlinks let URLs such as
+    ``/stoic-modernized/<job-id>/index.html`` resolve directly to the canonical
+    job artifact directory without copying rendered videos into a second tree.
+    """
+    public_root.mkdir(parents=True, exist_ok=True)
+    linked: dict[str, Path] = {}
+    for slug, jobs_root in (channel_job_roots or CHANNEL_JOB_ROOTS).items():
+        jobs_root = Path(jobs_root).expanduser().resolve()
+        if not jobs_root.is_dir():
+            continue
+        link_path = public_root / slug
+        if link_path.is_symlink():
+            if link_path.resolve() != jobs_root:
+                link_path.unlink()
+                link_path.symlink_to(jobs_root, target_is_directory=True)
+        elif not link_path.exists():
+            link_path.symlink_to(jobs_root, target_is_directory=True)
+        linked[slug] = jobs_root
+    return linked
+
+
+def node_for(
+    path: Path,
+    public_root: Path = PUBLIC_ROOT,
+    inherited_title: str | None = None,
+    root_children: set[str] | None = None,
+) -> dict:
     stat = path.stat()
     rel = path.relative_to(public_root).as_posix() if path != public_root else ""
     item: dict = {
@@ -115,18 +153,30 @@ def node_for(path: Path, public_root: Path = PUBLIC_ROOT, inherited_title: str |
         title = title_for_directory(path) or inherited_title
         if title:
             item["title"] = title
+        children = sorted(path.iterdir(), key=lambda candidate: (not candidate.is_dir(), candidate.name.lower()))
+        if path == public_root and root_children is not None:
+            children = [child for child in children if child.name in root_children]
         item["children"] = [
             node_for(child, public_root=public_root, inherited_title=title)
-            for child in sorted(path.iterdir(), key=lambda candidate: (not candidate.is_dir(), candidate.name.lower()))
+            for child in children
             if child.name != ".DS_Store"
         ]
     return item
 
 
-def generate_explorer(public_root: Path = PUBLIC_ROOT, output: Path | None = None) -> Path:
+def generate_explorer(
+    public_root: Path = PUBLIC_ROOT,
+    output: Path | None = None,
+    channel_job_roots: dict[str, Path] | None = None,
+) -> Path:
     public_root.mkdir(parents=True, exist_ok=True)
     output = output or public_root / "videos.html"
-    tree_json = json.dumps(node_for(public_root, public_root=public_root), separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+    linked = ensure_channel_links(public_root=public_root, channel_job_roots=channel_job_roots)
+    tree_json = json.dumps(
+        node_for(public_root, public_root=public_root, root_children=set(linked)),
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).replace("</", "<\\/")
     output.write_text(HTML_TEMPLATE.format(tree_json=tree_json), encoding="utf-8")
     return output
 
