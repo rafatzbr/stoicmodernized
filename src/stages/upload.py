@@ -5,6 +5,7 @@ import json
 import os
 import random
 import re
+import sqlite3
 from datetime import UTC, datetime
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -471,9 +472,17 @@ class YouTubeUploader:
         next candidate repeat the same subject before the expensive stages begin.
         """
         artifacts: list[tuple[Path, dict[str, Any]]] = []
+        publishable_statuses = {
+            "metadata_complete",
+            "uploaded",
+            "completed",
+            "ready_for_upload",
+        }
+        job_statuses = self._job_status_map()
         for job_dir in settings.jobs_dir.glob("*"):
             if not job_dir.is_dir():
                 continue
+            job_status = job_statuses.get(job_dir.name)
             for rel_path in (
                 Path("metadata/metadata.json"),
                 Path("script/script.json"),
@@ -481,6 +490,11 @@ class YouTubeUploader:
             ):
                 path = job_dir / rel_path
                 if not path.exists():
+                    continue
+                # Failed retry attempts should not poison later recovery candidates.
+                # Keep metadata/publishable artifacts authoritative for duplicate protection,
+                # but ignore script/research-only artifacts from blocked/failed jobs.
+                if rel_path.parts[0] != "metadata" and job_status and job_status not in publishable_statuses:
                     continue
                 try:
                     payload = load_json(path)
@@ -514,6 +528,27 @@ class YouTubeUploader:
         except Exception:
             return True
         return str(payload.get("channel") or settings.default_channel.value) == self.channel.value
+
+    def _job_status_map(self) -> dict[str, str]:
+        """Load job statuses in one DB query for guardrail scans."""
+        try:
+            with sqlite3.connect(settings.db_path) as conn:
+                rows = conn.execute("select job_id, status from jobs").fetchall()
+        except Exception:
+            return {}
+        return {str(job_id): str(status) for job_id, status in rows if job_id and status}
+
+    def _job_status_for_dir(self, job_dir: Path) -> Optional[str]:
+        """Best-effort DB status lookup for a job output directory."""
+        try:
+            with sqlite3.connect(settings.db_path) as conn:
+                row = conn.execute(
+                    "select status from jobs where job_id = ?",
+                    (job_dir.name,),
+                ).fetchone()
+        except Exception:
+            return None
+        return str(row[0]) if row and row[0] else None
 
     def _load_job_script_text(self, job_dir: Path) -> str:
         script_path = job_dir / "script" / "script.json"
@@ -594,6 +629,12 @@ class YouTubeUploader:
         for metadata_path, other_metadata in subject_artifacts:
             other_job_dir = metadata_path.parent.parent.resolve()
             if other_job_dir == current_job_dir or not self._job_matches_channel(other_job_dir):
+                continue
+            if self._job_status_for_dir(other_job_dir) in {"research_failed", "script_blocked", "script_failed", "failed", "pending"}:
+                # Failed recovery attempts should still be available to exact
+                # duplicate/monthly-subject checks, but they must not poison the
+                # broader umbrella-balance window. The unattended daily run can
+                # otherwise reject its own fallback pool after a few failed scripts.
                 continue
             if not self._recent_subject_window_hit(metadata_path, other_metadata):
                 continue
@@ -987,22 +1028,42 @@ class YouTubeUploader:
 
 
     def _load_steering_context(self, job_dir: Optional[str] = None) -> dict[str, Any]:
+        empty_context = {"ledger_packet": {}, "whiskers_handoff": {}, "whiskers_brief": {}, "ledger_strategy": {}}
         if not job_dir:
-            return {"ledger_packet": {}, "whiskers_handoff": {}, "whiskers_brief": {}, "ledger_strategy": {}}
+            return empty_context
+        job_path = Path(job_dir)
+
+        def context_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+            steering = payload.get("steering_chain") if isinstance(payload.get("steering_chain"), dict) else {}
+            return {
+                "ledger_packet": payload.get("ledger_packet") if isinstance(payload.get("ledger_packet"), dict) else steering.get("ledger_packet") or {},
+                "whiskers_handoff": payload.get("whiskers_handoff") if isinstance(payload.get("whiskers_handoff"), dict) else steering.get("whiskers_handoff") or {},
+                "whiskers_brief": payload.get("whiskers_brief") if isinstance(payload.get("whiskers_brief"), dict) else steering.get("whiskers_brief") or {},
+                "ledger_strategy": payload.get("ledger_strategy") if isinstance(payload.get("ledger_strategy"), dict) else steering.get("ledger_strategy") or {},
+            }
+
+        def merge_context(primary: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
+            return {
+                key: primary.get(key) if primary.get(key) else fallback.get(key, {})
+                for key in empty_context
+            }
+
+        research_context = empty_context
+        research_path = job_path / "research" / "research.json"
+        if research_path.exists():
+            try:
+                research_context = context_from_payload(load_json(research_path))
+            except Exception:
+                research_context = empty_context
+
         script_path = Path(job_dir) / "script" / "script.json"
         if not script_path.exists():
-            return {"ledger_packet": {}, "whiskers_handoff": {}, "whiskers_brief": {}, "ledger_strategy": {}}
+            return research_context
         try:
             payload = load_json(script_path)
         except Exception:
-            return {"ledger_packet": {}, "whiskers_handoff": {}, "whiskers_brief": {}, "ledger_strategy": {}}
-        steering = payload.get("steering_chain") if isinstance(payload.get("steering_chain"), dict) else {}
-        return {
-            "ledger_packet": payload.get("ledger_packet") if isinstance(payload.get("ledger_packet"), dict) else steering.get("ledger_packet") or {},
-            "whiskers_handoff": payload.get("whiskers_handoff") if isinstance(payload.get("whiskers_handoff"), dict) else steering.get("whiskers_handoff") or {},
-            "whiskers_brief": payload.get("whiskers_brief") if isinstance(payload.get("whiskers_brief"), dict) else steering.get("whiskers_brief") or {},
-            "ledger_strategy": payload.get("ledger_strategy") if isinstance(payload.get("ledger_strategy"), dict) else steering.get("ledger_strategy") or {},
-        }
+            return research_context
+        return merge_context(context_from_payload(payload), research_context)
 
     def _resolve_metadata_title(
         self,
@@ -1487,10 +1548,14 @@ Keep it extremely tight. No bullet points. No timestamps. No filler. Output only
                 "max_tokens": 200,
                 "chat_template_kwargs": {"enable_thinking": False},
             }
+            # Metadata copy is optional packaging polish. Do not let a slow local
+            # LLM block a completed render/upload path; fall back quickly to the
+            # deterministic description when the endpoint is busy.
+            metadata_timeout = min(20.0, float(settings.local_llm_timeout_seconds))
             response = requests.post(
                 settings.local_llm_base_url,
                 json=payload,
-                timeout=settings.local_llm_timeout_seconds,
+                timeout=metadata_timeout,
             )
             response.raise_for_status()
             data = response.json()

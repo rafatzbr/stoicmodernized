@@ -1,6 +1,7 @@
 """Database module for job tracking using SQLite."""
 
 from datetime import datetime
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -69,8 +70,9 @@ class Database:
 
     def __init__(self, db_path: Optional[Path] = None):
         """Initialize database connection."""
-        self.db_path = db_path or settings.db_path
-        self.engine = create_engine(settings.db)
+        env_db_path = os.environ.get("DB_PATH")
+        self.db_path = Path(db_path or env_db_path or settings.db_path)
+        self.engine = create_engine(f"sqlite:///{self.db_path}")
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         Base.metadata.create_all(bind=self.engine)
 

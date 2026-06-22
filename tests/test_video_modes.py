@@ -47,7 +47,7 @@ async def test_short_scene_plan_appends_separate_spoken_cta_when_script_cta_is_n
 
     scene_plan = await stage.run(script)
 
-    assert scene_plan.scenes[-1].narration_segment == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+    assert scene_plan.scenes[-1].narration_segment == "Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
     assert scene_plan.scenes[-1].scene_type == "cta"
     assert scene_plan.scenes[-1].text_overlay == "CTA"
     assert scene_plan.total_duration <= 60.0
@@ -74,10 +74,40 @@ async def test_short_timed_cta_action_text_stays_before_subscribe_end_card(
 
     assert scene_plan.scenes[-2].narration_segment == "Breathe first. Reply second."
     assert scene_plan.scenes[-2].scene_type is None
-    assert scene_plan.scenes[-1].narration_segment == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+    assert scene_plan.scenes[-1].narration_segment == "Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
     assert scene_plan.scenes[-1].scene_type == "cta"
     assert scene_plan.scenes[-1].text_overlay == "CTA"
     assert scene_plan.scenes[-1].start_time > scene_plan.scenes[-2].start_time
+
+
+@pytest.mark.asyncio
+async def test_short_scene_plan_strips_standalone_brand_sentence_before_cta(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JOBS_DIR", str(tmp_path / "jobs"))
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path / "output"))
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+
+    stage = SceneStage(job_id="short-brand-strip-job", mock=True)
+    script = {
+        "title": "When Numbers Change Fast",
+        "narration": (
+            "The spreadsheet changes and your chest tightens. Separate the event from the story before you answer. "
+            "Write the smallest fact you can verify right now, then fix the next true line. "
+            "Do the clear next step, leave a clean record, and let the noise pass without becoming your standard. "
+            "Stoic Modernized."
+        ),
+        "chapters": [{"title": "Practice", "timestamp": 0.0}],
+        "cta": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+        "video_mode": "short",
+    }
+
+    scene_plan = await stage.run(script)
+
+    spoken = " ".join(scene.narration_segment for scene in scene_plan.scenes)
+    assert "Stoic Modernized. Subscribe" not in spoken
+    assert not any(scene.narration_segment.strip() == "Stoic Modernized." for scene in scene_plan.scenes)
+    assert scene_plan.scenes[-1].narration_segment == "Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
 
 
 @pytest.mark.asyncio

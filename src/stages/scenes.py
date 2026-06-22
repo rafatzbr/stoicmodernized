@@ -108,7 +108,8 @@ class SceneStage:
 
         self._append_scene_stage_debug_log(f"Starting scene object synthesis for {len(scene_specs)} scene specs")
         for spec in scene_specs:
-            line = spec["text"]
+            line = self._strip_standalone_brand_sentence(str(spec["text"]))
+            spec["text"] = line
             scene_type = str(spec.get("scene_type") or "").strip() or None
             title_text = str(spec.get("title_text") or "").strip() or None
             if spec.get("start_time") is not None:
@@ -659,6 +660,7 @@ Input scenes:
                 split_cta = self._split_action_text_from_subscribe_cta(body)
                 if split_cta is not None:
                     action_text, subscribe_text = split_cta
+                    subscribe_text = self._make_cta_spoken(subscribe_text)
                     action_words = max(1, len(action_text.split()))
                     subscribe_words = max(1, len(subscribe_text.split()))
                     split_time = start_time + (end_time - start_time) * (action_words / (action_words + subscribe_words))
@@ -716,13 +718,50 @@ Input scenes:
         return action_text, subscribe_text
 
     def _short_cta_text(self, script_data: dict) -> str:
-        """Return the established Stoic Modernized short CTA text.
+        """Return the established Stoic Modernized short CTA text as spoken narration.
 
-        Short renders already have a branded subscribe end card. Keep the spoken CTA
-        aligned with the channel default instead of allowing per-script micro-CTAs to
-        invent a different ending style.
+        Short renders use metadata handles, but narration should say the channel name
+        naturally instead of reading `@stoic-modernized` aloud as a separate artifact.
         """
-        return settings.get_channel_cta(self.channel).strip() or str(script_data.get("cta") or "").strip()
+        raw_cta = settings.get_channel_cta(self.channel).strip() or str(script_data.get("cta") or "").strip()
+        return self._make_cta_spoken(raw_cta)
+
+    def _make_cta_spoken(self, text: str) -> str:
+        spoken = " ".join((text or "").split()).strip()
+        if not spoken:
+            return ""
+        channel_name = settings.get_channel_name(self.channel).strip() or "Stoic Modernized"
+        spoken = re.sub(
+            r"\bSubscribe\s+to\s+@stoic-modernized\b",
+            f"Subscribe to {channel_name}",
+            spoken,
+            flags=re.IGNORECASE,
+        )
+        spoken = re.sub(r"@stoic-modernized\b", channel_name, spoken, flags=re.IGNORECASE)
+        spoken = re.sub(
+            r"\bSubscribe\s+to\s+at\s+stoic\s+modernized\b",
+            f"Subscribe to {channel_name}",
+            spoken,
+            flags=re.IGNORECASE,
+        )
+        return spoken
+
+    def _strip_standalone_brand_sentence(self, text: str) -> str:
+        """Remove a bare channel-name sentence from spoken scene text.
+
+        The brand may appear inside a real CTA ("Subscribe to Stoic Modernized...")
+        but a standalone "Stoic Modernized." cue before the CTA is duplicate branding.
+        """
+        channel_name = settings.get_channel_name(self.channel).strip() or "Stoic Modernized"
+        brand_sentence = re.escape(channel_name)
+        cleaned = re.sub(
+            rf"(?:(?<=^)|(?<=[.!?])\s+){brand_sentence}\s*[.!?](?=\s|$)",
+            " ",
+            text or "",
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        return cleaned
 
     def _should_append_cta_scene(self, script_data: dict, scene_specs: list[dict[str, object]]) -> bool:
         cta_text = self._short_cta_text(script_data)

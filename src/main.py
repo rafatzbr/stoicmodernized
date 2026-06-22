@@ -136,6 +136,21 @@ def _load_job_record(job_id: str):
     return job_record
 
 
+def _mark_stage_failed(job_id: str, stage_name: str, error: object) -> str:
+    """Persist a stage failure before exiting a CLI command."""
+    error_text = str(error)
+    db.update_job(job_id, status=f"{stage_name}_failed", error_message=error_text)
+    return error_text
+
+
+def _exit_stage_failed(job_id: str, stage_name: str, error: object, title: str) -> None:
+    error_text = _mark_stage_failed(job_id, stage_name, error)
+    console.print()
+    console.print(f"[bold red]{title} Failed![/bold red]")
+    console.print(f"[dim]Reason:[/dim] {error_text}")
+    raise typer.Exit(code=1)
+
+
 def _save_metadata(job_id: str, metadata_payload: dict) -> Path:
     metadata_dir = get_job_dir(job_id) / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
@@ -154,7 +169,11 @@ def _generate_metadata_payload_for_job(job_id: str, job_record, channel: Optiona
     script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), video_mode)
     resolved_channel = _resolve_channel(channel, job_id)
     uploader = YouTubeUploader(mock=mock, channel=resolved_channel)
-    script_text = script_data.get("narration", "")
+    # Mock metadata is used by guardrail validation inside later pipeline stages.
+    # Keep it strictly local/deterministic: passing narration triggers AI
+    # description generation, which can hang on the local LLM after script/scene
+    # work has already completed.
+    script_text = None if mock else script_data.get("narration", "")
 
     return uploader.generate_metadata(
         script_title=script_data["title"],
@@ -330,7 +349,10 @@ def _validate_script_subject_before_generation(
         job_id=job_id,
         job_record=job_record,
         channel=resolved_channel,
-        mock=mock,
+        # Subject validation only needs title/description text for guardrails.
+        # Do not let this safety check make a real metadata/LLM call after the
+        # script has already completed, or unattended runs can hang here.
+        mock=True,
     )
     uploader = YouTubeUploader(mock=True, channel=resolved_channel)
     error = uploader.validate_script_for_generation(
@@ -608,8 +630,7 @@ def scene(
     job_record = _load_job_record(job_id)
 
     if not job_record.script_path:
-        console.print("[red]Error: No script found for this job[/red]")
-        raise typer.Exit(code=1)
+        _exit_stage_failed(job_id, "scene", "No script found for this job", "Scene Plan")
 
     video_mode = _resolve_video_mode(job_id=job_id)
     _validate_script_subject_before_generation(
@@ -629,10 +650,13 @@ def scene(
 
     resolved_channel = _resolve_channel(channel, job_id)
     stage = SceneStage(job_id=job_id, mock=scene_mock, channel=resolved_channel)
-    scene_plan = asyncio.run(stage.run(script_data))
-    scene_path = stage.save_scene_plan(scene_plan)
+    try:
+        scene_plan = asyncio.run(stage.run(script_data))
+        scene_path = stage.save_scene_plan(scene_plan)
+    except Exception as exc:
+        _exit_stage_failed(job_id, "scene", exc, "Scene Plan")
 
-    db.update_job(job_id, status="scene_complete", scene_plan_path=str(scene_path))
+    db.update_job(job_id, status="scene_complete", scene_plan_path=str(scene_path), error_message=None)
 
     console.print()
     console.print("[bold green]Scene Plan Complete![/bold green]")
@@ -653,8 +677,7 @@ def tts(
     job_record = _load_job_record(job_id)
 
     if not job_record.scene_plan_path:
-        console.print("[red]Error: No scene plan found for this job[/red]")
-        raise typer.Exit(code=1)
+        _exit_stage_failed(job_id, "tts", "No scene plan found for this job", "TTS")
     _validate_script_subject_before_generation(
         job_id=job_id,
         job_record=job_record,
@@ -667,8 +690,11 @@ def tts(
 
     resolved_channel = _resolve_channel(channel, job_id)
     stage = TTSStage(job_id=job_id, provider=provider, mock=mock, channel=resolved_channel)
-    audio_path = asyncio.run(stage.run(scene_plan))
-    stage.save_audio_path(audio_path)
+    try:
+        audio_path = asyncio.run(stage.run(scene_plan))
+        stage.save_audio_path(audio_path)
+    except Exception as exc:
+        _exit_stage_failed(job_id, "tts", exc, "TTS")
     db.update_job(job_id, status="tts_complete", audio_path=str(audio_path), error_message=None)
 
     console.print()
@@ -688,7 +714,12 @@ def music(
     job_record = _load_job_record(job_id)
 
     stage = BackgroundMusicStage(job_id=job_id)
-    music_path = asyncio.run(stage.run(topic=job_record.topic, audio_path=job_record.audio_path, query=query))
+    try:
+        music_path = asyncio.run(stage.run(topic=job_record.topic, audio_path=job_record.audio_path, query=query))
+    except Exception as exc:
+        _exit_stage_failed(job_id, "music", exc, "Background Music")
+
+    db.update_job(job_id, status="music_complete", error_message=None)
 
     console.print()
     console.print("[bold green]Background Music Complete![/bold green]")
@@ -763,8 +794,7 @@ def subtitles(
     job_record = _load_job_record(job_id)
 
     if not job_record.script_path:
-        console.print("[red]Error: No script found for this job[/red]")
-        raise typer.Exit(code=1)
+        _exit_stage_failed(job_id, "subtitles", "No script found for this job", "Subtitles")
 
     _validate_script_subject_before_generation(
         job_id=job_id,
@@ -775,10 +805,13 @@ def subtitles(
     video_mode = _resolve_video_mode(job_id=job_id)
     script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), video_mode)
     stage = SubtitleStage(job_id=job_id, mock=mock)
-    result = asyncio.run(stage.run(script_data, job_record.audio_path))
-    stage.save_subtitles(result)
+    try:
+        result = asyncio.run(stage.run(script_data, job_record.audio_path))
+        stage.save_subtitles(result)
+    except Exception as exc:
+        _exit_stage_failed(job_id, "subtitles", exc, "Subtitles")
 
-    db.update_job(job_id, status="subtitles_complete", subtitle_path=result.srt_path)
+    db.update_job(job_id, status="subtitles_complete", subtitle_path=result.srt_path, error_message=None)
 
     console.print()
     console.print("[bold green]Subtitles Complete![/bold green]")
@@ -807,11 +840,9 @@ def render(
     job_record = _load_job_record(job_id)
 
     if not job_record.scene_plan_path:
-        console.print("[red]Error: No scene plan found. Run scene stage first.[/red]")
-        raise typer.Exit(code=1)
+        _exit_stage_failed(job_id, "render", "No scene plan found. Run scene stage first.", "Render")
     if not job_record.audio_path:
-        console.print("[red]Error: No audio file found. Run TTS stage first.[/red]")
-        raise typer.Exit(code=1)
+        _exit_stage_failed(job_id, "render", "No audio file found. Run TTS stage first.", "Render")
     _validate_script_subject_before_generation(
         job_id=job_id,
         job_record=job_record,
@@ -834,14 +865,16 @@ def render(
         subtitle_video_mode = _resolve_video_mode(job_id=job_id)
         subtitle_script_data = _normalize_script_for_video_mode(load_json(Path(job_record.script_path)), subtitle_video_mode)
         subtitle_stage = SubtitleStage(job_id=job_id, mock=mock)
-        subtitle_result = asyncio.run(subtitle_stage.run(subtitle_script_data, job_record.audio_path))
-        subtitle_stage.save_subtitles(subtitle_result)
+        try:
+            subtitle_result = asyncio.run(subtitle_stage.run(subtitle_script_data, job_record.audio_path))
+            subtitle_stage.save_subtitles(subtitle_result)
+        except Exception as exc:
+            _exit_stage_failed(job_id, "render", exc, "Render")
         db.update_job(job_id, status="subtitles_complete", subtitle_path=subtitle_result.srt_path)
         job_record = _load_job_record(job_id)
 
     if not job_record.subtitle_path:
-        console.print("[red]Error: No subtitles found. Run subtitles stage first.[/red]")
-        raise typer.Exit(code=1)
+        _exit_stage_failed(job_id, "render", "No subtitles found. Run subtitles stage first.", "Render")
 
     resolved_video_mode = _resolve_video_mode(video_mode=video_mode, job_id=job_id)
 
@@ -883,43 +916,53 @@ def render(
             platform=resolved_platform,
             channel=resolved_channel,
         )
-        result = renderer.run()
-        output_path = result['video_path']
+        try:
+            result = renderer.run()
+            output_path = result['video_path']
+        except Exception as exc:
+            _exit_stage_failed(job_id, "render", exc, "Render")
     else:
-        scenes_data = load_json(Path(job_record.scene_plan_path)).get("scenes", [])
-        scenes = [Scene(**scene) for scene in scenes_data]
+        try:
+            scenes_data = load_json(Path(job_record.scene_plan_path)).get("scenes", [])
+            scenes = [Scene(**scene) for scene in scenes_data]
 
-        renderer = VideoRenderer(job_id=job_id, mock=mock)
-        output_path = renderer.output_dir / "final.mp4"
-        config = VideoRenderConfig(
-            scenes=scenes,
-            audio_path=job_record.audio_path,
-            background_music_path=str(background_music_path) if background_music_path else None,
-            subtitle_path=job_record.subtitle_path,
-            output_path=str(output_path),
-            width=width,
-            height=height,
-        )
-        result = asyncio.run(renderer.run(config))
+            renderer = VideoRenderer(job_id=job_id, mock=mock)
+            output_path = renderer.output_dir / "final.mp4"
+            config = VideoRenderConfig(
+                scenes=scenes,
+                audio_path=job_record.audio_path,
+                background_music_path=str(background_music_path) if background_music_path else None,
+                subtitle_path=job_record.subtitle_path,
+                output_path=str(output_path),
+                width=width,
+                height=height,
+            )
+            result = asyncio.run(renderer.run(config))
+        except Exception as exc:
+            _exit_stage_failed(job_id, "render", exc, "Render")
 
     render_manifest_path = get_job_dir(job_id) / "render_manifest.json"
-    save_json(
-        {
-            "renderer": renderer_type,
-            "video_mode": resolved_video_mode.value,
-            "video_path": result['video_path'] if isinstance(result, dict) else result.video_path,
-            "background_music_included": bool(background_music_path),
-            "background_music_path": str(background_music_path) if background_music_path else None,
-            "rendered_at": datetime.now(UTC).isoformat(),
-        },
-        render_manifest_path,
-    )
+    try:
+        save_json(
+            {
+                "renderer": renderer_type,
+                "video_mode": resolved_video_mode.value,
+                "video_path": result['video_path'] if isinstance(result, dict) else result.video_path,
+                "background_music_included": bool(background_music_path),
+                "background_music_path": str(background_music_path) if background_music_path else None,
+                "rendered_at": datetime.now(UTC).isoformat(),
+            },
+            render_manifest_path,
+        )
 
-    db.update_job(
-        job_id,
-        status="render_complete",
-        video_path=result['video_path'] if isinstance(result, dict) else result.video_path,
-    )
+        db.update_job(
+            job_id,
+            status="render_complete",
+            video_path=result['video_path'] if isinstance(result, dict) else result.video_path,
+            error_message=None,
+        )
+    except Exception as exc:
+        _exit_stage_failed(job_id, "render", exc, "Render")
 
     console.print()
     console.print("[bold green]Rendering Complete![/bold green]")
@@ -940,23 +983,26 @@ def metadata(
     job_record = _load_job_record(job_id)
 
     if not job_record.script_path:
-        console.print("[red]Error: No script found for this job[/red]")
-        raise typer.Exit(code=1)
+        _exit_stage_failed(job_id, "metadata", "No script found for this job", "Metadata")
 
-    metadata_payload = _generate_metadata_payload_for_job(
-        job_id=job_id,
-        job_record=job_record,
-        channel=channel,
-        mock=mock,
-    )
-    metadata_path = _save_metadata(job_id, metadata_payload)
-    covered_news_added = _save_covered_news(job_id, metadata_payload["title"])
-    media_explorer_result = None
-    video_path = getattr(job_record, "video_path", None)
-    if video_path:
-        media_explorer_result = publish_media_explorer_artifacts(job_id, video_path, metadata_payload)
-    else:
-        console.print("[yellow]Warning: No rendered video path found; media explorer publish skipped.[/yellow]")
+    try:
+        metadata_payload = _generate_metadata_payload_for_job(
+            job_id=job_id,
+            job_record=job_record,
+            channel=channel,
+            mock=mock,
+        )
+        metadata_path = _save_metadata(job_id, metadata_payload)
+        covered_news_added = _save_covered_news(job_id, metadata_payload["title"])
+        media_explorer_result = None
+        video_path = getattr(job_record, "video_path", None)
+        if video_path:
+            media_explorer_result = publish_media_explorer_artifacts(job_id, video_path, metadata_payload)
+        else:
+            console.print("[yellow]Warning: No rendered video path found; media explorer publish skipped.[/yellow]")
+        db.update_job(job_id, status="metadata_complete", metadata_path=str(metadata_path), error_message=None)
+    except Exception as exc:
+        _exit_stage_failed(job_id, "metadata", exc, "Metadata")
 
     console.print()
     console.print("[bold green]Metadata Complete![/bold green]")
@@ -1295,13 +1341,16 @@ def run(
                 music(job_id=job_id)
             except Exception as exc:
                 console.print(f"[yellow]Background music skipped: {exc}[/yellow]")
+        # Generate subtitles before images. Subtitle generation retimes scenes
+        # from the real narration VTT/audio; images must be planned from that
+        # final scene timing instead of the scene stage's pre-TTS estimates.
+        subtitles(job_id=job_id, mock=media_stage_mock)
         images(
             job_id=job_id,
             mock=media_stage_mock,
             placeholder_only=placeholder_images,
             allow_placeholder_images=allow_placeholder_images,
         )
-        subtitles(job_id=job_id, mock=media_stage_mock)
 
         # Render stage - supports ffmpeg, remotion, or both
         renderers_to_run = [renderer] if renderer != "both" else ["remotion", "ffmpeg"]

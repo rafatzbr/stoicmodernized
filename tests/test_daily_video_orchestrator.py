@@ -12,6 +12,191 @@ def load_daily_orchestrator():
     return module
 
 
+def test_daily_orchestrator_retries_transient_script_generation_failure(monkeypatch, tmp_path):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
+    agent_dir = tmp_path / "agent-notes"
+    agent_dir.mkdir()
+    monkeypatch.setattr(orchestrator, "AGENT_DIR", agent_dir)
+
+    commands: list[list[str]] = []
+
+    def fake_agent(profile, prompt, note_name, *, timeout=orchestrator.AGENT_TIMEOUT):
+        return "PASS"
+
+    def fake_run_cmd(args, *, timeout, env=None, check=True):
+        commands.append(list(args))
+        stage = args[3]
+        topic_or_job = args[4]
+        if stage == "research":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-transient\n", stderr=None)
+        if stage == "script" and topic_or_job == "job-transient" and len([cmd for cmd in commands if cmd[3] == "script"]) == 1:
+            return subprocess.CompletedProcess(
+                args,
+                1,
+                stdout="[ScriptStage] LLM call failed: \n\nScript Generation Failed!\nReason: Script generation failed:\n",
+                stderr=None,
+            )
+        if stage == "script" and topic_or_job == "job-transient":
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        raise AssertionError(f"unexpected command: {args}")
+
+    monkeypatch.setattr(orchestrator, "agent", fake_agent)
+    monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+
+    job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
+        "When a Password Reset Blocks the Login You Need",
+        {"ideas": [{"title": "When a Password Reset Blocks the Login You Need"}]},
+    )
+
+    assert job_id == "job-transient"
+    assert accepted_topic == "When a Password Reset Blocks the Login You Need"
+    assert [cmd[3:5] for cmd in commands] == [
+        ["research", "When a Password Reset Blocks the Login You Need"],
+        ["script", "job-transient"],
+        ["script", "job-transient"],
+    ]
+    assert (agent_dir / "04-script-transient-retry-attempt-1-1.txt").exists()
+
+
+def test_daily_orchestrator_uses_bounded_script_stage_timeout(monkeypatch, tmp_path):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
+    agent_dir = tmp_path / "agent-notes"
+    agent_dir.mkdir()
+    monkeypatch.setattr(orchestrator, "AGENT_DIR", agent_dir)
+    monkeypatch.setattr(orchestrator, "SCRIPT_STAGE_TIMEOUT", 17)
+
+    observed_timeouts: list[tuple[str, int]] = []
+
+    def fake_agent(profile, prompt, note_name, *, timeout=orchestrator.AGENT_TIMEOUT):
+        return "PASS"
+
+    def fake_run_cmd(args, *, timeout, env=None, check=True):
+        stage = args[3]
+        observed_timeouts.append((stage, timeout))
+        if stage == "research":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-bounded\n", stderr=None)
+        if stage == "script":
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        raise AssertionError(f"unexpected command: {args}")
+
+    monkeypatch.setattr(orchestrator, "agent", fake_agent)
+    monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+
+    job_id, _ = orchestrator.research_and_script_with_subject_retries(
+        "When a Password Reset Blocks the Login You Need",
+        {"ideas": [{"title": "When a Password Reset Blocks the Login You Need"}]},
+    )
+
+    assert job_id == "job-bounded"
+    assert observed_timeouts == [("research", orchestrator.STAGE_TIMEOUT), ("script", 17)]
+
+
+def test_daily_orchestrator_recovers_script_timeout_with_deterministic_fallback(monkeypatch, tmp_path):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
+    agent_dir = tmp_path / "agent-notes"
+    agent_dir.mkdir()
+    monkeypatch.setattr(orchestrator, "AGENT_DIR", agent_dir)
+
+    script_envs: list[dict | None] = []
+
+    def fake_agent(profile, prompt, note_name, *, timeout=orchestrator.AGENT_TIMEOUT):
+        return "PASS"
+
+    def fake_run_cmd(args, *, timeout, env=None, check=True):
+        stage = args[3]
+        if stage == "research":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-timeout\n", stderr=None)
+        if stage == "script":
+            script_envs.append(env)
+            if len(script_envs) == 1:
+                return subprocess.CompletedProcess(args, 124, stdout="[timeout 17s] script\n", stderr=None)
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        raise AssertionError(f"unexpected command: {args}")
+
+    monkeypatch.setattr(orchestrator, "agent", fake_agent)
+    monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+
+    job_id, _ = orchestrator.research_and_script_with_subject_retries(
+        "When a Password Reset Blocks the Login You Need",
+        {"ideas": [{"title": "When a Password Reset Blocks the Login You Need"}]},
+    )
+
+    assert job_id == "job-timeout"
+    assert script_envs[0] is None
+    fallback_env = script_envs[1]
+    assert fallback_env is not None
+    assert fallback_env["STOIC_FORCE_DETERMINISTIC_SCRIPT"] == "true"
+    assert (agent_dir / "04-script-timeout-attempt-1.txt").exists()
+
+
+def test_daily_orchestrator_continues_when_timeout_fallback_hits_subject_guardrail(monkeypatch, tmp_path):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
+    agent_dir = tmp_path / "agent-notes"
+    agent_dir.mkdir()
+    monkeypatch.setattr(orchestrator, "AGENT_DIR", agent_dir)
+
+    commands: list[list[str]] = []
+    script_envs: list[dict | None] = []
+
+    def fake_agent(profile, prompt, note_name, *, timeout=orchestrator.AGENT_TIMEOUT):
+        return "PASS"
+
+    def fake_run_cmd(args, *, timeout, env=None, check=True):
+        commands.append(list(args))
+        stage = args[3]
+        topic_or_job = args[4]
+        if stage == "research" and topic_or_job == "When a Coworker Takes Credit in the Meeting, Ask One Clean Question":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-duplicate\n", stderr=None)
+        if stage == "script" and topic_or_job == "job-duplicate":
+            script_envs.append(env)
+            if len(script_envs) == 1:
+                return subprocess.CompletedProcess(args, 124, stdout="[timeout 240s] script\n", stderr=None)
+            return subprocess.CompletedProcess(
+                args,
+                1,
+                stdout=(
+                    "Script Subject Validation Failed!\n"
+                    "Reason: Upload blocked by duplicate-content guardrail: this video is too similar\n"
+                ),
+                stderr=None,
+            )
+        if stage == "research" and topic_or_job == "When the Build Cache Breaks the Deployment Twice":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-recovered\n", stderr=None)
+        if stage == "script" and topic_or_job == "job-recovered":
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        raise AssertionError(f"unexpected command: {args}")
+
+    monkeypatch.setattr(orchestrator, "agent", fake_agent)
+    monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+
+    job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
+        "When a Coworker Takes Credit in the Meeting, Ask One Clean Question",
+        {"ideas": []},
+        max_attempts=2,
+    )
+
+    assert job_id == "job-recovered"
+    assert accepted_topic == "When the Build Cache Breaks the Deployment Twice"
+    assert [cmd[3:5] for cmd in commands] == [
+        ["research", "When a Coworker Takes Credit in the Meeting, Ask One Clean Question"],
+        ["script", "job-duplicate"],
+        ["script", "job-duplicate"],
+        ["research", "When the Build Cache Breaks the Deployment Twice"],
+        ["script", "job-recovered"],
+    ]
+    assert script_envs[1] is not None
+    assert script_envs[1]["STOIC_FORCE_DETERMINISTIC_SCRIPT"] == "true"
+    assert (agent_dir / "04-script-fallback-rejection-attempt-1.txt").exists()
+
+
 def test_daily_orchestrator_asks_whiskers_for_new_subject_after_script_guardrail(monkeypatch, tmp_path):
     orchestrator = load_daily_orchestrator()
     monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
@@ -65,16 +250,15 @@ def test_daily_orchestrator_asks_whiskers_for_new_subject_after_script_guardrail
     )
 
     assert job_id == "job-accepted"
-    assert accepted_topic == "Handle Interruptions Without Losing Your Place"
-    assert any("same-month subject guardrail" in prompt for prompt in asked_prompts)
-    assert any("new Stoic Modernized video subject" in prompt for prompt in asked_prompts)
+    assert accepted_topic == "When the Build Cache Breaks the Deployment Twice"
+    assert any("same-month subject guardrail" in prompt for prompt in asked_prompts) is False
     assert [cmd[3:5] for cmd in commands] == [
         ["research", "How to Stay Calm When Your Boss Changes Priorities"],
         ["script", "job-rejected"],
-        ["research", "Handle Interruptions Without Losing Your Place"],
+        ["research", "When the Build Cache Breaks the Deployment Twice"],
         ["script", "job-accepted"],
     ]
-    assert (agent_dir / "04-whiskers-subject-retry-1.md").exists()
+    assert (agent_dir / "04-deterministic-fallback-attempt-2.txt").exists()
 
 
 def test_daily_orchestrator_keeps_valid_fresh_whiskers_retry_topic_outside_ledger(monkeypatch, tmp_path):
@@ -123,11 +307,11 @@ def test_daily_orchestrator_keeps_valid_fresh_whiskers_retry_topic_outside_ledge
     )
 
     assert job_id == "job-accepted"
-    assert accepted_topic == "How to Stay Calm When a Client Questions Your Work"
+    assert accepted_topic == "When the Build Cache Breaks the Deployment Twice"
     assert [cmd[3:5] for cmd in commands] == [
         ["research", "How to Stay Calm When Your Boss Changes Priorities"],
         ["script", "job-rejected"],
-        ["research", "How to Stay Calm When a Client Questions Your Work"],
+        ["research", "When the Build Cache Breaks the Deployment Twice"],
         ["script", "job-accepted"],
     ]
 
@@ -232,7 +416,8 @@ def test_daily_orchestrator_rejects_research_validated_topic_already_rejected(mo
 
     assert job_id == "job-status"
     assert accepted_topic == "When the Status Update Wants a Soft Exaggeration"
-    assert any("already rejected validated topic" in p for p in asked_prompts)
+    assert not any("already rejected validated topic" in p for p in asked_prompts)
+    assert (agent_dir / "04-deterministic-fallback-attempt-2.txt").exists()
 
 
 def test_daily_orchestrator_preflights_duplicate_topic_before_research(monkeypatch, tmp_path):
@@ -325,6 +510,20 @@ def test_daily_orchestrator_recognizes_boss_pressure_guardrail_rejection():
     assert orchestrator.is_subject_rejection_output(output) is True
 
 
+def test_daily_orchestrator_recognizes_research_quality_guardrail_rejection():
+    orchestrator = load_daily_orchestrator()
+
+    output = (
+        "[ResearchStage] Research result rejected: When a Coworker Takes Credit in the Meeting\n"
+        "[ResearchStage] Reason: research quality guardrail: sources are generic Stoic/self-help "
+        "material, not a concrete workplace mechanism. Research a specific operational trigger "
+        "before scripting.\n"
+        "Research stage failed: No research topic passed validation."
+    )
+
+    assert orchestrator.is_subject_rejection_output(output) is True
+
+
 def test_daily_orchestrator_rejects_malformed_replacement_topic_before_research():
     orchestrator = load_daily_orchestrator()
 
@@ -369,7 +568,7 @@ def test_daily_orchestrator_falls_back_to_concrete_operational_lane_when_ledger_
     assert orchestrator.topic_quality_rejection_reason(topic) is None
 
 
-def test_daily_orchestrator_fallback_includes_coworker_relations_lane(monkeypatch):
+def test_daily_orchestrator_fallback_pool_is_mechanism_led(monkeypatch):
     orchestrator = load_daily_orchestrator()
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
     monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
@@ -378,8 +577,94 @@ def test_daily_orchestrator_fallback_includes_coworker_relations_lane(monkeypatc
     topic = orchestrator.choose_fallback_topic({"ideas": []}, blocked[:-1])
 
     assert topic == blocked[-1]
-    assert "coworker" in topic.lower() or "peer" in topic.lower()
     assert orchestrator.topic_quality_rejection_reason(topic) is None
+    assert orchestrator.topic_research_specificity_rejection_reason(topic) is None
+
+
+def test_daily_orchestrator_hard_fallback_uses_research_specific_mechanism(monkeypatch):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: "blocked")
+    monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+
+    blocked = [title for lane in orchestrator.CURATED_OPERATIONAL_FALLBACK_TOPICS.values() for title in lane]
+    topic = orchestrator.choose_fallback_topic({"ideas": []}, blocked)
+
+    assert topic == "When the Project Status Update Needs One Clear Number"
+    assert orchestrator.topic_quality_rejection_reason(topic) is None
+    assert orchestrator.topic_research_specificity_rejection_reason(topic) is None
+    assert orchestrator.topic_sourceability_rejection_reason(topic) is None
+
+
+def test_daily_orchestrator_rejects_low_confidence_unattended_source_topics():
+    orchestrator = load_daily_orchestrator()
+
+    assert orchestrator.topic_sourceability_rejection_reason("When the Source Date Range Is Missing")
+    assert orchestrator.topic_sourceability_rejection_reason("When the Printer Jam Blocks the Signed Form")
+    assert orchestrator.topic_sourceability_rejection_reason("When the Dashboard Filter Hides the Real Number") is None
+
+
+def test_daily_orchestrator_uses_deterministic_fallback_after_research_quality_rejection(monkeypatch, tmp_path):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
+    agent_dir = tmp_path / "agent-notes"
+    agent_dir.mkdir()
+    monkeypatch.setattr(orchestrator, "AGENT_DIR", agent_dir)
+
+    commands: list[list[str]] = []
+    agent_calls: list[str] = []
+
+    def fake_agent(profile, prompt, note_name, *, timeout=orchestrator.AGENT_TIMEOUT):
+        agent_calls.append(note_name)
+        return "PASS"
+
+    def fake_run_cmd(args, *, timeout, env=None, check=True):
+        commands.append(list(args))
+        stage = args[3]
+        topic_or_job = args[4]
+        if stage == "research" and topic_or_job == "When the Approval Queue Goes Silent":
+            return subprocess.CompletedProcess(
+                args,
+                1,
+                stdout=(
+                    "[ResearchStage] Reason: research quality guardrail: sources are generic "
+                    "Stoic/self-help material, not a concrete workplace mechanism."
+                ),
+                stderr=None,
+            )
+        if stage == "research" and topic_or_job == "When the Dashboard Filter Hides the Real Number":
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-dashboard\n", stderr=None)
+        if stage == "script" and topic_or_job == "job-dashboard":
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        raise AssertionError(f"unexpected command: {args}")
+
+    monkeypatch.setattr(orchestrator, "agent", fake_agent)
+    monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+    monkeypatch.setattr(
+        orchestrator,
+        "fallback_titles_by_lane",
+        lambda context: ["When the Dashboard Filter Hides the Real Number"],
+    )
+
+    job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
+        "When the Approval Queue Goes Silent",
+        {"ideas": []},
+        max_attempts=3,
+    )
+
+    assert job_id == "job-dashboard"
+    assert accepted_topic == "When the Dashboard Filter Hides the Real Number"
+    assert "04-whiskers-subject-retry-1" not in agent_calls
+    assert (agent_dir / "04-deterministic-fallback-attempt-2.txt").exists()
+
+
+def test_daily_orchestrator_rejects_generic_self_help_fallback_topics():
+    orchestrator = load_daily_orchestrator()
+
+    assert orchestrator.topic_research_specificity_rejection_reason("When the Weekend Message Pulls You Back In")
+    assert orchestrator.topic_research_specificity_rejection_reason("When the Client Asks for One More Revision")
+    assert orchestrator.topic_research_specificity_rejection_reason("When a Password Reset Blocks the Login You Need") is None
 
 
 def test_daily_orchestrator_replacement_prompt_lists_recently_blocked_topics(monkeypatch):
@@ -409,6 +694,17 @@ def test_daily_orchestrator_topic_prompt_names_coworker_grievance_lane():
 
     assert "coworker" in prompt.lower()
     assert "grievance" in prompt.lower()
+
+
+def test_daily_orchestrator_topic_prompt_includes_tiktok_stats_steering():
+    orchestrator = load_daily_orchestrator()
+
+    prompt = orchestrator.format_ledger_topic_prompt({"ideas": []})
+
+    assert "TikTok stats steering" in prompt
+    assert "specific workplace trigger -> internal spiral -> one calm action" in prompt
+    assert "Fear Of Looking Like A Self Promoter" in prompt
+    assert "10:30-11:30 AM" in prompt
 
 
 def test_daily_orchestrator_topic_prompt_explains_underused_umbrellas_and_slate():
@@ -443,3 +739,38 @@ def test_daily_orchestrator_topic_prompt_explains_underused_umbrellas_and_slate(
     assert "attention_distraction" in prompt
     assert "generate a private slate" in prompt.lower()
     assert "subject_umbrella=loss_of_control" in prompt
+
+
+def test_daily_orchestrator_topic_prompt_includes_notion_pipeline_ideas():
+    orchestrator = load_daily_orchestrator()
+
+    prompt = orchestrator.format_ledger_topic_prompt(
+        {
+            "notion_ideas": [
+                {
+                    "title": "When Your Coworker Turns Feedback Into a Status Game",
+                    "status": "Idea",
+                    "platforms": ["YouTube", "Facebook"],
+                    "notes": "User-provided pipeline idea",
+                }
+            ],
+            "ideas": [],
+        }
+    )
+
+    assert "Notion Content Pipeline candidates" in prompt
+    assert "high-priority user-generated ideas" in prompt
+    assert "When Your Coworker Turns Feedback Into a Status Game" in prompt
+
+
+def test_daily_orchestrator_ledger_titles_prioritizes_notion_pipeline_ideas():
+    orchestrator = load_daily_orchestrator()
+
+    titles = orchestrator.ledger_titles(
+        {
+            "notion_ideas": [{"title": "Notion First"}],
+            "ideas": [{"title": "Ledger Second"}],
+        }
+    )
+
+    assert titles[:2] == ["Notion First", "Ledger Second"]

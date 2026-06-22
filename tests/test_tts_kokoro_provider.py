@@ -5,7 +5,7 @@ import types
 import pytest
 
 from src.config import Settings, TTSProvider
-from src.stages.tts import KokoroTTSAudio, TTSStage
+from src.stages.tts import EdgeTTSAudio, KokoroTTSAudio, TTSStage
 
 
 def test_kokoro_provider_config_is_available() -> None:
@@ -98,6 +98,40 @@ async def test_kokoro_stage_uses_kokoro_specific_speed(
     await stage.run({"scenes": [{"narration_segment": "Speak at the channel pace."}]})
 
     assert observed["speed"] == 0.66
+
+
+def test_edge_tts_prefers_active_python_module_over_stale_path_wrapper(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import asyncio
+    import src.stages.tts as tts_module
+
+    calls = []
+
+    monkeypatch.setattr(tts_module.importlib.util, "find_spec", lambda name: object() if name == "edge_tts" else None)
+    monkeypatch.setattr(tts_module.shutil, "which", lambda binary: "/home/rafatz/.local/bin/edge-tts")
+
+    def fake_run(cmd, check, capture_output, timeout):
+        calls.append((cmd, check, capture_output, timeout))
+        output_path = Path(cmd[cmd.index("--write-media") + 1])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"fake edge mp3")
+        return None
+
+    monkeypatch.setattr(tts_module.subprocess, "run", fake_run)
+
+    audio = EdgeTTSAudio(voice="en-US-ChristopherNeural", speed=1.0)
+    output = tmp_path / "narration.mp3"
+    path = asyncio.run(audio.generate_audio("One calm sentence.", output))
+
+    assert path == output
+    assert output.read_bytes() == b"fake edge mp3"
+    cmd, check, capture_output, timeout = calls[0]
+    assert cmd[:3] == [sys.executable, "-m", "edge_tts"]
+    assert "/home/rafatz/.local/bin/edge-tts" not in cmd
+    assert check is True
+    assert capture_output is True
+    assert timeout == 300
 
 
 def test_kokoro_audio_invokes_configured_command(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

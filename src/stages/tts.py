@@ -1,9 +1,11 @@
 """Text-to-speech stage module."""
 
+import importlib.util
 import json
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -28,19 +30,28 @@ class EdgeTTSAudio(TTSAudioInterface):
         self.voice = voice
         self.speed = speed
 
-    async def generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
-        import shutil
+    def _edge_tts_command_prefix(self) -> list[str]:
+        """Return an Edge TTS invocation bound to the active Python env when possible.
 
+        Some hosts have a stale ~/.local/bin/edge-tts wrapper with a hard-coded
+        /usr/bin/python3 shebang while the package is installed in the project
+        virtualenv. Prefer `sys.executable -m edge_tts` so the CLI uses the same
+        interpreter that is running this pipeline.
+        """
+        if importlib.util.find_spec("edge_tts") is not None:
+            return [sys.executable, "-m", "edge_tts"]
         binary = shutil.which("edge-tts")
         if not binary:
             raise RuntimeError("edge-tts is not installed or not on PATH")
+        return [binary]
 
+    async def generate_audio(self, text: str, output_path: Path, **kwargs) -> Path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         rate_percent = int(round((self.speed - 1.0) * 100))
         rate = f"{rate_percent:+d}%"
 
         cmd = [
-            binary,
+            *self._edge_tts_command_prefix(),
             "--voice",
             kwargs.get("voice", self.voice),
             "--rate",

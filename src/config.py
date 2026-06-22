@@ -168,6 +168,7 @@ class Settings(BaseSettings):
     local_script_model: Optional[str] = None
     local_script_max_tokens: int = 1800
     local_script_temperature: float = 0.7
+    local_script_timeout_seconds: float = 30.0
     local_script_min_section_words: int = 8
 
     local_image_prompt_model: Optional[str] = None

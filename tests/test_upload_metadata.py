@@ -37,6 +37,41 @@ def test_load_steering_context_from_script_artifact(tmp_path: Path) -> None:
     assert steering["ledger_strategy"]["packaging_angle"] == "identity-level anxiety"
 
 
+def test_load_steering_context_falls_back_to_research_artifact(tmp_path: Path) -> None:
+    job_dir = tmp_path / "job"
+    (job_dir / "script").mkdir(parents=True, exist_ok=True)
+    (job_dir / "research").mkdir(parents=True, exist_ok=True)
+    (job_dir / "script" / "script.json").write_text(
+        json.dumps({"title": "When the Spreadsheet Formula Changes the Total"}),
+        encoding="utf-8",
+    )
+    (job_dir / "research" / "research.json").write_text(
+        json.dumps(
+            {
+                "ledger_packet": {"packaging_angle": "concrete workplace pain with an inner-state payoff"},
+                "whiskers_handoff": {
+                    "viewer_problem": "A modern worker feels pressure but keeps giving that pressure control over attention and judgment.",
+                    "stoic_move": "Pause, separate what is under your control, and choose one deliberate action.",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    uploader = YouTubeUploader(mock=True)
+    steering = uploader._load_steering_context(str(job_dir))
+    description = uploader._generate_default_description(
+        "When the Spreadsheet Formula Changes the Total",
+        [],
+        steering_context=steering,
+    )
+
+    assert steering["whiskers_handoff"]["viewer_problem"].startswith("A modern worker feels pressure")
+    hashtags = re.findall(r"(?<!\w)#\w+", description)
+    assert len(hashtags) > 2
+    assert any(tag in hashtags for tag in ["#focuswork", "#calmfocus", "#attentioncontrol"])
+
+
 def test_topic_umbrella_tokens_do_not_misclassify_calendar_or_printer_as_loss_of_control() -> None:
     uploader = YouTubeUploader(mock=True, channel=Channel.STOIC_MODERNIZED)
 
@@ -67,6 +102,39 @@ def test_generate_default_description_uses_steering_context() -> None:
     assert "Name what is in your control before reacting" in description
     assert "@stoic-modernized" in description
     assert "#stoicism" in description
+
+
+def test_ai_description_uses_short_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    import requests
+    import src.stages.upload as upload_module
+
+    uploader = YouTubeUploader(mock=False)
+    seen: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {"choices": [{"message": {"content": "Short description."}}]}
+
+    def fake_post(url, json=None, timeout=None):
+        seen["url"] = url
+        seen["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(upload_module.settings, "local_llm_timeout_seconds", 300.0)
+    monkeypatch.setattr(requests, "post", fake_post)
+
+    description = uploader._generate_description_with_ai(
+        title="When the Spreadsheet Formula Changes the Total",
+        chapters=[],
+        script_text="A short narration.",
+    )
+
+    assert description is not None
+    assert description.startswith("Short description.")
+    assert seen["timeout"] == 20.0
 
 
 def test_generate_tags_adds_subject_specific_tags() -> None:

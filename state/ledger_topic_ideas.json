@@ -1,29 +1,29 @@
 {
-  "generated_at": "2026-06-15T08:29:33.928037+00:00",
+  "generated_at": "2026-06-21T06:30:15.384083+00:00",
   "niche": "stoicism for modern workers",
-  "strategy_generated_at": "2026-06-15T08:29:33.926411+00:00",
+  "strategy_generated_at": "2026-06-21T06:30:15.382483+00:00",
   "source_files": [
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-07.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-07.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-07.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-15.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-15.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-15.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-21.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-21.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-21.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-21.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-21.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-21.json",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.md",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.json"
   ],
   "metric_signals": {
     "source_count": 9,
     "platform": {
-      "youtube_shorts_views": 1291.0,
-      "youtube_search_minutes": 3.0,
-      "mobile_view_share": 0.865,
-      "unsubscribed_view_share": 0.961,
-      "subscribers_gained": 1.0,
-      "facebook_video_views": 308.0,
-      "facebook_post_engagements": 23.0,
-      "facebook_reach": 992.0
+      "youtube_shorts_views": 726.0,
+      "youtube_search_minutes": 2.0,
+      "mobile_view_share": 0.87,
+      "unsubscribed_view_share": 0.989,
+      "subscribers_gained": 0.0,
+      "facebook_video_views": 0.0,
+      "facebook_post_engagements": 0.0,
+      "facebook_reach": 0.0
     },
     "winning_themes": [
       "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
@@ -31,23 +31,22 @@
       "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
       "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
       "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
-      "conflict",
       "discipline systems",
       "control"
     ],
     "youtube_top_titles": [
-      "Stop Busy Idleness At Work | Stoic Modernized",
-      "Your Coworkers Disrespect Only Wins If You React | Stoic Modernized",
-      "Your Gossip Trigger Only Wins If You React | Stoic Modernized",
+      "Why Chasing Promotion Gets Worse When You Rush | Stoic Modernized",
       "Stop Defending When Criticized | Stoic Modernized",
-      "Calm Is Not A Trait It Is A Skill | Stoic Modernized"
+      "You Do Not Need Everyone at Work to Like You | Stoic Modernized",
+      "Why Your 11-Minute Focus Cycle Is Broken | Stoic Modernized",
+      "Fix One Missing Checklist Step | Stoic Modernized"
     ],
     "facebook_top_titles": [
-      "You've done the work, but fear of looking arrogant silences you. Yet your voice is the dif…",
-      "When the Reorg Rumor Steals Your Focus If when the reorg rumor steals your focus, this vid…",
-      "Your Focus Dies When The Calendar Dings If a modern worker feels pressure but keeps giving…",
-      "Why Your Compliance Upload Fails When You Rush The VPN drops the moment you hit upload, tr…",
-      "Why Password Reset Loops Get Worse When You Rush Finance locks you out. The link expires. …"
+      "Close The Banner Before It Owns Your Morning A notification banner appears during your foc…",
+      "Why Stuck Approvals Get Worse When You Rush Your invoice is stuck after the first approval…",
+      "If a modern worker feels pressure but keeps giving that pressure control over attention an…",
+      "A notification banner appears during your focus block, and the workday starts bending arou…",
+      "Commute Hour, Clear Choice Company policy takes another commute hour. The Stoic move is no…"
     ],
     "tiktok_top_titles": [
       "Your Focus Dies When The Calendar Dings If a modern worker feels pressure but keeps giving that pressure control over attention...",

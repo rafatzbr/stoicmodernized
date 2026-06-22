@@ -5,6 +5,7 @@ import unittest.mock
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
 import pytest
 
 from src.config import VideoMode
@@ -74,6 +75,51 @@ class TestScriptStage:
         assert "conversion" in prompt
 
     @pytest.mark.asyncio
+    async def test_force_deterministic_script_env_bypasses_slow_council(self, monkeypatch) -> None:
+        stage = ScriptStage(job_id="job-force-deterministic", mock=False, video_mode=VideoMode.SHORT)
+        monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
+
+        async def fail_if_called(*args, **kwargs):
+            raise AssertionError("council workflow should be bypassed")
+
+        monkeypatch.setattr(stage, "_run_council_workflow", fail_if_called)
+
+        script = await stage.run(
+            {
+                "topic": "When the Spreadsheet Formula Changes the Total",
+                "key_insights": ["formula changes can distort a trusted total"],
+                "workplace_applications": ["trace the formula before assigning blame"],
+            }
+        )
+
+        assert script.title == "When the Spreadsheet Formula Changes the Total"
+        assert "trace the formula before assigning blame" in script.narration
+        assert "Stoic Modernized." not in script.narration
+        assert script.cta == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+
+    @pytest.mark.asyncio
+    async def test_force_deterministic_script_sanitizes_source_fragments(self, monkeypatch) -> None:
+        stage = ScriptStage(job_id="job-force-deterministic-sanitize", mock=False, video_mode=VideoMode.SHORT)
+        monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
+
+        script = await stage.run(
+            {
+                "topic": "When the Spreadsheet Formula Changes the Total",
+                "key_insights": [
+                    "[microsoft-excel] user // score: 1",
+                    "Search results for 'When the Spreadsheet Formula Changes the Total' emphasize practical emotional regulation",
+                ],
+                "workplace_applications": ["http://example.com generic source"],
+            }
+        )
+
+        assert "score:" not in script.narration
+        assert "http" not in script.narration
+        assert "Search results" not in script.narration
+        assert "this trigger is only one input, not the whole verdict" in script.narration
+        assert "spreadsheet, queue, review, or deadline" not in script.narration
+
+    @pytest.mark.asyncio
     async def test_call_local_llm_strips_fences(self) -> None:
         stage = ScriptStage(job_id="job-1", mock=False, video_mode=VideoMode.SHORT)
 
@@ -119,6 +165,80 @@ class TestScriptStage:
 
         assert parsed["title"] == "Specific Title"
         assert parsed["cta"] == "Specific cta"
+
+    @pytest.mark.asyncio
+    async def test_call_local_llm_retries_empty_content_payload(self) -> None:
+        stage = ScriptStage(job_id="job-empty-retry", mock=False, video_mode=VideoMode.SHORT)
+
+        empty_resp = unittest.mock.MagicMock()
+        empty_resp.raise_for_status = unittest.mock.MagicMock()
+        empty_resp.json = unittest.mock.MagicMock(return_value={"choices": [{"message": {"content": ""}}]})
+
+        good_resp = unittest.mock.MagicMock()
+        good_resp.raise_for_status = unittest.mock.MagicMock()
+        good_resp.json = unittest.mock.MagicMock(
+            return_value={"choices": [{"message": {"content": '{"title":"Recovered","hook":"Hook","narration":"Narration","chapters":[],"cta":"CTA"}'}}]}
+        )
+
+        mock_client = unittest.mock.MagicMock()
+        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
+        mock_client.post = unittest.mock.AsyncMock(side_effect=[empty_resp, good_resp])
+
+        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client), unittest.mock.patch("asyncio.sleep", new=unittest.mock.AsyncMock()):
+            parsed = await stage._call_local_llm("system", "user", 200)
+
+        assert parsed["title"] == "Recovered"
+        assert mock_client.post.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_call_local_llm_retries_http_transport_failure(self) -> None:
+        stage = ScriptStage(job_id="job-timeout-retry", mock=False, video_mode=VideoMode.SHORT)
+
+        good_resp = unittest.mock.MagicMock()
+        good_resp.raise_for_status = unittest.mock.MagicMock()
+        good_resp.json = unittest.mock.MagicMock(
+            return_value={"choices": [{"message": {"content": '{"title":"Recovered","hook":"Hook","narration":"Narration","chapters":[],"cta":"CTA"}'}}]}
+        )
+
+        mock_client = unittest.mock.MagicMock()
+        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
+        mock_client.post = unittest.mock.AsyncMock(side_effect=[httpx.ReadTimeout(""), good_resp])
+
+        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client), unittest.mock.patch("asyncio.sleep", new=unittest.mock.AsyncMock()):
+            parsed = await stage._call_local_llm("system", "user", 200)
+
+        assert parsed["title"] == "Recovered"
+        assert mock_client.post.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_call_local_llm_reads_reasoning_content_when_content_is_blank(self) -> None:
+        stage = ScriptStage(job_id="job-reasoning-content", mock=False, video_mode=VideoMode.SHORT)
+
+        mock_resp = unittest.mock.MagicMock()
+        mock_resp.raise_for_status = unittest.mock.MagicMock()
+        mock_resp.json = unittest.mock.MagicMock(
+            return_value={
+                "choices": [
+                    {
+                        "message": {
+                            "content": "",
+                            "reasoning_content": '{"title":"Reasoning Payload","hook":"Hook","narration":"Narration","chapters":[],"cta":"CTA"}',
+                        }
+                    }
+                ]
+            }
+        )
+        mock_client = unittest.mock.MagicMock()
+        mock_client.__aenter__ = unittest.mock.AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = unittest.mock.AsyncMock(return_value=None)
+        mock_client.post = unittest.mock.AsyncMock(return_value=mock_resp)
+
+        with unittest.mock.patch("httpx.AsyncClient", return_value=mock_client):
+            parsed = await stage._call_local_llm("system", "user", 200)
+
+        assert parsed["title"] == "Reasoning Payload"
 
     def test_normalize_council_script_payload_builds_timed_short_narration(self) -> None:
         stage = ScriptStage(job_id="job-3", mock=False, video_mode=VideoMode.SHORT)
@@ -220,6 +340,26 @@ class TestScriptStage:
         )
 
         with pytest.raises(ScriptGenerationError, match="promises to send"):
+            stage._enforce_generated_script_quality(script)
+
+    def test_short_quality_rejects_standalone_brand_sentence(self) -> None:
+        stage = ScriptStage(job_id="job-4-brand-only-reject", mock=False, video_mode=VideoMode.SHORT)
+        script = Script(
+            title="When Numbers Change Fast",
+            hook="The spreadsheet changes and your chest tightens.",
+            narration=(
+                "The spreadsheet changes and your chest tightens. Separate the event from the story before you answer. "
+                "Write the smallest fact you can verify right now, then fix the next true line. "
+                "Do the clear next step, leave a clean record, and let the noise pass without becoming your standard. "
+                "Stoic Modernized. Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
+            ),
+            chapters=[],
+            cta="Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            short_version="short",
+            generated_at=datetime.now(UTC),
+        )
+
+        with pytest.raises(ScriptGenerationError, match="standalone brand-name sentence"):
             stage._enforce_generated_script_quality(script)
 
     def test_parse_script_response_does_not_prepend_hook_to_timed_short_script(self) -> None:

@@ -1,6 +1,8 @@
 """Script generation stage module."""
 
+import asyncio
 import json
+import os
 import re
 from collections import Counter
 from datetime import UTC, datetime
@@ -238,6 +240,9 @@ class ScriptStage:
         whiskers_handoff = research_data.get("whiskers_handoff") if isinstance(research_data.get("whiskers_handoff"), dict) else None
         retry_feedback: str | None = None
         last_error: Exception | None = None
+        if os.environ.get("STOIC_FORCE_DETERMINISTIC_SCRIPT", "").lower() in {"1", "true", "yes"}:
+            self._progress("[ScriptStage] STOIC_FORCE_DETERMINISTIC_SCRIPT enabled; using deterministic emergency script")
+            return self._deterministic_short_script(topic, key_insights, workplace_applications)
 
         for attempt in range(1, 4):
             try:
@@ -254,6 +259,9 @@ class ScriptStage:
             except ScriptGenerationError as e:
                 last_error = e
                 self._progress(f"[ScriptStage] Script generation attempt {attempt} failed: {e}")
+                if "Local LLM call failed" in str(e):
+                    self._progress("[ScriptStage] Local LLM unavailable/slow; using deterministic emergency script instead of stalling unattended run")
+                    return self._deterministic_short_script(topic, key_insights, workplace_applications)
                 if attempt >= 3:
                     raise
                 retry_feedback = self._build_retry_feedback(topic, e)
@@ -495,26 +503,63 @@ class ScriptStage:
         raise last_error or ScriptGenerationError(f"{agent_name} failed to return valid JSON")
 
     async def _call_local_llm(self, system_prompt: str, user_prompt: str, max_tokens: int) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=settings.local_llm_timeout_seconds) as client:
-            response = await client.post(
-                settings.local_llm_base_url,
-                json={
-                    "model": settings.local_script_model or settings.local_llm_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "temperature": settings.local_script_temperature,
-                    "max_tokens": max_tokens,
-                    "chat_template_kwargs": {"enable_thinking": False},
-                },
+        """Call the local LLM and classify transient/blank responses as retryable stage errors."""
+        payload = {
+            "model": settings.local_script_model or settings.local_llm_model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": settings.local_script_temperature,
+            "max_tokens": max_tokens,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+        last_error: Exception | None = None
+        timeout_seconds = max(15.0, float(getattr(settings, "local_script_timeout_seconds", settings.local_llm_timeout_seconds)))
+        for attempt in range(1, 3):
+            try:
+                self._progress(
+                    f"[ScriptStage] Local LLM request attempt {attempt}/2 "
+                    f"(timeout={timeout_seconds:.0f}s, max_tokens={max_tokens})"
+                )
+                async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
+                    response = await asyncio.wait_for(
+                        client.post(settings.local_llm_base_url, json=payload),
+                        timeout=timeout_seconds,
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+                parsed = self._parse_local_llm_json_payload(result)
+                self._progress(f"[ScriptStage] Local LLM request attempt {attempt}/2 succeeded")
+                return parsed
+            except ScriptGenerationError as exc:
+                last_error = exc
+                retryable = "Empty LLM content payload" in str(exc) or "Failed to parse council JSON" in str(exc)
+            except (asyncio.TimeoutError, httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+                last_error = exc
+                retryable = True
+            if attempt >= 2 or not retryable:
+                break
+            self._progress(
+                f"[ScriptStage] Local LLM response attempt {attempt}/2 failed; retrying: "
+                f"{type(last_error).__name__}: {last_error}"
             )
-            response.raise_for_status()
-            result = response.json()
+            await asyncio.sleep(min(2 * attempt, 5))
+        raise ScriptGenerationError(
+            "Local LLM call failed after retries: "
+            f"{type(last_error).__name__ if last_error else 'unknown'}: {last_error or ''}"
+        )
+
+    def _parse_local_llm_json_payload(self, result: dict[str, Any]) -> dict[str, Any]:
         choice = (result.get("choices") or [{}])[0]
         message = choice.get("message") or {}
         content = ""
-        for candidate in (message.get("content"), choice.get("text"), result.get("content")):
+        for candidate in (
+            message.get("content"),
+            message.get("reasoning_content"),
+            choice.get("text"),
+            result.get("content"),
+        ):
             if isinstance(candidate, str) and candidate.strip():
                 content = candidate.strip()
                 break
@@ -1491,6 +1536,9 @@ Output JSON only.
         if self.video_mode == VideoMode.SHORT:
             if word_count < 60 or word_count > 170:
                 issues.append(f"short narration word count out of range: {word_count}")
+            spoken_sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", spoken_narration) if part.strip()]
+            if any(re.fullmatch(r"Stoic Modernized[.!?]?", sentence, flags=re.IGNORECASE) for sentence in spoken_sentences):
+                issues.append("short narration contains standalone brand-name sentence")
             if " you " not in f" {narration_lower} ":
                 issues.append("short narration does not address the viewer directly")
             title_words = len((script.title or "").replace(":", " ").split())
@@ -1594,6 +1642,56 @@ Output JSON only.
         return (
             f"Previous script attempt for approved topic '{topic}' failed validation. "
             "Generate a new script with a materially different title, hook, and narration that stays tightly aligned to the approved topic."
+        )
+
+    def _deterministic_short_script(
+        self,
+        topic: str,
+        key_insights: list[str],
+        workplace_applications: list[str],
+    ) -> Script:
+        """Create a bounded fallback script when local LLM generation is slow/unavailable."""
+        clean_topic = (topic or "the workplace trigger").strip()
+        def safe_fragment(items: list[str], fallback: str) -> str:
+            for item in items:
+                fragment = " ".join(str(item or "").split()).strip().rstrip(".")
+                lower = fragment.lower()
+                if not fragment or len(fragment) > 140:
+                    continue
+                if any(marker in lower for marker in ("//", "score:", "[", "]", "http", "reddit", "stackoverflow", "search results", "search result")):
+                    continue
+                return fragment
+            return fallback
+
+        insight = safe_fragment(key_insights, "this trigger is only one input, not the whole verdict")
+        application = safe_fragment(workplace_applications, "name the next controllable action before reacting")
+        scenario = clean_topic.removeprefix("When ").strip().rstrip(".") or "the work trigger changes the day"
+        scenario_lower = scenario[:1].lower() + scenario[1:]
+        topic_terms = [word for word in re.findall(r"[A-Za-z][A-Za-z'-]{3,}", scenario_lower) if word.lower() not in {"when", "your", "again", "before", "after", "into", "with", "that", "this"}]
+        concrete_detail = ", ".join(dict.fromkeys(topic_terms[:3])) or "the visible facts"
+        narration = (
+            f"When {scenario_lower}, pause before the story takes over. "
+            f"The first Stoic move is to name the exact trigger: {concrete_detail}. "
+            f"Then separate what happened from what your mind is adding about status, blame, or urgency. "
+            f"Write one verifiable fact, one person who needs clarity, and one next step that keeps the work moving. "
+            f"{application}. The useful reminder is simple: {insight}. "
+            f"Calm is not acting untouched. Calm is keeping your judgment clean while the workplace tries to make the moment bigger than it is. "
+            f"Do the clear next step, leave a clean record, and return your attention to the part you can steer."
+        )
+        cta = "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        return Script(
+            title=clean_topic,
+            hook=f"When {clean_topic.removeprefix('When ').lower()}, protect your judgment before you protect your pride.",
+            narration=narration,
+            chapters=[
+                Chapter(title="Name the trigger", timestamp=0.0),
+                Chapter(title="Separate fact from story", timestamp=8.0),
+                Chapter(title="Choose the next controllable action", timestamp=22.0),
+                Chapter(title="Leave a clean record", timestamp=38.0),
+            ],
+            cta=cta,
+            short_version=narration,
+            generated_at=datetime.now(UTC),
         )
 
     def _generate_short_narration(self, topic: str) -> str:
