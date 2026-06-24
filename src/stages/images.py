@@ -968,7 +968,84 @@ def _scene_tags(text: str) -> set[str]:
         tags.add("night_pressure")
     if any(word in text for word in ["notebook", "journal", "write", "pen", "list"]):
         tags.add("writing")
+    if any(word in text for word in ["approval", "validation", "like you", "likes you", "status", "respect", "opinion", "disagree", "feedback"]):
+        tags.add("approval_pressure")
+    if any(word in text for word in ["notification", "phone", "scroll", "doomscroll", "inbox", "slack", "message", "tabs", "attention"]):
+        tags.add("attention_theft")
+    if any(word in text for word in ["boundary", "leave", "overtime", "after hours", "shut down", "weekend", "always on"]):
+        tags.add("boundary")
+    if any(word in text for word in ["replay", "ruminating", "spiral", "meeting in your head", "anxiety", "worry"]):
+        tags.add("rumination")
+    if any(word in text for word in ["next useful action", "one task", "checklist", "priority", "control your part", "what is in your control"]):
+        tags.add("next_action")
     return tags
+
+
+def _stoic_beat(text: str) -> str:
+    if any(word in text for word in ["use this", "practice", "next time", "today", "cta", "subscribe"]):
+        return "application"
+    if any(word in text for word in ["ask", "choose", "put your energy", "control", "response", "decide", "boundary"]):
+        return "principle"
+    if any(word in text for word in ["your heart", "urge", "pressure", "starts", "notification", "pings", "replay", "spiral", "drain"]):
+        return "tension"
+    return "hook"
+
+
+STOIC_VISUAL_BEATS = {
+    "approval_pressure": {
+        "hook": "Glass conference room immediately after a tense project disagreement, one chair pushed back, water glass untouched, blank whiteboard and blurred coworkers beyond glass",
+        "tension": "Office kitchenette edge after a meeting, worker standing apart with coffee untouched, conference room visible down the hall, status pressure shown through distance not dialogue",
+        "principle": "Quiet stairwell landing outside the meeting room, worker holding notebook closed against their side, phone lowered, choosing not to chase approval",
+        "application": "Elevator lobby at the end of the workday, access badge, notebook, and bag visible as the worker exits without checking reactions",
+    },
+    "attention_theft": {
+        "hook": "Morning bus stop with a phone glowing in one hand and unreadable notification shapes reflected in rain glass, city commute behind, no desk",
+        "tension": "Kitchen counter before work with breakfast half-finished, phone face-down beside keys, laptop still closed in another room, attention battle shown through props",
+        "principle": "Apartment entryway with phone placed in a small tray beside keys before the first work block, shoes and coat rack visible, clean practical morning light",
+        "application": "Library table or quiet cafe corner with phone zipped inside a bag while a notebook and single pen sit ready, no laptop hero shot",
+    },
+    "boundary": {
+        "hook": "Office elevator bank at dusk with a worker holding a closed laptop and jacket, empty workstations receding behind glass, end-of-day boundary moment",
+        "tension": "Apartment doorway at night with work bag dropped beside shoes, phone lighting up on a console table but ignored, warm hallway light",
+        "principle": "Laundry room or kitchen sink scene after work, sleeves rolled up, laptop closed on a shelf far behind, life outside work made visible",
+        "application": "Front door threshold with keys, bag, and phone left on a small table, worker stepping into evening light, clean exit from work mode",
+    },
+    "rumination": {
+        "hook": "Bedroom window at night with city lights outside, notebook closed on sill, worker seated off-center with phone dark, no office desk",
+        "tension": "Empty parking garage after work, worker beside car with hands on roof, office lights distant, meeting replay mood without screens",
+        "principle": "Kitchen table late evening with kettle, blank index card, and phone face-down, one concrete next step replacing mental replay",
+        "application": "Early morning sidewalk walk with coffee cup and headphones tucked away, body moving forward after a hard conversation",
+    },
+    "next_action": {
+        "hook": "Messy dining table transformed into a temporary work surface, three scattered papers and one clear index card pulled forward, no generic office",
+        "tension": "Printer corner or supply room with jammed pages and a half-open binder, worker choosing the next physical task instead of spiraling",
+        "principle": "Workshop-style table with one tool, one page, one timer, and phone out of reach, single-action composition",
+        "application": "Small cafe window seat with notebook open to a single blank line, pen uncapped, laptop closed in bag, next useful action made visible",
+    },
+}
+
+
+def _stoic_specific_prompt(text: str, mode: str, rng: random.Random) -> str | None:
+    tags = _scene_tags(text)
+    tag = next((candidate for candidate in STOIC_VISUAL_BEATS if candidate in tags), None)
+    if not tag:
+        return None
+    beat = _stoic_beat(text)
+    base = STOIC_VISUAL_BEATS[tag][beat]
+    camera = {
+        "object_only": "object-led insert shot, no person visible, no hands or arms",
+        "hands_only": "tight hands-and-props frame, face hidden",
+        "over_shoulder": "over-the-shoulder documentary angle, face not visible, location readable",
+        "environment": "wide environmental establishing shot with negative space and concrete props",
+        "person_medium": "single modern worker in frame, not looking at camera, action readable through posture and props",
+    }.get(mode, "documentary editorial framing")
+    lens = rng.choice([
+        "wide contextual frame",
+        "low practical angle near the props",
+        "medium telephoto compression",
+        "close editorial insert",
+    ])
+    return f"{base}, {camera}, {lens}, Stoic Modernized modern-work anxiety scene, varied real-world location, no readable text, no logos, no watermark"
 
 
 def _context_fragments(text: str, rng: random.Random) -> tuple[str, str, str]:
@@ -1091,14 +1168,20 @@ def build_narrative_scene_prompt(
     if _scene_prompt_is_specific(scene_prompt):
         base = _scene_bound_prompt(subject, scene_prompt, narration_segment, overlay)
     else:
-        scene_key = _normalize_scene_key(overlay, scene_prompt, narration_segment)
-        if scene_key:
-            effective_mode = mode
-            if scene_key == "pause first" and mode == "hands_only":
-                effective_mode = "object_only"
-            base = BOUNDARY_SCENE_TEMPLATES[scene_key].get(effective_mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
+        text = _scene_text(subject, scene_prompt, narration_segment, overlay)
+        rng = _scene_rng(subject, scene_prompt, narration_segment, overlay, mode, "stoic")
+        stoic_base = _stoic_specific_prompt(text, mode, rng)
+        if stoic_base:
+            base = stoic_base
         else:
-            base = _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
+            scene_key = _normalize_scene_key(overlay, scene_prompt, narration_segment)
+            if scene_key:
+                effective_mode = mode
+                if scene_key == "pause first" and mode == "hands_only":
+                    effective_mode = "object_only"
+                base = BOUNDARY_SCENE_TEMPLATES[scene_key].get(effective_mode, BOUNDARY_SCENE_TEMPLATES[scene_key]["person_medium"])
+            else:
+                base = _generic_mode_prompt(mode, subject, scene_prompt, narration_segment, overlay)
     if steering_hint:
         return f"{base}, {steering_hint}"
     return base

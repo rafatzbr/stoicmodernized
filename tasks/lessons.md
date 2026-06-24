@@ -5,6 +5,7 @@
 - When generated Stoic images look generic, inspect `images/assets.json` and `images/codex-image.log`; the prompt bridge may be discarding the scene planner's detailed `visual_prompt` even when the scene stage is specific.
 - For image generation, treat a detailed scene planner prompt as the binding shot list. Strip only reusable style/provider boilerplate, then preserve exact subject, location, action, props, workplace stressor, narration beat, and overlay cue.
 - Topic/template fallback prompts are only for weak scene prompts. Do not let broad keywords like "workplace conflict" override a detailed scene into a canned approval-pressure/conference-table template.
+- Correction: even when prompts are concrete, the fallback path can still overuse desk/phone/laptop b-roll. For weak prompts, route by modern-work anxiety type and beat (attention theft, approval pressure, boundaries, rumination, next action) into varied real-world locations: bus stops, apartment entryways, elevators, stairwells, parking garages, laundry rooms, cafes, and kitchens.
 
 ## Stoic Research Repetition Guardrails (June 2026)
 

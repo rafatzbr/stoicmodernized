@@ -59,8 +59,8 @@ def test_approval_pressure_prompt_is_specific_not_generic() -> None:
     )
 
     prompt_lower = prompt.lower()
-    assert "conference table" in prompt_lower or "glass meeting room" in prompt_lower
-    assert any(token in prompt_lower for token in ["pen gripped", "phone face-down", "blank whiteboard"])
+    assert any(token in prompt_lower for token in ["conference room", "stairwell", "elevator lobby", "office kitchenette"])
+    assert any(token in prompt_lower for token in ["coffee untouched", "phone lowered", "blank whiteboard", "access badge"])
     banned = [
         "modern office professional",
         "grounded contemporary office",
@@ -122,3 +122,67 @@ def test_specific_conflict_scene_does_not_trigger_approval_template() -> None:
     assert "before you leave the office" in prompt_lower
     assert "anonymous feedback" not in prompt_lower
     assert "long conference table" not in prompt_lower
+
+
+def test_stoic_prompts_vary_by_modern_work_beat_and_location() -> None:
+    prompts = [
+        build_narrative_scene_prompt(
+            subject="Your Phone Is Stealing Your First Work Block",
+            scene_prompt="attention notification pressure",
+            narration_segment="Your phone pings before the workday starts and your attention is gone.",
+            overlay="Attention Theft",
+            mode="environment",
+        ),
+        build_narrative_scene_prompt(
+            subject="You Do Not Need Everyone At Work To Like You",
+            scene_prompt="approval pressure after disagreement",
+            narration_segment="The urge to chase respect after disagreement drains your energy.",
+            overlay="Approval Pressure",
+            mode="person_medium",
+        ),
+        build_narrative_scene_prompt(
+            subject="When A Work Conflict Follows You Home",
+            scene_prompt="meeting replay anxiety",
+            narration_segment="Your mind starts replaying the meeting in your head at night.",
+            overlay="Replay Loop",
+            mode="over_shoulder",
+        ),
+        build_narrative_scene_prompt(
+            subject="Leave Work At Work",
+            scene_prompt="after hours boundary shut down",
+            narration_segment="Choose a boundary before the office follows you home.",
+            overlay="Boundary",
+            mode="hands_only",
+        ),
+    ]
+
+    joined = "\n".join(prompts).lower()
+    assert len(set(prompts)) == len(prompts)
+    assert "stoic modernized modern-work anxiety scene" in joined
+    assert "varied real-world location" in joined
+    assert any(token in joined for token in ["bus stop", "kitchen counter", "entryway", "library table"])
+    assert any(token in joined for token in ["stairwell", "elevator lobby", "parking garage", "front door threshold"])
+
+    generic_hits = sum(joined.count(token) for token in ["modern office desk", "home workspace", "sitting alone with a laptop and notebook"])
+    assert generic_hits == 0
+
+
+def test_stoic_prompt_topics_choose_different_visual_worlds() -> None:
+    attention = build_narrative_scene_prompt(
+        subject="Your Phone Is Stealing Your First Work Block",
+        scene_prompt="notification attention theft before work",
+        narration_segment="Your phone pings before your first work block.",
+        overlay="Phone Boundary",
+        mode="environment",
+    ).lower()
+    boundary = build_narrative_scene_prompt(
+        subject="Leave Work At Work",
+        scene_prompt="after hours boundary shut down",
+        narration_segment="Choose a boundary before the office follows you home.",
+        overlay="Leave Work",
+        mode="environment",
+    ).lower()
+
+    assert any(token in attention for token in ["bus stop", "kitchen counter", "apartment entryway", "library table"])
+    assert any(token in boundary for token in ["elevator bank", "apartment doorway", "laundry room", "front door threshold"])
+    assert attention != boundary
