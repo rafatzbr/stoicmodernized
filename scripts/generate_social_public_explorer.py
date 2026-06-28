@@ -18,6 +18,7 @@ CHANNEL_JOB_ROOTS = {
     "stoic-modernized": PROJECTS_ROOT / "stoic-modernized" / "output" / "jobs",
     "scam-drills": PROJECTS_ROOT / "scam-drills" / "output" / "jobs",
 }
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm"}
 
 HTML_TEMPLATE = """<!doctype html>
 <html lang=\"en\">
@@ -131,11 +132,22 @@ def ensure_channel_links(
     return linked
 
 
+def directory_contains_video(path: Path) -> bool:
+    """Return true when a job directory contains a rendered video artifact."""
+    if not path.is_dir():
+        return False
+    return any(
+        candidate.is_file() and candidate.suffix.lower() in VIDEO_EXTENSIONS
+        for candidate in path.rglob("*")
+    )
+
+
 def node_for(
     path: Path,
     public_root: Path = PUBLIC_ROOT,
     inherited_title: str | None = None,
     root_children: set[str] | None = None,
+    channel_roots: set[Path] | None = None,
 ) -> dict:
     stat = path.stat()
     rel = path.relative_to(public_root).as_posix() if path != public_root else ""
@@ -156,8 +168,14 @@ def node_for(
         children = sorted(path.iterdir(), key=lambda candidate: (not candidate.is_dir(), candidate.name.lower()))
         if path == public_root and root_children is not None:
             children = [child for child in children if child.name in root_children]
+        if channel_roots and path.resolve() in channel_roots:
+            children = [
+                child
+                for child in children
+                if not child.is_dir() or directory_contains_video(child)
+            ]
         item["children"] = [
-            node_for(child, public_root=public_root, inherited_title=title)
+            node_for(child, public_root=public_root, inherited_title=title, channel_roots=channel_roots)
             for child in children
             if child.name != ".DS_Store"
         ]
@@ -172,8 +190,9 @@ def generate_explorer(
     public_root.mkdir(parents=True, exist_ok=True)
     output = output or public_root / "videos.html"
     linked = ensure_channel_links(public_root=public_root, channel_job_roots=channel_job_roots)
+    channel_roots = {path.resolve() for path in linked.values()}
     tree_json = json.dumps(
-        node_for(public_root, public_root=public_root, root_children=set(linked)),
+        node_for(public_root, public_root=public_root, root_children=set(linked), channel_roots=channel_roots),
         separators=(",", ":"),
         ensure_ascii=False,
     ).replace("</", "<\\/")

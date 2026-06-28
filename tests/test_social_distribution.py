@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 import src.main as main
+from scripts.generate_social_public_explorer import generate_explorer
 from src.stages.social_distribution import SocialDistributionStage, build_social_captions
 
 
@@ -180,6 +181,27 @@ def test_metadata_command_always_publishes_video_to_media_explorer(monkeypatch, 
     assert "grid-template-columns:minmax(0,1fr)" in explorer_html
     assert ".label{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" in explorer_html
     assert ".sub{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" in explorer_html
+
+
+def test_media_explorer_skips_job_directories_without_video(tmp_path: Path) -> None:
+    public_root = tmp_path / "public"
+    jobs_root = tmp_path / "jobs"
+    no_video_job = jobs_root / "job-empty"
+    video_job = jobs_root / "job-video"
+    no_video_job.mkdir(parents=True)
+    video_job.mkdir(parents=True)
+    (no_video_job / "metadata.json").write_text("{}", encoding="utf-8")
+    (video_job / "remotion_output.mp4").write_bytes(b"fake mp4")
+
+    explorer_path = generate_explorer(
+        public_root=public_root,
+        channel_job_roots={"stoic-modernized": jobs_root},
+    )
+
+    explorer_html = explorer_path.read_text(encoding="utf-8")
+    assert "job-video" in explorer_html
+    assert "remotion_output.mp4" in explorer_html
+    assert "job-empty" not in explorer_html
 
 
 def test_distribute_command_updates_job_status(monkeypatch, tmp_path: Path) -> None:

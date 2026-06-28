@@ -954,6 +954,14 @@ def _scene_bound_prompt(subject: str, scene_prompt: str, narration_segment: str,
 
 def _scene_tags(text: str) -> set[str]:
     tags: set[str] = set()
+    if any(word in text for word in ["source date range", "date range", "data request", "missing range", "requirements scope", "reporting period"]):
+        tags.add("data_request")
+    if any(word in text for word in ["build cache", "cache break", "continuous integration", "deployment twice"]):
+        tags.add("build_cache")
+    if any(word in text for word in ["file version", "version mismatch", "wrong draft", "version label"]):
+        tags.add("file_version")
+    if any(word in text for word in ["staging server", "deployment timeout", "server times out", "release window"]):
+        tags.add("deployment_timeout")
     if any(word in text for word in ["phone", "reply", "scroll", "notification", "slack", "email", "message", "inbox"]):
         tags.add("digital_overload")
     if any(word in text for word in ["meeting", "conference", "manager", "team", "feedback"]):
@@ -970,7 +978,13 @@ def _scene_tags(text: str) -> set[str]:
         tags.add("writing")
     if any(word in text for word in ["approval", "validation", "like you", "likes you", "status", "respect", "opinion", "disagree", "feedback"]):
         tags.add("approval_pressure")
-    if any(word in text for word in ["notification", "phone", "scroll", "doomscroll", "inbox", "slack", "message", "tabs", "attention"]):
+    if any(word in text for word in ["fomo", "comparison", "self promotion", "self-promotion", "career envy", "colleague announcement", "announcement", "promotion post"]):
+        tags.add("career_fomo")
+    if any(word in text for word in ["layoff", "layoffs", "reorg", "reorganization", "job security", "budget cut", "headcount"]):
+        tags.add("job_security")
+    if any(word in text for word in ["work conflict", "argument", "heated", "disagreement", "office politics", "passive-aggressive", "passive aggressive", "credit", "blame", "gossip", "excluded", "coworker"]):
+        tags.add("work_conflict")
+    if any(word in text for word in ["notification", "phone", "scroll", "doomscroll", "inbox", "slack", "message", "tabs"]):
         tags.add("attention_theft")
     if any(word in text for word in ["boundary", "leave", "overtime", "after hours", "shut down", "weekend", "always on"]):
         tags.add("boundary")
@@ -992,6 +1006,48 @@ def _stoic_beat(text: str) -> str:
 
 
 STOIC_VISUAL_BEATS = {
+    "data_request": {
+        "hook": "Close editorial insert of a data request form on a laptop beside a printed report with the date-range field visibly blanked out, calendar card and capped pen nearby, no readable text",
+        "tension": "Analyst workstation with two reports side by side, a calendar page, highlighted blank date-range box, and a phone face-down while the worker stops before guessing",
+        "principle": "Over-the-shoulder view of a worker writing a short clarification note beside a spreadsheet printout, calendar strip, and data-request folder, no readable text",
+        "application": "Clean desk scene with source report, calendar card, request folder, and pen aligned before submission, the missing date range made physically obvious",
+    },
+    "build_cache": {
+        "hook": "Developer desk with terminal window blurred, sticky note labeled only by shape, build log printout, and a cache folder icon abstracted on a whiteboard, no readable text",
+        "tension": "Late-night engineering workstation with two monitors blurred, deployment checklist, coffee pushed aside, and a hand reaching for a reset note instead of rushing",
+        "principle": "Close-up of keyboard, notebook, and a single circled cache step on paper with all text unreadable, calm troubleshooting posture",
+        "application": "Clean developer desk after the fix, laptop angled away, checklist card, and build notes stacked neatly beside a closed coffee cup",
+    },
+    "file_version": {
+        "hook": "Review table with two printed document drafts, conflicting colored version tabs, laptop closed between them, red pen capped, no readable text",
+        "tension": "Over-the-shoulder view of a worker comparing two nearly identical file printouts with different colored labels, meeting room blurred behind",
+        "principle": "Close-up of hands placing one version-labeled folder on top of another beside a notebook, establishing one source of truth",
+        "application": "Clean project table with a single selected draft centered, old draft moved aside, pen and notebook aligned for review",
+    },
+    "deployment_timeout": {
+        "hook": "Operations desk during a deployment window with laptop terminal blurred, wall clock, incident notebook, and phone face-down, no readable text",
+        "tension": "Dim engineering corner with staging dashboard blurred on a monitor, timer card, rollback checklist, and worker posture held steady",
+        "principle": "Close-up of a notebook showing an unreadable rollback decision grid beside keyboard and clock, calm incident response composition",
+        "application": "After-action desk with deployment notes stacked, laptop partially closed, and one clean status card beside a clock, pressure resolved without panic",
+    },
+    "career_fomo": {
+        "hook": "Phone on a cafe table showing only blurred social shapes beside a half-written status update, tote bag and transit card nearby, career comparison tension without readable text",
+        "tension": "Apartment kitchen counter before work with laptop closed, phone face-down, and a promotion announcement implied by blurred notification shapes, worker standing back from the screen",
+        "principle": "Stairwell landing at the office with access badge, notebook, and phone lowered at the worker's side, choosing one real task instead of career comparison",
+        "application": "Small library table with phone zipped inside a bag, notebook open to a blank top line, coffee untouched, one clean work block protected from FOMO",
+    },
+    "job_security": {
+        "hook": "Office hallway outside a closed conference room, unreadable reorg notice shapes on a bulletin board, worker holding laptop close, no readable text",
+        "tension": "Quiet parking garage after a layoff rumor, access badge and work bag on the car roof, phone dark, office windows distant above",
+        "principle": "Kitchen table at night with budget envelope, notebook, and laptop closed, worker listing controllable next steps without readable writing",
+        "application": "Morning entryway with shoes, bag, and a simple checklist card turned away from camera, job security anxiety converted into one next action",
+    },
+    "work_conflict": {
+        "hook": "Glass meeting room just after a work argument, two chairs pushed back unevenly, untouched water glasses, notebook left open with all text unreadable",
+        "tension": "Office kitchenette after a passive-aggressive comment, coffee cup untouched, coworker silhouettes blurred far down the hall, worker turned toward the counter",
+        "principle": "Quiet stairwell outside the team area, access badge and notebook held low, phone lowered, body choosing not to rehearse the conflict",
+        "application": "Elevator lobby after the disagreement, closed laptop, bag strap, and notebook visible as the worker exits without chasing the last word",
+    },
     "approval_pressure": {
         "hook": "Glass conference room immediately after a tense project disagreement, one chair pushed back, water glass untouched, blank whiteboard and blurred coworkers beyond glass",
         "tension": "Office kitchenette edge after a meeting, worker standing apart with coffee untouched, conference room visible down the hall, status pressure shown through distance not dialogue",
@@ -1027,7 +1083,19 @@ STOIC_VISUAL_BEATS = {
 
 def _stoic_specific_prompt(text: str, mode: str, rng: random.Random) -> str | None:
     tags = _scene_tags(text)
-    tag = next((candidate for candidate in STOIC_VISUAL_BEATS if candidate in tags), None)
+    priority = [
+        "data_request",
+        "build_cache",
+        "file_version",
+        "deployment_timeout",
+        "career_fomo",
+        "job_security",
+        "approval_pressure",
+        "work_conflict",
+    ]
+    tag = next((candidate for candidate in priority if candidate in tags), None)
+    if not tag:
+        tag = next((candidate for candidate in STOIC_VISUAL_BEATS if candidate in tags), None)
     if not tag:
         return None
     beat = _stoic_beat(text)

@@ -114,10 +114,77 @@ def test_stoic_topic_specificity_accepts_prompted_modern_work_mechanisms() -> No
         "When a Noisy Workspace Turns One Email Into an Afternoon",
         "When a Coworker Takes Credit for Your Work",
         "When a Coworker's Passive Aggressive Comment Follows You Home",
+        "When the Reorg Rumor Hits Team Chat, Ask for One Fact",
+        "When FOMO Makes You Reply to Every Slack Ping",
+        "When Office Politics Force You to Choose Sides",
     ]
 
     for topic in accepted_topics:
         assert stage._stoic_topic_specificity_error(topic) is None
+
+
+def test_major_work_stressor_research_rejects_sports_source_drift() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="source-drift-job", mock=False, channel=Channel.STOIC_MODERNIZED)
+    result = ResearchResult(
+        title="When the Reorg Rumor Hits Team Chat",
+        sources=[
+            ResearchSource(
+                title="Former Major League Baseball pitcher retires",
+                url="https://en.wikinews.org/wiki/Former_Major_League_Baseball_pitcher_retires",
+                note="for Team Colombia in the 2026 World Baseball Classic WBC due to a shoulder injury and team roster news",
+                relevance=0.97,
+                source="news",
+            ),
+            ResearchSource(
+                title="Distraught Brazil rue what might have been",
+                url="https://www.reuters.com/lifestyle/sports/example/",
+                note="Brazil team suffered a World Cup loss after penalties and showed stoicism after a sports match.",
+                relevance=0.96,
+                source="news",
+            ),
+            ResearchSource(
+                title="Facebook Workplace integrates with Teams",
+                url="https://www.reuters.com/technology/example/",
+                note="Facebook Workplace integrates with Microsoft Teams so users can share information between platforms.",
+                relevance=0.95,
+                source="news",
+            ),
+        ],
+        key_insights=["sports story", "platform integration", "team mention"],
+        workplace_applications=["ask for one fact", "keep a clean record"],
+    )
+
+    error = stage._stoic_operational_research_quality_error(
+        "When the Reorg Rumor Hits Team Chat, Ask for One Fact",
+        result,
+    )
+
+    assert error is not None
+    assert "workplace" in error.lower()
+
+
+def test_curated_sources_cover_major_work_stressors() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="curated-major-stressors", mock=False, channel=Channel.STOIC_MODERNIZED)
+
+    reorg_sources = stage._curated_stoic_sources("When the Reorg Rumor Hits Team Chat, Ask for One Fact")
+    fomo_sources = stage._curated_stoic_sources("When FOMO Makes You Reply to Every Slack Ping")
+    conflict_sources = stage._curated_stoic_sources("When Coworker Resentment Turns a Simple Question Into a War")
+
+    assert any("layoff" in source.note.lower() or "reorg" in source.note.lower() for source in reorg_sources)
+    assert any("fomo" in source.note.lower() or "attention" in source.note.lower() for source in fomo_sources)
+    assert any("conflict" in source.note.lower() or "coworker" in source.note.lower() for source in conflict_sources)
+
+
+def test_major_stressor_topics_are_not_keyword_blocked() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="no-keyword-block-job", mock=False, channel=Channel.STOIC_MODERNIZED)
+
+    assert stage._validate_topic_candidate("When FOMO Makes You Reply to Every Slack Ping") is None
 
 
 @pytest.mark.asyncio
@@ -400,3 +467,35 @@ def test_stoic_research_accepts_operational_approval_sources() -> None:
     )
 
     assert stage._stoic_operational_research_quality_error("When Waiting for Approval Freezes Your Next Task", result) is None
+
+
+def test_stoic_research_adds_curated_noisy_workspace_sources() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="noisy-workspace", mock=False, channel=Channel.STOIC_MODERNIZED)
+    sources = stage._curated_stoic_sources("When the Noisy Workspace Breaks Your Focus")
+    result = ResearchResult(
+        title="When the Noisy Workspace Breaks Your Focus",
+        sources=sources,
+        key_insights=["Noise fragments attention", "Office sound raises stress", "A small focus block is controllable"],
+        workplace_applications=["Write the next tiny task", "Protect one attention block"],
+    )
+
+    assert len(sources) >= 3
+    assert stage._stoic_operational_research_quality_error("When the Noisy Workspace Breaks Your Focus", result) is None
+
+
+def test_stoic_research_adds_curated_printer_queue_sources() -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="printer-queue", mock=False, channel=Channel.STOIC_MODERNIZED)
+    sources = stage._curated_stoic_sources("When the Printer Queue Stops the Morning")
+    result = ResearchResult(
+        title="When the Printer Queue Stops the Morning",
+        sources=sources,
+        key_insights=["Printer queues are operational blockers", "Small interruptions can steal attention", "A visible next action protects focus"],
+        workplace_applications=["Check the stuck job", "Communicate the delay"],
+    )
+
+    assert len(sources) >= 3
+    assert stage._stoic_operational_research_quality_error("When the Printer Queue Stops the Morning", result) is None

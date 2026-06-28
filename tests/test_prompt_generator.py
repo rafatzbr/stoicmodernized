@@ -20,7 +20,7 @@ async def test_prompt_generation():
     ]
     
     base_url = "http://localhost:8080/v1"
-    model = "Qwen3.5-35B-A3B-Q8_0.gguf"
+    model = "/data/llama/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf"
     
     print("=" * 60)
     print("Testing Stoic Modernized Prompt Generation")

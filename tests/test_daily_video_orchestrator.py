@@ -44,6 +44,7 @@ def test_daily_orchestrator_retries_transient_script_generation_failure(monkeypa
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When a Calendar Interruption Breaks Your Deep Work"])
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "When a Password Reset Blocks the Login You Need",
@@ -158,24 +159,26 @@ def test_daily_orchestrator_continues_when_timeout_fallback_hits_subject_guardra
             script_envs.append(env)
             if len(script_envs) == 1:
                 return subprocess.CompletedProcess(args, 124, stdout="[timeout 240s] script\n", stderr=None)
-            return subprocess.CompletedProcess(
-                args,
-                1,
-                stdout=(
-                    "Script Subject Validation Failed!\n"
-                    "Reason: Upload blocked by duplicate-content guardrail: this video is too similar\n"
-                ),
-                stderr=None,
-            )
-        if stage == "research" and topic_or_job == "When the Build Cache Breaks the Deployment Twice":
-            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-recovered\n", stderr=None)
-        if stage == "script" and topic_or_job == "job-recovered":
+            if len(script_envs) == 2:
+                return subprocess.CompletedProcess(
+                    args,
+                    1,
+                    stdout=(
+                        "Script Subject Validation Failed!\n"
+                        "Reason: Upload blocked by duplicate-content guardrail: this video is too similar\n"
+                    ),
+                    stderr=None,
+                )
             return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        if stage == "research" and topic_or_job == "When a Calendar Interruption Breaks Your Deep Work":
+            assert args[-2:] == ["--job-id", "job-duplicate"]
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-duplicate\n", stderr=None)
         raise AssertionError(f"unexpected command: {args}")
 
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When a Calendar Interruption Breaks Your Deep Work"])
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "When a Coworker Takes Credit in the Meeting, Ask One Clean Question",
@@ -183,15 +186,16 @@ def test_daily_orchestrator_continues_when_timeout_fallback_hits_subject_guardra
         max_attempts=2,
     )
 
-    assert job_id == "job-recovered"
-    assert accepted_topic == "When the Build Cache Breaks the Deployment Twice"
+    assert job_id == "job-duplicate"
+    assert accepted_topic == "When a Calendar Interruption Breaks Your Deep Work"
     assert [cmd[3:5] for cmd in commands] == [
         ["research", "When a Coworker Takes Credit in the Meeting, Ask One Clean Question"],
         ["script", "job-duplicate"],
         ["script", "job-duplicate"],
-        ["research", "When the Build Cache Breaks the Deployment Twice"],
-        ["script", "job-recovered"],
+        ["research", "When a Calendar Interruption Breaks Your Deep Work"],
+        ["script", "job-duplicate"],
     ]
+    assert commands[3][-2:] == ["--job-id", "job-duplicate"]
     assert script_envs[1] is not None
     assert script_envs[1]["STOIC_FORCE_DETERMINISTIC_SCRIPT"] == "true"
     assert (agent_dir / "04-script-fallback-rejection-attempt-1.txt").exists()
@@ -213,31 +217,37 @@ def test_daily_orchestrator_asks_whiskers_for_new_subject_after_script_guardrail
             return "Handle Interruptions Without Losing Your Place"
         return "PASS"
 
+    script_attempts = 0
+
     def fake_run_cmd(args, *, timeout, env=None, check=True):
+        nonlocal script_attempts
         commands.append(list(args))
         stage = args[3]
         topic_or_job = args[4]
         if stage == "research":
-            job_id = "job-rejected" if topic_or_job == "How to Stay Calm When Your Boss Changes Priorities" else "job-accepted"
-            return subprocess.CompletedProcess(args, 0, stdout=f"Job ID: {job_id}\n", stderr=None)
+            if topic_or_job != "How to Stay Calm When Your Boss Changes Priorities":
+                assert args[-2:] == ["--job-id", "job-rejected"]
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-rejected\n", stderr=None)
         if stage == "script" and topic_or_job == "job-rejected":
-            return subprocess.CompletedProcess(
-                args,
-                1,
-                stdout=(
-                    "Script Subject Validation Failed!\n"
-                    "Reason: Upload blocked by same-month subject guardrail. "
-                    "Regenerate with a different workplace trigger before publishing.\n"
-                ),
-                stderr=None,
-            )
-        if stage == "script" and topic_or_job == "job-accepted":
+            script_attempts += 1
+            if script_attempts == 1:
+                return subprocess.CompletedProcess(
+                    args,
+                    1,
+                    stdout=(
+                        "Script Subject Validation Failed!\n"
+                        "Reason: Upload blocked by same-month subject guardrail. "
+                        "Regenerate with a different workplace trigger before publishing.\n"
+                    ),
+                    stderr=None,
+                )
             return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
         raise AssertionError(f"unexpected command: {args}")
 
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When a Calendar Interruption Breaks Your Deep Work"])
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "How to Stay Calm When Your Boss Changes Priorities",
@@ -249,15 +259,16 @@ def test_daily_orchestrator_asks_whiskers_for_new_subject_after_script_guardrail
         },
     )
 
-    assert job_id == "job-accepted"
-    assert accepted_topic == "When the Build Cache Breaks the Deployment Twice"
+    assert job_id == "job-rejected"
+    assert accepted_topic == "When a Calendar Interruption Breaks Your Deep Work"
     assert any("same-month subject guardrail" in prompt for prompt in asked_prompts) is False
     assert [cmd[3:5] for cmd in commands] == [
         ["research", "How to Stay Calm When Your Boss Changes Priorities"],
         ["script", "job-rejected"],
-        ["research", "When the Build Cache Breaks the Deployment Twice"],
-        ["script", "job-accepted"],
+        ["research", "When a Calendar Interruption Breaks Your Deep Work"],
+        ["script", "job-rejected"],
     ]
+    assert commands[2][-2:] == ["--job-id", "job-rejected"]
     assert (agent_dir / "04-deterministic-fallback-attempt-2.txt").exists()
 
 
@@ -275,45 +286,52 @@ def test_daily_orchestrator_keeps_valid_fresh_whiskers_retry_topic_outside_ledge
             return "How to Stay Calm When a Client Questions Your Work"
         return "PASS"
 
+    script_attempts = 0
+
     def fake_run_cmd(args, *, timeout, env=None, check=True):
+        nonlocal script_attempts
         commands.append(list(args))
         stage = args[3]
         topic_or_job = args[4]
         if stage == "research":
-            job_id = "job-rejected" if topic_or_job == "How to Stay Calm When Your Boss Changes Priorities" else "job-accepted"
-            return subprocess.CompletedProcess(args, 0, stdout=f"Job ID: {job_id}\n", stderr=None)
+            if topic_or_job != "How to Stay Calm When Your Boss Changes Priorities":
+                assert args[-2:] == ["--job-id", "job-rejected"]
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-rejected\n", stderr=None)
         if stage == "script" and topic_or_job == "job-rejected":
-            return subprocess.CompletedProcess(
-                args,
-                1,
-                stdout=(
-                    "Script Subject Validation Failed!\n"
-                    "Reason: Upload blocked by same-month subject guardrail. "
-                    "Regenerate with a different workplace trigger before publishing.\n"
-                ),
-                stderr=None,
-            )
-        if stage == "script" and topic_or_job == "job-accepted":
+            script_attempts += 1
+            if script_attempts == 1:
+                return subprocess.CompletedProcess(
+                    args,
+                    1,
+                    stdout=(
+                        "Script Subject Validation Failed!\n"
+                        "Reason: Upload blocked by same-month subject guardrail. "
+                        "Regenerate with a different workplace trigger before publishing.\n"
+                    ),
+                    stderr=None,
+                )
             return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
         raise AssertionError(f"unexpected command: {args}")
 
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When a Calendar Interruption Breaks Your Deep Work"])
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "How to Stay Calm When Your Boss Changes Priorities",
         {"ideas": [{"title": "You Do Not Need Everyone at Work to Like You"}]},
     )
 
-    assert job_id == "job-accepted"
-    assert accepted_topic == "When the Build Cache Breaks the Deployment Twice"
+    assert job_id == "job-rejected"
+    assert accepted_topic == "When a Calendar Interruption Breaks Your Deep Work"
     assert [cmd[3:5] for cmd in commands] == [
         ["research", "How to Stay Calm When Your Boss Changes Priorities"],
         ["script", "job-rejected"],
-        ["research", "When the Build Cache Breaks the Deployment Twice"],
-        ["script", "job-accepted"],
+        ["research", "When a Calendar Interruption Breaks Your Deep Work"],
+        ["script", "job-rejected"],
     ]
+    assert commands[2][-2:] == ["--job-id", "job-rejected"]
 
 
 def test_daily_orchestrator_keeps_valid_initial_whiskers_topic_outside_ledger_plan():
@@ -374,29 +392,35 @@ def test_daily_orchestrator_rejects_research_validated_topic_already_rejected(mo
             return "When the Calendar Block Gets Broken"
         return "PASS"
 
+    script_attempts = 0
+
     def fake_run_cmd(args, *, timeout, env=None, check=True):
+        nonlocal script_attempts
         stage = args[3]
         topic_or_job = args[4]
         if stage == "research" and topic_or_job == "When an Access Permission Blocks the File You Need":
             return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-access-1\n", stderr=None)
         if stage == "script" and topic_or_job == "job-access-1":
-            return subprocess.CompletedProcess(
-                args,
-                1,
-                stdout="Script Subject Validation Failed!\nReason: subject-umbrella balance guardrail\n",
-                stderr=None,
-            )
+            script_attempts += 1
+            if script_attempts == 1:
+                return subprocess.CompletedProcess(
+                    args,
+                    1,
+                    stdout="Script Subject Validation Failed!\nReason: subject-umbrella balance guardrail\n",
+                    stderr=None,
+                )
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
         if stage == "research" and topic_or_job == "When the Calendar Block Gets Broken":
+            assert args[-2:] == ["--job-id", "job-access-1"]
             return subprocess.CompletedProcess(
                 args,
                 0,
-                stdout="Job ID: job-calendar\nValidated topic: When an Access Permission Blocks the File You Need\n",
+                stdout="Job ID: job-access-1\nValidated topic: When an Access Permission Blocks the File You Need\n",
                 stderr=None,
             )
         if stage == "research" and topic_or_job == "When the Status Update Wants a Soft Exaggeration":
-            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-status\n", stderr=None)
-        if stage == "script" and topic_or_job == "job-status":
-            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+            assert args[-2:] == ["--job-id", "job-access-1"]
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-access-1\n", stderr=None)
         raise AssertionError(f"unexpected command: {args}")
 
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
@@ -414,7 +438,7 @@ def test_daily_orchestrator_rejects_research_validated_topic_already_rejected(mo
         max_attempts=3,
     )
 
-    assert job_id == "job-status"
+    assert job_id == "job-access-1"
     assert accepted_topic == "When the Status Update Wants a Soft Exaggeration"
     assert not any("already rejected validated topic" in p for p in asked_prompts)
     assert (agent_dir / "04-deterministic-fallback-attempt-2.txt").exists()
@@ -558,6 +582,7 @@ def test_daily_orchestrator_falls_back_to_concrete_operational_lane_when_ledger_
     orchestrator = load_daily_orchestrator()
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
     monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: ["When FOMO Steals Your Career Focus"])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: [])
 
     topic = orchestrator.choose_fallback_topic(
         {"ideas": [{"title": "When the Handoff Has No Owner"}]},
@@ -572,8 +597,9 @@ def test_daily_orchestrator_fallback_pool_is_mechanism_led(monkeypatch):
     orchestrator = load_daily_orchestrator()
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
     monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: [])
 
-    blocked = [title for lane in orchestrator.CURATED_OPERATIONAL_FALLBACK_TOPICS.values() for title in lane]
+    blocked = [topic for topic in orchestrator.fallback_titles_by_lane({}) if orchestrator.topic_is_preflight_safe(topic)]
     topic = orchestrator.choose_fallback_topic({"ideas": []}, blocked[:-1])
 
     assert topic == blocked[-1]
@@ -585,11 +611,12 @@ def test_daily_orchestrator_hard_fallback_uses_research_specific_mechanism(monke
     orchestrator = load_daily_orchestrator()
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: "blocked")
     monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: [])
 
     blocked = [title for lane in orchestrator.CURATED_OPERATIONAL_FALLBACK_TOPICS.values() for title in lane]
     topic = orchestrator.choose_fallback_topic({"ideas": []}, blocked)
 
-    assert topic == "When the Project Status Update Needs One Clear Number"
+    assert topic == "When Career FOMO Makes the Status Update Feel Like a Verdict"
     assert orchestrator.topic_quality_rejection_reason(topic) is None
     assert orchestrator.topic_research_specificity_rejection_reason(topic) is None
     assert orchestrator.topic_sourceability_rejection_reason(topic) is None
@@ -601,6 +628,35 @@ def test_daily_orchestrator_rejects_low_confidence_unattended_source_topics():
     assert orchestrator.topic_sourceability_rejection_reason("When the Source Date Range Is Missing")
     assert orchestrator.topic_sourceability_rejection_reason("When the Printer Jam Blocks the Signed Form")
     assert orchestrator.topic_sourceability_rejection_reason("When the Dashboard Filter Hides the Real Number") is None
+    assert orchestrator.topic_sourceability_rejection_reason("When Career FOMO Makes the Status Update Feel Like a Verdict") is None
+    assert orchestrator.topic_sourceability_rejection_reason("When a Work Conflict Follows You Home") is None
+
+
+def test_daily_orchestrator_parses_local_llm_subject_slate() -> None:
+    orchestrator = load_daily_orchestrator()
+
+    raw = '{"topics":["When Career FOMO Makes the Status Update Feel Like a Verdict", {"title":"When Layoff Rumors Make Every Message Feel Dangerous"}]}'
+
+    topics = orchestrator.extract_topic_slate(raw)
+
+    assert "When Career FOMO Makes the Status Update Feel Like a Verdict" in topics
+    assert "When Layoff Rumors Make Every Message Feel Dangerous" in topics
+
+
+def test_daily_orchestrator_prefers_local_llm_subject_slate_over_static_pool(monkeypatch):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: [])
+    monkeypatch.setattr(
+        orchestrator,
+        "local_llm_subject_slate",
+        lambda context, rejected_topics: ["When Career FOMO Makes the Status Update Feel Like a Verdict"],
+    )
+
+    topic = orchestrator.choose_fallback_topic({"ideas": []}, [])
+
+    assert topic == "When Career FOMO Makes the Status Update Feel Like a Verdict"
 
 
 def test_daily_orchestrator_uses_deterministic_fallback_after_research_quality_rejection(monkeypatch, tmp_path):
@@ -641,6 +697,7 @@ def test_daily_orchestrator_uses_deterministic_fallback_after_research_quality_r
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
     monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: [])
     monkeypatch.setattr(
         orchestrator,
         "fallback_titles_by_lane",
@@ -657,6 +714,66 @@ def test_daily_orchestrator_uses_deterministic_fallback_after_research_quality_r
     assert accepted_topic == "When the Dashboard Filter Hides the Real Number"
     assert "04-whiskers-subject-retry-1" not in agent_calls
     assert (agent_dir / "04-deterministic-fallback-attempt-2.txt").exists()
+
+
+def test_daily_orchestrator_reuses_job_after_research_subject_rejection(monkeypatch, tmp_path):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "RUN_DIR", tmp_path)
+    agent_dir = tmp_path / "agent-notes"
+    agent_dir.mkdir()
+    monkeypatch.setattr(orchestrator, "AGENT_DIR", agent_dir)
+
+    commands: list[list[str]] = []
+
+    def fake_agent(profile, prompt, note_name, *, timeout=orchestrator.AGENT_TIMEOUT):
+        return "PASS"
+
+    def fake_run_cmd(args, *, timeout, env=None, check=True):
+        commands.append(list(args))
+        stage = args[3]
+        topic_or_job = args[4]
+        if stage == "research" and topic_or_job == "When the Approval Queue Goes Silent":
+            return subprocess.CompletedProcess(
+                args,
+                1,
+                stdout=(
+                    "Job ID: job-one\n"
+                    "[ResearchStage] Reason: research quality guardrail: sources are generic "
+                    "Stoic/self-help material, not a concrete workplace mechanism."
+                ),
+                stderr=None,
+            )
+        if stage == "research" and topic_or_job == "When the Dashboard Filter Hides the Real Number":
+            assert args[-2:] == ["--job-id", "job-one"]
+            return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-one\n", stderr=None)
+        if stage == "script" and topic_or_job == "job-one":
+            return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
+        raise AssertionError(f"unexpected command: {args}")
+
+    monkeypatch.setattr(orchestrator, "agent", fake_agent)
+    monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: [])
+    monkeypatch.setattr(
+        orchestrator,
+        "fallback_titles_by_lane",
+        lambda context: ["When the Dashboard Filter Hides the Real Number"],
+    )
+
+    job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
+        "When the Approval Queue Goes Silent",
+        {"ideas": []},
+        max_attempts=2,
+    )
+
+    assert job_id == "job-one"
+    assert accepted_topic == "When the Dashboard Filter Hides the Real Number"
+    assert [cmd[3:5] for cmd in commands] == [
+        ["research", "When the Approval Queue Goes Silent"],
+        ["research", "When the Dashboard Filter Hides the Real Number"],
+        ["script", "job-one"],
+    ]
 
 
 def test_daily_orchestrator_rejects_generic_self_help_fallback_topics():

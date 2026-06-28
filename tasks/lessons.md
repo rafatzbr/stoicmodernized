@@ -26,6 +26,7 @@
 
 ## Deterministic Script Fallback Guardrails (June 2026)
 
+- Correction: subject/research/script guardrail retries in the daily orchestrator must reuse the same job ID once a job exists. Do not let each rejected replacement subject create another `output/jobs/<job_id>` folder; pass `--job-id <active_job_id>` to subsequent research attempts and keep artifacts in one durable job.
 - If many unrelated retry topics all fail as duplicates of the same recent video, inspect the deterministic/emergency script template before expanding fallback pools. A generic fallback narration can share enough fixed wording with a recent deterministic upload to trip duplicate-content guardrails across unrelated titles.
 - Deterministic short-script fallbacks must bind narration to the approved topic's concrete trigger words and avoid broad reusable lists like “spreadsheet, queue, review, or deadline” that contaminate every fallback with stale subject signals.
 - When metadata generation falls back after an AI timeout, inspect tags/description for stale research context from the original failed topic before upload or delivery.
@@ -288,3 +289,5 @@ For Stoic shorts, include recent script titles/hooks as negative examples in scr
 
 ### Verification
 Regression coverage lives in `tests/test_script_stage.py`: repeated `Your boss ...` opener rejection, near-duplicate recent-script rejection, and recent-opening prompt context.
+
+- 2026-06-25: Do not claim Stoic subject/image fixes are delivered from code inspection or a single manual rescue. For recurring video failures, prove the unattended path with tests plus a bounded live subject-generation/image-prompt check; avoid fixed keyword gates that collapse subjects into tiny operational props when Rafael asks for FOMO/work-conflict lanes.

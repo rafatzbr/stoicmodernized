@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-06-21T06:30:15.384083+00:00",
+  "generated_at": "2026-06-28T06:30:16.051963+00:00",
   "niche": "stoicism for modern workers",
-  "strategy_generated_at": "2026-06-21T06:30:15.382483+00:00",
+  "strategy_generated_at": "2026-06-28T06:30:16.050125+00:00",
   "source_files": [
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-21.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-21.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-21.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-21.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-21.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-21.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-28.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-28.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-28.json",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-28.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-28.md",
+    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-28.json",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.md",
     "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.json"
   ],
   "metric_signals": {
     "source_count": 9,
     "platform": {
-      "youtube_shorts_views": 726.0,
+      "youtube_shorts_views": 545.0,
       "youtube_search_minutes": 2.0,
-      "mobile_view_share": 0.87,
-      "unsubscribed_view_share": 0.989,
+      "mobile_view_share": 0.867,
+      "unsubscribed_view_share": 0.995,
       "subscribers_gained": 0.0,
       "facebook_video_views": 0.0,
       "facebook_post_engagements": 0.0,
@@ -32,21 +32,22 @@
       "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
       "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
       "discipline systems",
-      "control"
+      "control",
+      "anxiety"
     ],
     "youtube_top_titles": [
       "Why Chasing Promotion Gets Worse When You Rush | Stoic Modernized",
       "Stop Defending When Criticized | Stoic Modernized",
-      "You Do Not Need Everyone at Work to Like You | Stoic Modernized",
       "Why Your 11-Minute Focus Cycle Is Broken | Stoic Modernized",
-      "Fix One Missing Checklist Step | Stoic Modernized"
+      "Fix One Missing Checklist Step | Stoic Modernized",
+      "Choose One Final Version | Stoic Modernized"
     ],
     "facebook_top_titles": [
-      "Close The Banner Before It Owns Your Morning A notification banner appears during your foc…",
-      "Why Stuck Approvals Get Worse When You Rush Your invoice is stuck after the first approval…",
-      "If a modern worker feels pressure but keeps giving that pressure control over attention an…",
-      "A notification banner appears during your focus block, and the workday starts bending arou…",
-      "Commute Hour, Clear Choice Company policy takes another commute hour. The Stoic move is no…"
+      "Missing Range Clean Request If a modern worker feels pressure but keeps giving that pressu…",
+      "Stop Refreshing The Build Page: Anxiety If a modern worker feels pressure but keeps giving…",
+      "Why Rushing Fills The Missing Step If here are ten impactful ways to apply the principles …",
+      "Why Rushing a Jammed Printer Worsens It If a modern worker feels pressure but keeps giving…",
+      "When the Spreadsheet Formula Changes the Total If when the spreadsheet formula changes the…"
     ],
     "tiktok_top_titles": [
       "Your Focus Dies When The Calendar Dings If a modern worker feels pressure but keeps giving that pressure control over attention...",

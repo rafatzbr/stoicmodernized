@@ -1,6 +1,7 @@
 """Script generation stage module."""
 
 import asyncio
+import hashlib
 import json
 import os
 import re
@@ -32,6 +33,22 @@ OVERUSED_SOMATIC_OPENERS = [
     "your jaw tightens",
     "your heart races",
     "your heart rate spikes",
+]
+
+OFF_TOPIC_SCRIPT_DRIFT_TERMS = {
+    "world baseball classic", "wbc", "team colombia", "major league baseball", "mlb",
+    "baseball", "pitcher", "soccer", "world cup", "croatia", "nba", "nfl",
+}
+
+STOIC_CTA_VARIANTS = [
+    "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+    "Subscribe to @stoic-modernized for steadier decisions at work.",
+    "Subscribe to @stoic-modernized for calmer responses to modern work pressure.",
+    "Subscribe to @stoic-modernized for one useful Stoic move at a time.",
+    "Subscribe to @stoic-modernized for clear thinking when work gets noisy.",
+    "Subscribe to @stoic-modernized for practical calm in real workplace moments.",
+    "Subscribe to @stoic-modernized for sharper judgment under office pressure.",
+    "Subscribe to @stoic-modernized for Stoic tools built for the modern workday.",
 ]
 
 
@@ -512,10 +529,13 @@ class ScriptStage:
             ],
             "temperature": settings.local_script_temperature,
             "max_tokens": max_tokens,
+            "n_predict": max_tokens,
+            "response_format": {"type": "json_object"},
             "chat_template_kwargs": {"enable_thinking": False},
         }
         last_error: Exception | None = None
-        timeout_seconds = max(15.0, float(getattr(settings, "local_script_timeout_seconds", settings.local_llm_timeout_seconds)))
+        configured_timeout = float(getattr(settings, "local_script_timeout_seconds", settings.local_llm_timeout_seconds))
+        timeout_seconds = max(90.0, configured_timeout)
         for attempt in range(1, 3):
             try:
                 self._progress(
@@ -1052,7 +1072,7 @@ Rules:
 - Then name the Stoic principle.
 - Then show exactly how to use it at work this week.
 - End with a crisp CTA.
-- CTA field must start with `Subscribe to @stoic-modernized` followed by a short benefit phrase.
+- CTA field must start with `Subscribe to @stoic-modernized` followed by a short benefit phrase. Vary the benefit phrase; do not reuse the same wording every run.
 - Spoken narration must say `Subscribe to Stoic Modernized`, not `Subscribe to @stoic-modernized` or `subscribe to at stoic modernized`.
 - Never promise to send viewers anything. Do not ask viewers to comment, reply, DM, or message to receive a checklist, guide, template, link, PDF, or resource.
 - Exactly 4 chapters titled Hook, Stoic Principle, Workplace Application, CTA.
@@ -1156,9 +1176,14 @@ Rules:
         cleaned = re.sub(r"\[\s*text overlay:.*?\]", "", cleaned, flags=re.IGNORECASE)
         return " ".join(cleaned.split()).strip()
 
+    def _cta_variant(self) -> str:
+        seed = f"{self.channel.value}:{self.video_mode.value}:{self.job_id}".encode("utf-8")
+        index = int(hashlib.sha256(seed).hexdigest()[:8], 16) % len(STOIC_CTA_VARIANTS)
+        return STOIC_CTA_VARIANTS[index]
+
     def _ensure_cta_handle(self, text: str) -> str:
         candidate = " ".join((text or "").split()).strip()
-        standard_cta = "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        standard_cta = self._cta_variant()
         if not candidate:
             return standard_cta
 
@@ -1327,7 +1352,7 @@ SHORT VIDEO RULES:
 - Then name the Stoic principle.
 - Then show exactly how to use it at work this week.
 - End with a crisp CTA.
-- CTA field must start with `Subscribe to @stoic-modernized` followed by a short benefit phrase.
+- CTA field must start with `Subscribe to @stoic-modernized` followed by a short benefit phrase. Vary the benefit phrase; do not reuse the same wording every run.
 - Spoken narration must say `Subscribe to Stoic Modernized`, not `Subscribe to @stoic-modernized` or `subscribe to at stoic modernized`.
 - Never promise to send viewers anything. Do not ask viewers to comment, reply, DM, or message to receive a checklist, guide, template, link, PDF, or resource.
 
@@ -1349,7 +1374,7 @@ CHAPTER RULES:
 CTA RULES:
 - One sentence.
 - Invite subscription.
-- The metadata/CTA field must follow this template exactly: `Subscribe to @stoic-modernized <short benefit phrase>`.
+- The metadata/CTA field must start with `Subscribe to @stoic-modernized`, followed by a short benefit phrase that varies by script.
 - The narration must say the channel name aloud as `Stoic Modernized`, never `at stoic modernized`.
 - Mention practical Stoic tools for work.
 
@@ -1593,10 +1618,19 @@ Output JSON only.
                 "surrender your will to the machine",
                 "reclaim your mind",
                 "silence as a tool",
+                "sustainability goals",
+                "short-term financial logic",
+                "afraid to question decisions",
             ]
             for phrase in banned_phrases:
                 if phrase in narration_lower or phrase in (script.title or "").lower():
                     issues.append(f"contains banned generic or fabricated phrase: {phrase.strip()}")
+            drift_hits = [
+                term for term in sorted(OFF_TOPIC_SCRIPT_DRIFT_TERMS)
+                if re.search(rf"\b{re.escape(term)}\b", narration_lower)
+            ]
+            if drift_hits:
+                issues.append("short narration contains unrelated source contamination: " + ", ".join(drift_hits))
             audience_terms = ["leaders", "organizations", "teams", "employees", "individual contributors"]
             audience_hits = sum(1 for term in audience_terms if term in narration_lower)
             if audience_hits >= 3:
@@ -1658,7 +1692,11 @@ Output JSON only.
                 lower = fragment.lower()
                 if not fragment or len(fragment) > 140:
                     continue
-                if any(marker in lower for marker in ("//", "score:", "[", "]", "http", "reddit", "stackoverflow", "search results", "search result")):
+                if any(marker in lower for marker in (
+                    "//", "score:", "[", "]", "http", "reddit", "stackoverflow", "search results", "search result",
+                    "sustainability", "short-term financial", "afraid to question", "employees are too afraid",
+                    "multicol", "column boxes", "paged media", "css", "layout breaks", "layout break",
+                )):
                     continue
                 return fragment
             return fallback
@@ -1667,21 +1705,97 @@ Output JSON only.
         application = safe_fragment(workplace_applications, "name the next controllable action before reacting")
         scenario = clean_topic.removeprefix("When ").strip().rstrip(".") or "the work trigger changes the day"
         scenario_lower = scenario[:1].lower() + scenario[1:]
+        lower_topic = clean_topic.lower()
         topic_terms = [word for word in re.findall(r"[A-Za-z][A-Za-z'-]{3,}", scenario_lower) if word.lower() not in {"when", "your", "again", "before", "after", "into", "with", "that", "this"}]
         concrete_detail = ", ".join(dict.fromkeys(topic_terms[:3])) or "the visible facts"
-        narration = (
-            f"When {scenario_lower}, pause before the story takes over. "
-            f"The first Stoic move is to name the exact trigger: {concrete_detail}. "
-            f"Then separate what happened from what your mind is adding about status, blame, or urgency. "
-            f"Write one verifiable fact, one person who needs clarity, and one next step that keeps the work moving. "
-            f"{application}. The useful reminder is simple: {insight}. "
-            f"Calm is not acting untouched. Calm is keeping your judgment clean while the workplace tries to make the moment bigger than it is. "
-            f"Do the clear next step, leave a clean record, and return your attention to the part you can steer."
-        )
-        cta = "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        if any(term in lower_topic for term in ("noisy workspace", "workspace noise", "open office", "noise")):
+            hook = "When the noisy workspace breaks your focus, protect the next five minutes first."
+            narration = (
+                "When the noisy workspace breaks your focus, your first job is not to win silence. "
+                "Your first job is to stop the irritation from becoming the whole morning. "
+                "Name the real trigger: speech, alerts, movement, and broken attention. "
+                "Then choose one clean response. Move if you can. Put on headphones if that helps. Write down the next tiny task before the noise pulls you into resentment. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "A Stoic does not pretend noise is pleasant. A Stoic refuses to let noise own the judgment. "
+                "Guard one block of attention, finish one visible step, then decide what needs to change."
+            )
+        elif any(term in lower_topic for term in ("printer", "print queue", "printer queue", "printer jam")):
+            hook = "When the printer queue stops the morning, solve the queue before you feed the frustration."
+            narration = (
+                f"When {scenario_lower}, keep the problem small. "
+                "The obstacle is a queue, a device, or a stuck job. It is not a verdict on the whole day. "
+                "Check the visible blocker, tell the person waiting what changed, and choose the next usable path. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "A Stoic does not need the printer to behave before the mind behaves. "
+                "Clear one step, leave one clean update, and protect the work from becoming a complaint loop."
+            )
+        elif any(term in lower_topic for term in ("fomo", "fear of missing out", "slack ping", "slack", "notification")):
+            hook = "When FOMO makes you answer every ping, choose the work before the channel chooses for you."
+            narration = (
+                "When FOMO makes you answer every Slack ping, the problem is not the app. "
+                "The problem is treating every signal like proof that you are falling behind. "
+                "Name the real trigger: comparison, urgency, and the fear of being left out. "
+                "Then choose one boundary before you reply: finish the current task, check the thread once, or ask what actually needs you. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "A Stoic does not need to see every update first. A Stoic keeps attention attached to the work that is actually theirs. "
+                "Answer what matters, ignore the performance noise, and return to the task you chose."
+            )
+        elif any(term in lower_topic for term in ("context switching", "deep work", "task switching", "broken focus", "focus block")):
+            hook = "When context switching breaks your deep work, protect the next clean action first."
+            narration = (
+                "When context switching breaks your deep work, do not turn the interruption into the whole story. "
+                "Name the visible trigger: a tab, a message, a meeting, or a sudden request. "
+                "Then write the next tiny action before you move, so your attention has a place to return. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "A Stoic does not need perfect quiet before doing useful work. A Stoic protects judgment while attention is being pulled around. "
+                "Close one loop, leave one clean note, and return to the task that matters now."
+            )
+        elif any(term in lower_topic for term in ("reorg", "reorganization", "restructuring", "layoff", "job security")):
+            hook = "When the reorg rumor hits team chat, ask for one fact before you build a story."
+            narration = (
+                "When the reorg rumor hits team chat, pause before the story takes over. "
+                "Name what is visible: a message, a rumor, and missing information. "
+                "Then ask for one verifiable fact or one owner for clarity before your attention starts forecasting the whole future. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "A Stoic does not pretend uncertainty feels good. A Stoic refuses to turn uncertainty into extra damage. "
+                "Leave a clean record, do the next useful step, and wait for facts before you surrender the morning."
+            )
+        elif any(term in lower_topic for term in ("coworker", "co-worker", "takes credit", "credit", "conflict", "disagreement", "office politics")):
+            hook = "When a coworker takes credit, ask one clean question before you defend your ego."
+            narration = (
+                "When a coworker takes credit, the first risk is not the credit. "
+                "The first risk is letting resentment write your next message. "
+                "Name what is visible: the work, the claim, the missing context, and the person who can clarify it. "
+                "Then ask one clean question: what should the record say about who did which part? "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "A Stoic does not confuse calm with silence. Calm means correcting the record without adding a second problem. "
+                "Keep the facts clean, keep the tone clean, and return to the work."
+            )
+        elif any(term in lower_topic for term in ("spreadsheet", "reconciliation", "formula", "total")):
+            hook = "When the sheet stops balancing, verify before you accuse."
+            narration = (
+                f"When {scenario_lower}, slow down before the panic becomes a theory. "
+                "Name the working facts: formula, cell, source file, and last clean total. "
+                "Then check one link in the chain instead of blaming the whole day. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "The Stoic move is not pretending the error is fine. It is refusing to add drama before the numbers are clear. "
+                "Find the first mismatch, make the correction visible, and return to the work with a cleaner mind."
+            )
+        else:
+            hook = f"When {clean_topic.removeprefix('When ').lower()}, protect the next clean action first."
+            narration = (
+                f"When {scenario_lower}, pause before the story takes over. "
+                f"Name the exact trigger: {concrete_detail}. "
+                "Then separate the visible event from the extra meaning your mind wants to add. "
+                "Choose one verifiable fact, one owner for clarity, and one next action that moves the work forward. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "Calm is not acting untouched. Calm is keeping your judgment clean while the workplace tries to make the moment bigger than it is. "
+                "Do the clear next step, leave a clean record, and return your attention to the part you can steer."
+            )
+        cta = self._ensure_cta_handle("")
         return Script(
             title=clean_topic,
-            hook=f"When {clean_topic.removeprefix('When ').lower()}, protect your judgment before you protect your pride.",
+            hook=hook,
             narration=narration,
             chapters=[
                 Chapter(title="Name the trigger", timestamp=0.0),

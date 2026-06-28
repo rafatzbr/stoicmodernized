@@ -10,7 +10,7 @@ import pytest
 
 from src.config import VideoMode
 from src.models import Script
-from src.stages.script import ScriptGenerationError, ScriptStage
+from src.stages.script import STOIC_CTA_VARIANTS, ScriptGenerationError, ScriptStage
 
 
 class TestScriptStage:
@@ -95,7 +95,8 @@ class TestScriptStage:
         assert script.title == "When the Spreadsheet Formula Changes the Total"
         assert "trace the formula before assigning blame" in script.narration
         assert "Stoic Modernized." not in script.narration
-        assert script.cta == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+        assert script.cta.startswith("Subscribe to @stoic-modernized")
+        assert script.cta in STOIC_CTA_VARIANTS
 
     @pytest.mark.asyncio
     async def test_force_deterministic_script_sanitizes_source_fragments(self, monkeypatch) -> None:
@@ -118,6 +119,101 @@ class TestScriptStage:
         assert "Search results" not in script.narration
         assert "this trigger is only one input, not the whole verdict" in script.narration
         assert "spreadsheet, queue, review, or deadline" not in script.narration
+
+    @pytest.mark.asyncio
+    async def test_force_deterministic_script_uses_noise_specific_fallback(self, monkeypatch) -> None:
+        stage = ScriptStage(job_id="job-force-deterministic-noise", mock=False, video_mode=VideoMode.SHORT)
+        monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
+
+        script = await stage.run(
+            {
+                "topic": "When the Noisy Workspace Breaks Your Focus",
+                "key_insights": ["office noise fragments attention and raises stress"],
+                "workplace_applications": ["write the next tiny task before reacting"],
+            }
+        )
+
+        assert "noisy workspace" in script.hook.lower()
+        assert "speech, alerts, movement" in script.narration
+        assert "status, blame, or urgency" not in script.narration
+        assert "write the next tiny task before reacting" in script.narration
+
+    @pytest.mark.asyncio
+    async def test_force_deterministic_script_uses_printer_specific_fallback(self, monkeypatch) -> None:
+        stage = ScriptStage(job_id="job-force-deterministic-printer", mock=False, video_mode=VideoMode.SHORT)
+        monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
+
+        script = await stage.run(
+            {
+                "topic": "When the Printer Queue Stops the Morning",
+                "key_insights": ["printer queues are operational blockers, not personal verdicts"],
+                "workplace_applications": ["check the queue and communicate the delay"],
+            }
+        )
+
+        assert "printer queue" in script.hook.lower()
+        assert "queue, a device, or a stuck job" in script.narration
+        assert "status, blame, or urgency" not in script.narration
+
+    @pytest.mark.asyncio
+    async def test_force_deterministic_script_uses_fomo_specific_fallback(self, monkeypatch) -> None:
+        stage = ScriptStage(job_id="job-force-deterministic-fomo", mock=False, video_mode=VideoMode.SHORT)
+        monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
+
+        script = await stage.run(
+            {
+                "topic": "When FOMO Makes You Reply to Every Slack Ping",
+                "key_insights": ["FOMO is tied to social comparison and attention capture"],
+                "workplace_applications": ["finish the current task before checking the thread"],
+            }
+        )
+
+        assert "fomo" in script.hook.lower()
+        assert "comparison, urgency" in script.narration.lower()
+        assert "fOMO, Makes, Reply" not in script.narration
+
+    @pytest.mark.asyncio
+    async def test_force_deterministic_script_filters_css_layout_source_junk(self, monkeypatch) -> None:
+        stage = ScriptStage(job_id="job-force-deterministic-context-switch", mock=False, video_mode=VideoMode.SHORT)
+        monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
+
+        script = await stage.run(
+            {
+                "topic": "When Context Switching Breaks Your Deep Work",
+                "key_insights": ["Content between column boxes in a multicol layout breaks like pages in paged media"],
+                "workplace_applications": ["create physical or time-based friction before work"],
+            }
+        )
+
+        assert "context switching" in script.hook.lower()
+        assert "column boxes" not in script.narration
+        assert "multicol" not in script.narration.lower()
+        assert "paged media" not in script.narration.lower()
+
+    def test_generated_script_rejects_unrelated_sports_source_contamination(self) -> None:
+        stage = ScriptStage(job_id="job-source-contamination", mock=False, video_mode=VideoMode.SHORT)
+        payload = {
+            "title": "Ask For One Fact",
+            "hook": "When the reorg rumor hits team chat, ask for one fact first.",
+            "narration": (
+                "When the reorg rumor hits team chat, ask for one fact first. "
+                "Then separate the visible event from the story your mind adds. "
+                "Choose one owner for clarity and one next action. "
+                "The useful reminder is simple: for Team Colombia in the 2026 World Baseball Classic WBC due to a shoulder injury. "
+                "Calm is keeping your judgment clean while work tries to make the moment bigger. "
+                "Do the clear next step, leave a clean record, and return attention to what you can steer."
+            ),
+            "chapters": [
+                {"title": "Hook", "timestamp": 0},
+                {"title": "Stoic Principle", "timestamp": 12},
+                {"title": "Workplace Application", "timestamp": 30},
+                {"title": "CTA", "timestamp": 50},
+            ],
+            "cta": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+        }
+
+        with pytest.raises(ScriptGenerationError, match="source contamination"):
+            stage._parse_script_response(payload, "When the Reorg Rumor Hits Team Chat, Ask for One Fact")
 
     @pytest.mark.asyncio
     async def test_call_local_llm_strips_fences(self) -> None:
@@ -275,6 +371,16 @@ class TestScriptStage:
         assert 4 <= len(script.title.split()) <= 9
         assert "@stoic-modernized" in script.cta
 
+    def test_cta_rotates_by_job_id_instead_of_hardcoding_one_phrase(self) -> None:
+        ctas = {
+            ScriptStage(job_id=f"rotating-cta-{idx}", mock=False, video_mode=VideoMode.SHORT)._ensure_cta_handle("Follow for steady work strategies.")
+            for idx in range(12)
+        }
+
+        assert len(ctas) >= 3
+        assert all(cta.startswith("Subscribe to @stoic-modernized") for cta in ctas)
+        assert all(cta in STOIC_CTA_VARIANTS for cta in ctas)
+
     def test_short_cta_with_existing_handle_uses_single_standard_subscribe_line(self) -> None:
         stage = ScriptStage(job_id="job-4-cta", mock=False, video_mode=VideoMode.SHORT)
         normalized = stage._normalize_council_script_payload(
@@ -288,7 +394,7 @@ class TestScriptStage:
         )
 
         cta_block = normalized["narration"].split("[0:50-0:58] CTA", 1)[1]
-        assert cta_block.strip() == "Breathe first. Reply second. Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
+        assert cta_block.strip().startswith("Breathe first. Reply second. Subscribe to Stoic Modernized")
         assert "@stoic-modernized" not in cta_block
         assert "at stoic modernized" not in cta_block.lower()
         assert cta_block.lower().count("subscribe") == 1
@@ -306,8 +412,9 @@ class TestScriptStage:
             topic="bad meetings",
         )
 
-        assert script.cta == "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
-        assert "Subscribe to Stoic Modernized for practical Stoic tools you can use at work." in script.narration
+        assert script.cta.startswith("Subscribe to @stoic-modernized")
+        assert script.cta in STOIC_CTA_VARIANTS
+        assert "Subscribe to Stoic Modernized" in script.narration
         assert "@stoic-modernized" not in script.narration
 
     def test_short_cta_strips_comment_to_receive_resource_promise(self) -> None:
@@ -325,7 +432,7 @@ class TestScriptStage:
         cta_block = normalized["narration"].split("[0:50-0:58] CTA", 1)[1]
         assert "Comment 'Control'" not in cta_block
         assert "send you" not in cta_block
-        assert cta_block.strip() == "Want more steady focus. Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
+        assert cta_block.strip().startswith("Want more steady focus. Subscribe to Stoic Modernized")
 
     def test_short_quality_rejects_viewer_delivery_promise(self) -> None:
         stage = ScriptStage(job_id="job-4-cta-promise-reject", mock=False, video_mode=VideoMode.SHORT)
@@ -503,20 +610,21 @@ class TestScriptStage:
 
         stage._enforce_generated_script_quality(script)
 
-    def test_parse_script_response_rejects_blocked_topic_drift_not_in_research_topic(self) -> None:
+    def test_parse_script_response_allows_workplace_vocab_without_global_keyword_ban(self) -> None:
         stage = ScriptStage(job_id="job-8", mock=False, video_mode=VideoMode.SHORT)
 
-        with pytest.raises(ScriptGenerationError, match="blocked topic drift"):
-            stage._parse_script_response(
-                {
-                    "title": "Stop the Slack Loop",
-                    "hook": "You keep checking Slack even when nothing important changed.",
-                    "narration": "[0:00-0:12] Hook\nYou keep checking Slack even when nothing important changed, and your attention keeps splintering every time the window lights up.\n\n[0:12-0:30] Stoic Principle\nSeparate the event from the urge so you stop rehearsing every ping in your head and let the notification decide what kind of mind you bring to work.\n\n[0:30-0:50] Workplace Application\nBefore your next reply, pause, name what matters, finish the task already in front of you, and answer only the part that truly needs a response right now.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
-                    "chapters": [],
-                    "cta": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
-                },
-                topic="strategic patience",
-            )
+        script = stage._parse_script_response(
+            {
+                "title": "Stop the Slack Loop",
+                "hook": "You keep checking Slack even when nothing important changed.",
+                "narration": "[0:00-0:12] Hook\nYou keep checking Slack even when nothing important changed, and your attention keeps splintering every time the window lights up.\n\n[0:12-0:30] Stoic Principle\nSeparate the event from the urge so you stop rehearsing every ping in your head and let the notification decide what kind of mind you bring to work.\n\n[0:30-0:50] Workplace Application\nBefore your next reply, pause, name what matters, finish the task already in front of you, and answer only the part that truly needs a response right now.\n\n[0:50-0:58] CTA\nSubscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+                "chapters": [],
+                "cta": "Subscribe to @stoic-modernized for practical Stoic tools you can use at work.",
+            },
+            topic="strategic patience",
+        )
+
+        assert "Slack" in script.title
 
     def test_short_quality_rejects_third_repeated_your_boss_opener(self, tmp_path: Path) -> None:
         stage = ScriptStage(job_id="current-job", mock=False, video_mode=VideoMode.SHORT)

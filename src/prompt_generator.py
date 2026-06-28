@@ -144,8 +144,8 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default="Qwen3.5-35B-A3B-Q8_0.gguf",
-        help="Model name to use (default: Qwen3.5-35B-A3B-Q8_0.gguf)",
+        default="/data/llama/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf",
+        help="Model name to use (default: /data/llama/Qwen3.6-35B-A3B-UD-Q8_K_XL.gguf)",
     )
     
     args = parser.parse_args()

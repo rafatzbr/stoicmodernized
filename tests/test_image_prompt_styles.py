@@ -161,7 +161,7 @@ def test_stoic_prompts_vary_by_modern_work_beat_and_location() -> None:
     assert "stoic modernized modern-work anxiety scene" in joined
     assert "varied real-world location" in joined
     assert any(token in joined for token in ["bus stop", "kitchen counter", "entryway", "library table"])
-    assert any(token in joined for token in ["stairwell", "elevator lobby", "parking garage", "front door threshold"])
+    assert any(token in joined for token in ["stairwell", "elevator lobby", "parking garage", "front door threshold", "office kitchenette", "laundry room"])
 
     generic_hits = sum(joined.count(token) for token in ["modern office desk", "home workspace", "sitting alone with a laptop and notebook"])
     assert generic_hits == 0
@@ -186,3 +186,71 @@ def test_stoic_prompt_topics_choose_different_visual_worlds() -> None:
     assert any(token in attention for token in ["bus stop", "kitchen counter", "apartment entryway", "library table"])
     assert any(token in boundary for token in ["elevator bank", "apartment doorway", "laundry room", "front door threshold"])
     assert attention != boundary
+
+
+def test_data_request_prompt_uses_missing_range_visual_world_not_attention_fallback() -> None:
+    prompt = build_narrative_scene_prompt(
+        subject="Missing Range Clean Request",
+        scene_prompt="ask before digging",
+        narration_segment="A data request comes in missing the source date range. The urge to guess creates chaos. Stop.",
+        overlay="Missing Range",
+        mode="hands_only",
+        steering_hint="scenario cue: A modern worker feels pressure but keeps giving that pressure control over attention and judgment.",
+    ).lower()
+
+    assert any(token in prompt for token in ["data request", "date-range", "calendar", "source report", "request folder"])
+    assert "bus stop" not in prompt
+    assert "phone glowing" not in prompt
+    assert "home workspace near a window" not in prompt
+
+
+def test_operational_scenario_cue_attention_does_not_override_concrete_data_request() -> None:
+    prompt = build_narrative_scene_prompt(
+        subject="When the Source Date Range Is Missing from the Data Request",
+        scene_prompt="ask before digging",
+        narration_segment="Clarify the exact attributes needed before any transfer.",
+        overlay="Ask Before Digging",
+        mode="environment",
+        steering_hint="scenario cue: pressure control over attention and judgment",
+    ).lower()
+
+    assert any(token in prompt for token in ["date-range", "source report", "calendar", "request folder", "data request"])
+    assert "home workspace near a window" not in prompt
+    assert "bus stop" not in prompt
+
+
+def test_fomo_and_conflict_topics_get_specific_visual_worlds_not_generic_desks() -> None:
+    fomo = build_narrative_scene_prompt(
+        subject="When Career FOMO Makes the Status Update Feel Like a Verdict",
+        scene_prompt="career comparison fomo after colleague promotion announcement",
+        narration_segment="A colleague posts a promotion and your own status update suddenly feels like proof you are behind.",
+        overlay="Career FOMO",
+        mode="environment",
+    ).lower()
+    conflict = build_narrative_scene_prompt(
+        subject="When a Work Conflict Follows You Home",
+        scene_prompt="passive-aggressive coworker conflict after meeting",
+        narration_segment="The argument is over, but you keep rehearsing what you should have said.",
+        overlay="Work Conflict",
+        mode="person_medium",
+    ).lower()
+
+    assert any(token in fomo for token in ["cafe table", "promotion announcement", "library table", "stairwell"])
+    assert any(token in conflict for token in ["glass meeting room", "office kitchenette", "stairwell", "elevator lobby"])
+    assert "home workspace near a window" not in fomo
+    assert "home workspace near a window" not in conflict
+    assert "modern office desk" not in fomo
+    assert fomo != conflict
+
+
+def test_layoff_reorg_topic_gets_job_security_visual_world() -> None:
+    prompt = build_narrative_scene_prompt(
+        subject="When Layoff Rumors Make Every Message Feel Dangerous",
+        scene_prompt="reorg job security anxiety after budget cut rumor",
+        narration_segment="Every calendar invite starts to look like a verdict on your job security.",
+        overlay="Job Security",
+        mode="over_shoulder",
+    ).lower()
+
+    assert any(token in prompt for token in ["reorg", "layoff", "job security", "budget", "parking garage", "closed conference room"])
+    assert "home workspace near a window" not in prompt

@@ -150,10 +150,10 @@ BOSS_PRESSURE_CONTEXT_TOKENS = {
     "overexplaining",
 }
 
-# Explicitly blocked topic keywords - these should NEVER appear in daily videos
-BLOCKED_TOPIC_KEYWORDS = {
-    "slack",  # Too brand-specific, feels like ad copy
-}
+# No global blocked topic keywords. The subject selector should validate
+# sourceability, duplicate families, and audience fit without banning a whole
+# workplace vocabulary such as Slack/FOMO/conflict up front.
+BLOCKED_TOPIC_KEYWORDS: set[str] = set()
 
 
 class YouTubeUploader:

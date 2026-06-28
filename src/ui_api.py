@@ -22,6 +22,8 @@ from pydantic import BaseModel
 from src.config import Channel, settings
 from src.database import db
 from src.stages.news_fetcher import NewsFetcher, StorySummary
+from src.stages.social_distribution import channel_job_roots, media_explorer_public_root
+from scripts.generate_social_public_explorer import generate_explorer
 
 BASE_DIR = Path(__file__).parent.parent
 FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
@@ -38,6 +40,15 @@ app.add_middleware(
 RUNS: dict[str, dict[str, Any]] = {}
 logger = logging.getLogger(__name__)
 PYTHON_BIN = sys.executable or "python3"
+
+
+def refresh_media_explorer() -> str | None:
+    """Regenerate the public media explorer after job tree mutations."""
+    try:
+        return str(generate_explorer(public_root=media_explorer_public_root(), channel_job_roots=channel_job_roots()))
+    except Exception as exc:
+        logger.warning("Could not refresh media explorer: %s", exc)
+        return None
 
 
 class RunRequest(BaseModel):
@@ -241,11 +252,18 @@ def delete_job(job_id: str) -> dict[str, Any]:
         removed_dir = True
 
     removed_db = db.delete_job(job_id)
+    explorer_path = refresh_media_explorer()
 
     if not removed_dir and not removed_db and not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    return {"deleted": True, "job_id": job_id, "removed_dir": removed_dir, "removed_db": removed_db}
+    return {
+        "deleted": True,
+        "job_id": job_id,
+        "removed_dir": removed_dir,
+        "removed_db": removed_db,
+        "media_explorer_path": explorer_path,
+    }
 
 
 def _resolve_job_asset(job_id: str, asset_path: str) -> Path:
