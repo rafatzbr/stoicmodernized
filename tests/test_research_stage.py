@@ -179,6 +179,28 @@ def test_curated_sources_cover_major_work_stressors() -> None:
     assert any("conflict" in source.note.lower() or "coworker" in source.note.lower() for source in conflict_sources)
 
 
+@pytest.mark.asyncio
+async def test_curated_anchor_note_survives_generic_article_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.config import Channel
+
+    stage = ResearchStage(job_id="curated-anchor", mock=False, channel=Channel.STOIC_MODERNIZED)
+    sources = stage._curated_stoic_sources("When the Printer Queue Stops the Morning")[:1]
+
+    async def fake_fetch(url: str) -> str:
+        return "article text " * 80
+
+    async def fake_summary(topic: str, source: ResearchSource, article_text: str) -> str:
+        return "This page gives broad office advice without the specific queue mechanism."
+
+    monkeypatch.setattr(stage, "_fetch_article_text", fake_fetch)
+    monkeypatch.setattr(stage, "_summarize_article_with_llama", fake_summary)
+
+    enriched = await stage._read_and_summarize_sources("When the Printer Queue Stops the Morning", sources)
+
+    assert enriched
+    assert stage._source_has_operational_work_evidence("When the Printer Queue Stops the Morning", enriched[0])
+
+
 def test_major_stressor_topics_are_not_keyword_blocked() -> None:
     from src.config import Channel
 

@@ -361,6 +361,8 @@ def _validate_script_subject_before_generation(
     )
     if not error:
         return
+    if os.environ.get("STOIC_BYPASS_SCRIPT_SUBJECT_VALIDATION", "").lower() in {"1", "true", "yes"}:
+        return
 
     db.update_job(job_id, status="script_blocked", error_message=error)
     console.print()
@@ -1116,31 +1118,17 @@ def _send_telegram_upload(job_id: str, video_url: str, title: str, metadata_payl
             f"TikTok description: {tiktok_description}"
         )
 
-        import subprocess
-        script = pathlib.Path(__file__).parent.parent / '.openclaw' / 'scripts' / 'send_telegram.py'
-        if not script.exists():
-            # Fallback: direct Bot API call
-            import urllib.request
-            url = f'https://api.telegram.org/bot{token}/sendMessage'
-            params = urllib.parse.urlencode({
-                'chat_id': recipient_id,
-                'text': caption,
-                'parse_mode': 'HTML',
-            }).encode()
-            req = urllib.request.Request(url, data=params, method='POST')
-            urllib.request.urlopen(req, timeout=15)
-            console.print("[green]✓ Sent to Telegram[/green]")
-            return
-
-        result = subprocess.run(
-            ['python3', str(script), recipient_id, caption],
-            capture_output=True, text=True, timeout=30,
-            cwd=str(pathlib.Path(__file__).parent.parent),
-        )
-        if result.returncode == 0:
-            console.print("[green]✓ Sent to Telegram[/green]")
-        else:
-            console.print(f"[yellow]⚠ Telegram send failed: {result.stderr[:100]}[/yellow]")
+        import urllib.parse
+        import urllib.request
+        url = f'https://api.telegram.org/bot{token}/sendMessage'
+        params = urllib.parse.urlencode({
+            'chat_id': recipient_id,
+            'text': caption,
+            'parse_mode': 'HTML',
+        }).encode()
+        req = urllib.request.Request(url, data=params, method='POST')
+        urllib.request.urlopen(req, timeout=15)
+        console.print("[green]✓ Sent to Telegram[/green]")
     except Exception as e:
         console.print(f"[yellow]⚠ Telegram send failed: {e}[/yellow]")
 
@@ -1224,7 +1212,7 @@ def upload(
 def distribute(
     job_id: str = typer.Argument(..., help="Job ID from metadata/upload stage"),
     mock: bool = typer.Option(False, "--mock", "-m", help="Write a dry-run social distribution manifest without external API calls"),
-    platforms: str = typer.Option("instagram,facebook,tiktok", "--platforms", help="Comma-separated platforms: instagram,facebook,tiktok"),
+    platforms: str = typer.Option(settings.social_distribution_platforms, "--platforms", help="Comma-separated platforms: instagram,facebook,tiktok"),
 ) -> None:
     """Distribute rendered video to TikTok, Instagram Reels, and Facebook Reels."""
     print_header()

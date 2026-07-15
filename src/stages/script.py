@@ -68,7 +68,7 @@ class ScriptStage:
         self.channel = channel
         self.job_dir = settings.jobs_dir / job_id
         self.script_dir = self.job_dir / "script"
-        self.workspace_artifacts_dir = Path.home() / ".openclaw" / "workspace" / "artifacts"
+        self.workspace_artifacts_dir = Path.home() / ".hermes" / "content-pipeline" / "workspace" / "artifacts"
         self.strategy_manager = LedgerStrategyManager()
         self.last_steering_chain: dict[str, Any] | None = None
 
@@ -1696,6 +1696,8 @@ Output JSON only.
                     "//", "score:", "[", "]", "http", "reddit", "stackoverflow", "search results", "search result",
                     "sustainability", "short-term financial", "afraid to question", "employees are too afraid",
                     "multicol", "column boxes", "paged media", "css", "layout breaks", "layout break",
+                    "translate the idea into a small pre-work routine",
+                    "microsoft", "humans are not the only ones",
                 )):
                     continue
                 return fragment
@@ -1709,15 +1711,15 @@ Output JSON only.
         topic_terms = [word for word in re.findall(r"[A-Za-z][A-Za-z'-]{3,}", scenario_lower) if word.lower() not in {"when", "your", "again", "before", "after", "into", "with", "that", "this"}]
         concrete_detail = ", ".join(dict.fromkeys(topic_terms[:3])) or "the visible facts"
         if any(term in lower_topic for term in ("noisy workspace", "workspace noise", "open office", "noise")):
-            hook = "When the noisy workspace breaks your focus, protect the next five minutes first."
+            hook = "When the noisy workspace pulls your attention, protect the next five minutes first."
             narration = (
-                "When the noisy workspace breaks your focus, your first job is not to win silence. "
-                "Your first job is to stop the irritation from becoming the whole morning. "
-                "Name the real trigger: speech, alerts, movement, and broken attention. "
-                "Then choose one clean response. Move if you can. Put on headphones if that helps. Write down the next tiny task before the noise pulls you into resentment. "
-                f"{application}. The useful reminder is simple: {insight}. "
-                "A Stoic does not pretend noise is pleasant. A Stoic refuses to let noise own the judgment. "
-                "Guard one block of attention, finish one visible step, then decide what needs to change."
+                "When the noisy workspace pulls your attention, your first job is not to change the room. "
+                "Your first job is to keep the morning attached to the work. "
+                "Name the real trigger: speech, alerts, movement, and divided attention. "
+                "Then choose one clean response. Move if you can. Put on headphones if that helps. Write down the next tiny task before the room chooses it for you. "
+                f"{application}. The useful reminder is simple: the room is one input, not the whole verdict. "
+                "A Stoic does not pretend noise is pleasant. A Stoic keeps judgment attached to the next useful step. "
+                "Guard one attention block, finish one visible step, then decide what needs to change."
             )
         elif any(term in lower_topic for term in ("printer", "print queue", "printer queue", "printer jam")):
             hook = "When the printer queue stops the morning, solve the queue before you feed the frustration."
@@ -1739,6 +1741,16 @@ Output JSON only.
                 f"{application}. The useful reminder is simple: {insight}. "
                 "A Stoic does not need to see every update first. A Stoic keeps attention attached to the work that is actually theirs. "
                 "Answer what matters, ignore the performance noise, and return to the task you chose."
+            )
+        elif any(term in lower_topic for term in ("dashboard", "filter", "report")):
+            hook = "When the dashboard filter hides the real number, check the view before you trust the feeling."
+            narration = (
+                f"When {scenario_lower}, pause before the visible number becomes the whole truth. "
+                "Name the exact trigger: active filter, date range, excluded rows, and the total you have not checked yet. "
+                "Then open the filter panel before you quote the metric or defend the story around it. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "A Stoic does not fight a dashboard. A Stoic asks what conditions shaped the first impression. "
+                "Clear the view, state the scope, and let the real number change your next step before your pride does."
             )
         elif any(term in lower_topic for term in ("context switching", "deep work", "task switching", "broken focus", "focus block")):
             hook = "When context switching breaks your deep work, protect the next clean action first."
@@ -1780,6 +1792,26 @@ Output JSON only.
                 f"{application}. The useful reminder is simple: {insight}. "
                 "The Stoic move is not pretending the error is fine. It is refusing to add drama before the numbers are clear. "
                 "Find the first mismatch, make the correction visible, and return to the work with a cleaner mind."
+            )
+        elif any(term in lower_topic for term in ("staging server", "deployment", "build cache")):
+            hook = "When the deployment times out, stop rerunning and collect one fact."
+            narration = (
+                f"When {scenario_lower}, the dangerous move is the automatic retry. "
+                "Name the exact point of failure: command, timeout, environment, and last clean deploy. "
+                "Then check one log before you touch the pipeline again. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "The Stoic move is not pretending the deploy does not matter. It is refusing to let the clock make you less precise. "
+                "Send one factual update, capture the failing step, and retry only when the evidence tells you what changed."
+            )
+        elif any(term in lower_topic for term in ("file version", "version mismatch", "wrong file", "outdated file")):
+            hook = "When the review uses the wrong file, verify the source of truth before defending yourself."
+            narration = (
+                f"When {scenario_lower}, the first job is not to win the argument. "
+                "Name the working facts: filename, timestamp, owner, and current source of truth. "
+                "Then confirm whether everyone is reviewing the same version before you answer the criticism. "
+                f"{application}. The useful reminder is simple: {insight}. "
+                "A Stoic does not defend a stale file or attack the reviewer. A Stoic repairs the path back to reality. "
+                "Share the current version, reset the review cleanly, and leave less room for blame next time."
             )
         else:
             hook = f"When {clean_topic.removeprefix('When ').lower()}, protect the next clean action first."

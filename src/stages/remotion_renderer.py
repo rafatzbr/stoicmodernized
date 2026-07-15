@@ -1,6 +1,7 @@
 """Remotion renderer for production-quality video output."""
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -32,6 +33,13 @@ def _default_platform(mode: str, channel: Channel) -> str:
         return 'youtube'
 
     return 'tiktok'
+
+
+def _end_card_cta_text(text: str) -> str:
+    cleaned = ' '.join((text or '').split()).strip()
+    cleaned = re.sub(r'^subscribe\s+to\s+@?stoic-modernized\s*', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'^for\s+', 'For ', cleaned, flags=re.IGNORECASE)
+    return cleaned
 
 
 class RemotionRenderer:
@@ -290,19 +298,19 @@ class RemotionRenderer:
         video_title = None
         metadata_path = self.job_dir / 'metadata' / 'metadata.json'
         script_path = self.job_dir / 'script' / 'script.json'
+        script_data = {}
         if metadata_path.exists():
             metadata = load_json(metadata_path)
             video_title = _clean_video_title(metadata.get('title'))
-        if not video_title and script_path.exists():
+        if script_path.exists():
             script_data = load_json(script_path)
-            video_title = _clean_video_title(script_data.get('title'))
+            if not video_title:
+                video_title = _clean_video_title(script_data.get('title'))
         if not video_title and scenes:
             video_title = _clean_video_title(scenes[0].get('topic') or scenes[0].get('title'))
 
-        # Get the established channel CTA. Script-specific micro-CTAs may be useful
-        # for metadata, but the rendered short end card should keep the existing
-        # Stoic Modernized subscribe style.
-        cta_text = settings.get_channel_cta(channel)
+        raw_cta = str(script_data.get('cta') or '').strip() or settings.get_channel_cta(channel)
+        cta_text = _end_card_cta_text(raw_cta)
 
         # Use relative path for staticFile()
         audio_relative = audio_path if audio_path else 'audio/narration.mp3'

@@ -270,8 +270,10 @@ class SocialDistributionStage:
         self.distribution_dir = self.job_dir / "distribution"
 
     def _configured_platforms(self) -> list[str]:
-        configured = str(settings.social_distribution_platforms or ",".join(SUPPORTED_PLATFORMS))
-        platforms = [item.strip().lower() for item in configured.split(",") if item.strip()]
+        configured = settings.social_distribution_platforms
+        if configured is None:
+            configured = ",".join(SUPPORTED_PLATFORMS)
+        platforms = [item.strip().lower() for item in str(configured).split(",") if item.strip()]
         return [platform for platform in platforms if platform in SUPPORTED_PLATFORMS]
 
     def run(self) -> dict[str, Any]:
@@ -283,13 +285,16 @@ class SocialDistributionStage:
         platform_results = []
         for platform in self.platforms:
             if self.mock:
-                platform_results.append(self._mock_platform_result(platform, captions[platform]))
+                result = self._mock_platform_result(platform, captions[platform])
             elif platform == "instagram":
-                platform_results.append(self._publish_instagram_reel(video_path, captions[platform]))
+                result = self._publish_instagram_reel(video_path, captions[platform])
             elif platform == "facebook":
-                platform_results.append(self._publish_facebook_reel(video_path, captions[platform]))
+                result = self._publish_facebook_reel(video_path, captions[platform])
             elif platform == "tiktok":
-                platform_results.append(self._publish_tiktok(video_path, captions[platform]))
+                result = self._publish_tiktok(video_path, captions[platform])
+            else:
+                continue
+            platform_results.append(self._manual_fallback_if_needed(result, platform, manual_page, captions[platform]))
 
         public_video_url = self._public_video_url(video_path)
         status = self._aggregate_status(platform_results)
@@ -323,6 +328,8 @@ class SocialDistributionStage:
     def _resolve_video_path(self) -> Path:
         candidates = [
             self.job_dir / "remotion_output.mp4",
+            self.job_dir / "output" / "final.mp4",
+            self.job_dir / "final.mp4",
             self.job_dir / "rendered.mp4",
             self.job_dir / "video.mp4",
         ]
@@ -353,6 +360,8 @@ class SocialDistributionStage:
             return "mock_completed"
         if statuses and all(status in {"published", "submitted", "mock_uploaded"} for status in statuses):
             return "completed"
+        if statuses and all(status in {"published", "submitted", "mock_uploaded", "manual_ready"} for status in statuses):
+            return "needs_manual_publish"
         if "missing_credentials" in statuses:
             return "needs_configuration"
         if "failed" in statuses:
@@ -373,12 +382,29 @@ class SocialDistributionStage:
     ) -> dict[str, str | Path | None]:
         return publish_media_explorer_artifacts(self.job_id, video_path, metadata, captions)
 
+    def _manual_fallback_if_needed(
+        self,
+        result: dict[str, Any],
+        platform: str,
+        manual_page: dict[str, str | Path | None],
+        caption: str,
+    ) -> dict[str, Any]:
+        if platform not in {"instagram", "tiktok"} or result.get("status") not in {"failed", "missing_credentials"}:
+            return result
+        return {
+            "platform": platform,
+            "status": "manual_ready",
+            "reason": result.get("error"),
+            "upload_url": "https://www.tiktok.com/upload" if platform == "tiktok" else "https://www.instagram.com/",
+            "kit_url": manual_page.get("url"),
+            "kit_path": str(manual_page.get("path")),
+            "caption_preview": caption[:240],
+        }
+
     def _publish_instagram_reel(self, video_path: Path, caption: str) -> dict[str, Any]:
         missing = []
         if not settings.meta_page_access_token:
             missing.append("META_PAGE_ACCESS_TOKEN")
-        if not settings.instagram_user_id:
-            missing.append("INSTAGRAM_USER_ID")
         public_video_url = self._public_video_url(video_path)
         if not public_video_url:
             missing.append("SOCIAL_VIDEO_PUBLIC_BASE_URL")
@@ -387,8 +413,11 @@ class SocialDistributionStage:
         try:
             graph = f"https://graph.facebook.com/{settings.meta_graph_api_version}"
             access_token = self._refresh_meta_access_token_if_configured(graph, settings.meta_page_access_token)
+            instagram_user_id = settings.instagram_user_id or self._resolve_instagram_user_id(graph, access_token)
+            if not instagram_user_id:
+                return self._missing_credentials("instagram", ["INSTAGRAM_USER_ID"])
             create = requests.post(
-                f"{graph}/{settings.instagram_user_id}/media",
+                f"{graph}/{instagram_user_id}/media",
                 data={
                     "media_type": "REELS",
                     "video_url": public_video_url,
@@ -517,6 +546,22 @@ class SocialDistributionStage:
             raise RuntimeError("Could not resolve Facebook Page access token from configured META_PAGE_ACCESS_TOKEN")
         return page_token
 
+    def _resolve_instagram_user_id(self, graph: str, access_token: str) -> str | None:
+        if not settings.facebook_page_id:
+            return None
+        response = requests.get(
+            f"{graph}/{settings.facebook_page_id}",
+            params={"fields": "instagram_business_account{id,username}", "access_token": access_token},
+            timeout=30,
+        )
+        response.raise_for_status()
+        account = response.json().get("instagram_business_account") or {}
+        instagram_user_id = str(account.get("id") or "")
+        if instagram_user_id:
+            self._persist_env_value("INSTAGRAM_USER_ID", instagram_user_id)
+            settings.instagram_user_id = instagram_user_id
+        return instagram_user_id or None
+
     def _publish_tiktok(self, video_path: Path, caption: str) -> dict[str, Any]:
         missing = []
         if not settings.tiktok_access_token:
@@ -572,7 +617,7 @@ def _render_instagram_upload_page(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Instagram Upload Kit</title>
+  <title>Social Upload Kit</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Doto:wght@400;600;700&family=Space+Grotesk:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -609,6 +654,8 @@ def _render_instagram_upload_page(
           <video controls playsinline preload="metadata" src="{video_src}"></video>
           <div class="actions">
             <a class="button" href="{video_src}" download>Download MP4</a>
+            <a class="button" href="https://www.tiktok.com/upload" target="_blank" rel="noopener">Open TikTok Upload</a>
+            <a class="button" href="https://www.instagram.com/" target="_blank" rel="noopener">Open Instagram</a>
             <button type="button" class="primary" data-copy="url">Copy Public Video URL</button>
           </div>
         </div>

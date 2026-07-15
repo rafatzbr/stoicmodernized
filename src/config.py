@@ -148,7 +148,7 @@ class Settings(BaseSettings):
 
     # Cross-platform short-form distribution (Meta APIs first, TikTok API second)
     social_distribution_enabled: bool = False
-    social_distribution_platforms: str = "instagram,facebook,tiktok"
+    social_distribution_platforms: str = "facebook"
     meta_graph_api_version: str = "v25.0"
     meta_app_id: Optional[str] = None
     meta_app_secret: Optional[str] = None

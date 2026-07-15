@@ -723,7 +723,7 @@ Input scenes:
         Short renders use metadata handles, but narration should say the channel name
         naturally instead of reading `@stoic-modernized` aloud as a separate artifact.
         """
-        raw_cta = settings.get_channel_cta(self.channel).strip() or str(script_data.get("cta") or "").strip()
+        raw_cta = str(script_data.get("cta") or "").strip() or settings.get_channel_cta(self.channel).strip()
         return self._make_cta_spoken(raw_cta)
 
     def _make_cta_spoken(self, text: str) -> str:

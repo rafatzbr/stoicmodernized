@@ -348,15 +348,10 @@ class ResearchStage:
         quality_error = self._stoic_operational_research_quality_error(topic, result)
         if quality_error:
             return quality_error
-        candidate_text = " ".join(
-            [
-                topic,
-                result.title,
-                " ".join(result.key_insights[:2]),
-                " ".join(result.workplace_applications[:2]),
-            ]
-        )
-        return self.topic_validator.validate_topic_for_research(candidate_text, str(self.job_dir))
+        # ponytail: the topic was already preflighted. Re-checking with source
+        # summaries lets unrelated article words poison the subject umbrella and
+        # reject a valid topic after successful research.
+        return self.topic_validator.validate_topic_for_research(topic, str(self.job_dir))
 
     def _stoic_operational_research_quality_error(self, topic: str, result: ResearchResult) -> Optional[str]:
         """Reject generic self-help research before it can shape another repetitive script."""
@@ -787,7 +782,37 @@ class ResearchStage:
                     source="article",
                 ),
             ]
-        if any(term in lowered for term in ("context switching", "attention residue", "deep work")):
+        if any(term in lowered for term in ("dashboard", "filter", "business intelligence", "reporting")):
+            return [
+                ResearchSource(
+                    title="Filter Data From Your Views",
+                    url="https://help.tableau.com/current/pro/desktop/en-us/filtering.htm",
+                    note=(
+                        "Tableau documents how dashboard filters change which records appear in a view. This anchors the workplace mechanism: before reacting to a visible number, verify the active filter and what data the view excludes."
+                    ),
+                    relevance=0.92,
+                    source="documentation",
+                ),
+                ResearchSource(
+                    title="Filters and Highlighting in Power BI Reports",
+                    url="https://learn.microsoft.com/power-bi/create-reports/power-bi-report-filter",
+                    note=(
+                        "Power BI report filters constrain the data shown in visuals and reports. A dashboard filter can hide part of the real total, so the controllable work action is to check filter context before quoting the number."
+                    ),
+                    relevance=0.9,
+                    source="documentation",
+                ),
+                ResearchSource(
+                    title="Data Quality Dimensions",
+                    url="https://www.ibm.com/think/topics/data-quality",
+                    note=(
+                        "Data quality guidance treats accuracy, completeness, and consistency as requirements for decisions. It supports a dashboard script about not treating a filtered number as complete truth until the scope is verified."
+                    ),
+                    relevance=0.86,
+                    source="article",
+                ),
+            ]
+        if any(term in lowered for term in ("calendar", "focus block", "context switching", "attention residue", "deep work")):
             return [
                 ResearchSource(
                     title="The Cost of Interrupted Work: More Speed and Stress",
@@ -894,6 +919,39 @@ class ResearchStage:
                     source="research",
                 ),
             ]
+        if any(term in lowered for term in ("decision record", "decision log", "decision", "meeting notes", "contradict")):
+            return [
+                ResearchSource(
+                    title="Architecture Decision Records",
+                    url="https://adr.github.io/",
+                    note=(
+                        "Architecture Decision Records are a lightweight way to capture the context, decision, and consequences of a choice. "
+                        "This gives the workplace mechanism for an incomplete decision record: separate what was decided from what people only remember, then document the next verifiable action."
+                    ),
+                    relevance=0.94,
+                    source="documentation",
+                ),
+                ResearchSource(
+                    title="Use a Decision Log for Team Decisions",
+                    url="https://www.atlassian.com/team-playbook/plays/daci",
+                    note=(
+                        "Atlassian's DACI decision-making play emphasizes explicit roles, drivers, approvers, contributors, and documentation. "
+                        "It supports a concrete script about not reacting to ambiguity until the owner, decision, and next step are named."
+                    ),
+                    relevance=0.9,
+                    source="article",
+                ),
+                ResearchSource(
+                    title="Meeting Minutes and Decision Documentation",
+                    url="https://www.notion.com/templates/category/meeting-notes",
+                    note=(
+                        "Meeting-note workflows capture decisions, action items, and owners so teams do not rerun the same argument from memory. "
+                        "For Stoic Modernized, the practical move is to verify the record before turning uncertainty into blame or urgency."
+                    ),
+                    relevance=0.86,
+                    source="article",
+                ),
+            ]
         return []
     
     async def _search_searxng_single(self, query: str, categories: list[str] = None, topic_filter: Optional[str] = None) -> list[ResearchSource]:
@@ -965,6 +1023,11 @@ class ResearchStage:
             if article_text and self._is_usable_article_text(article_text):
                 article_summary = await self._summarize_article_with_llama(topic, source, article_text)
             final_note = (article_summary or source.note or "").strip()
+            if article_summary and self._source_has_operational_work_evidence(topic, source):
+                # ponytail: keep curated anchor text if the summarizer drops the concrete work mechanism.
+                probe = ResearchSource(title=source.title, url=source.url, note=final_note, relevance=source.relevance, source=source.source)
+                if not self._source_has_operational_work_evidence(topic, probe):
+                    final_note = f"{final_note} {source.note}".strip()
             normalized_source = self._infer_source(source.url)
             article_read = {
                 "title": source.title,
@@ -1969,7 +2032,7 @@ Sources:
         fallback_insights: list[str],
         fallback_applications: list[str],
     ) -> Optional[ResearchResult]:
-        whiskers_script = Path.home() / ".openclaw" / "agents" / "council-of-cats" / "whiskers" / "research_agent.py"
+        whiskers_script = Path.home() / ".hermes" / "scripts" / "content-pipeline" / "whiskers_research.py"
         if not whiskers_script.exists():
             return None
 

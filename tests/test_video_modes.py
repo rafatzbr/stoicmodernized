@@ -47,7 +47,7 @@ async def test_short_scene_plan_appends_separate_spoken_cta_when_script_cta_is_n
 
     scene_plan = await stage.run(script)
 
-    assert scene_plan.scenes[-1].narration_segment == "Subscribe to Stoic Modernized for practical Stoic tools you can use at work."
+    assert scene_plan.scenes[-1].narration_segment == "Use this at work today."
     assert scene_plan.scenes[-1].scene_type == "cta"
     assert scene_plan.scenes[-1].text_overlay == "CTA"
     assert scene_plan.total_duration <= 60.0

@@ -124,7 +124,7 @@ class LedgerStrategyManager:
 
     def __post_init__(self) -> None:
         self.project_root = self.project_root or Path(__file__).resolve().parent.parent
-        self.workspace_root = self.workspace_root or (Path.home() / ".openclaw" / "workspace")
+        self.workspace_root = self.workspace_root or (Path.home() / ".hermes" / "content-pipeline" / "workspace")
         self.state_dir = self.project_root / "state"
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.artifacts_dir = self.workspace_root / "artifacts"

@@ -96,7 +96,7 @@ def test_mock_social_distribution_writes_auditable_manifest(monkeypatch, tmp_pat
     monkeypatch.setattr("src.stages.social_distribution.settings.jobs_dir", jobs_dir)
     monkeypatch.setattr("src.stages.social_distribution.settings.social_video_public_base_url", "https://media.example.test", raising=False)
 
-    result = SocialDistributionStage(job_id="job-123", mock=True).run()
+    result = SocialDistributionStage(job_id="job-123", mock=True, platforms=["instagram", "facebook", "tiktok"]).run()
 
     assert result["job_id"] == "job-123"
     assert result["status"] == "mock_completed"
@@ -314,6 +314,64 @@ def test_facebook_upload_refreshes_meta_token_and_persists_it_before_page_resolu
     assert "META_PAGE_ACCESS_TOKEN=REFRESHED_USER_TOKEN" in env_file.read_text(encoding="utf-8")
 
 
+def test_instagram_upload_derives_business_account_from_facebook_page(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    job_dir = jobs_dir / "job-ig-derived"
+    _write_job_artifacts(job_dir)
+    env_file = tmp_path / ".env"
+    monkeypatch.setattr("src.stages.social_distribution.ENV_FILE", env_file)
+    monkeypatch.setattr("src.stages.social_distribution.settings.jobs_dir", jobs_dir)
+    monkeypatch.setattr("src.stages.social_distribution.settings.social_video_public_base_url", "https://media.example.test", raising=False)
+    monkeypatch.setattr("src.stages.social_distribution.settings.meta_graph_api_version", "v24.0", raising=False)
+    monkeypatch.setattr("src.stages.social_distribution.settings.meta_page_access_token", "USER_TOKEN", raising=False)
+    monkeypatch.setattr("src.stages.social_distribution.settings.facebook_page_id", "page-1", raising=False)
+    monkeypatch.setattr("src.stages.social_distribution.settings.instagram_user_id", None, raising=False)
+    monkeypatch.setattr("src.stages.social_distribution.settings.meta_app_id", None, raising=False)
+    monkeypatch.setattr("src.stages.social_distribution.settings.meta_app_secret", None, raising=False)
+
+    seen = {"posts": []}
+
+    def fake_get(url, params, timeout):
+        assert params["fields"] == "instagram_business_account{id,username}"
+        return Response({"instagram_business_account": {"id": "ig-1", "username": "channel"}})
+
+    def fake_post(url, data, timeout):
+        seen["posts"].append({"url": url, "data": data})
+        return Response({"id": "creation-1" if url.endswith("/media") else "media-1"})
+
+    monkeypatch.setattr("src.stages.social_distribution.requests.get", fake_get)
+    monkeypatch.setattr("src.stages.social_distribution.requests.post", fake_post)
+
+    result = SocialDistributionStage(job_id="job-ig-derived", platforms=["instagram"]).run()
+
+    assert result["status"] == "completed"
+    assert result["platforms"][0]["post_id"] == "media-1"
+    assert seen["posts"][0]["url"].endswith("/ig-1/media")
+    assert "INSTAGRAM_USER_ID=ig-1" in env_file.read_text(encoding="utf-8")
+
+
+def test_tiktok_api_failure_falls_back_to_manual_upload_kit(monkeypatch, tmp_path: Path) -> None:
+    jobs_dir = tmp_path / "jobs"
+    job_dir = jobs_dir / "job-tiktok-manual"
+    _write_job_artifacts(job_dir)
+    monkeypatch.setattr("src.stages.social_distribution.settings.jobs_dir", jobs_dir)
+    monkeypatch.setattr("src.stages.social_distribution.settings.social_video_public_base_url", "https://media.example.test", raising=False)
+    monkeypatch.setattr("src.stages.social_distribution.settings.tiktok_access_token", "BAD_TOKEN", raising=False)
+
+    def fake_post(*args, **kwargs):
+        return Response({"error": "unauthorized"}, status_code=401)
+
+    monkeypatch.setattr("src.stages.social_distribution.requests.post", fake_post)
+
+    result = SocialDistributionStage(job_id="job-tiktok-manual", platforms=["tiktok"]).run()
+
+    assert result["status"] == "needs_manual_publish"
+    platform = result["platforms"][0]
+    assert platform["status"] == "manual_ready"
+    assert platform["upload_url"] == "https://www.tiktok.com/upload"
+    assert platform["kit_url"] == "https://media.example.test/stoic-modernized/job-tiktok-manual/"
+
+
 def test_real_social_distribution_reports_missing_credentials_without_uploading(monkeypatch, tmp_path: Path) -> None:
     jobs_dir = tmp_path / "jobs"
     job_dir = jobs_dir / "job-456"
@@ -324,11 +382,13 @@ def test_real_social_distribution_reports_missing_credentials_without_uploading(
     monkeypatch.setattr("src.stages.social_distribution.settings.facebook_page_id", None, raising=False)
     monkeypatch.setattr("src.stages.social_distribution.settings.tiktok_access_token", None, raising=False)
 
-    result = SocialDistributionStage(job_id="job-456", mock=False).run()
+    result = SocialDistributionStage(job_id="job-456", mock=False, platforms=["instagram", "facebook", "tiktok"]).run()
 
     assert result["status"] == "needs_configuration"
     by_platform = {entry["platform"]: entry for entry in result["platforms"]}
-    assert by_platform["instagram"]["status"] == "missing_credentials"
+    assert by_platform["instagram"]["status"] == "manual_ready"
     assert by_platform["facebook"]["status"] == "missing_credentials"
-    assert by_platform["tiktok"]["status"] == "missing_credentials"
-    assert all("missing" in entry["error"].lower() for entry in result["platforms"])
+    assert by_platform["tiktok"]["status"] == "manual_ready"
+    assert "missing" in by_platform["facebook"]["error"].lower()
+    assert "missing" in by_platform["instagram"]["reason"].lower()
+    assert "missing" in by_platform["tiktok"]["reason"].lower()

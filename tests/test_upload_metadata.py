@@ -104,6 +104,64 @@ def test_generate_default_description_uses_steering_context() -> None:
     assert "#stoicism" in description
 
 
+def test_generate_default_description_prefers_script_when_ai_fallback_has_stale_context() -> None:
+    uploader = YouTubeUploader(mock=True)
+    description = uploader._generate_default_description(
+        title="When the Staging Server Times Out During Deployment",
+        chapters=[],
+        script_text="When the staging server times out, the dangerous move is the automatic retry. Check one log before touching the pipeline again.",
+        steering_context={
+            "whiskers_handoff": {
+                "viewer_problem": "A modern worker feels pressure but keeps giving that pressure control over attention and judgment.",
+                "stoic_move": "Pause, separate what is under your control, and choose one deliberate action.",
+            },
+        },
+    )
+
+    assert "staging server times out" in description
+    assert "keeps giving that pressure" not in description
+
+
+def test_description_cta_rotates_by_title() -> None:
+    uploader = YouTubeUploader(mock=True)
+    ctas = {uploader._description_cta(f"Work Anxiety {idx}") for idx in range(12)}
+
+    assert len(ctas) >= 3
+    assert all(cta.startswith("Subscribe to @stoic-modernized") for cta in ctas)
+    assert "Subscribe to @stoic-modernized for practical Stoic tools you can use at work." not in ctas
+
+
+def test_ai_description_prompt_uses_rotated_cta(monkeypatch: pytest.MonkeyPatch) -> None:
+    import requests
+
+    uploader = YouTubeUploader(mock=False)
+    seen: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {"choices": [{"message": {"content": "Short description."}}]}
+
+    def fake_post(url, json=None, timeout=None):
+        assert json is not None
+        seen["prompt"] = json["messages"][1]["content"]
+        return FakeResponse()
+
+    monkeypatch.setattr(requests, "post", fake_post)
+
+    uploader._generate_description_with_ai(
+        title="When the Spreadsheet Formula Changes the Total",
+        chapters=[],
+        script_text="A short narration.",
+    )
+
+    expected = uploader._description_cta("When the Spreadsheet Formula Changes the Total")
+    assert f'Ends with: "{expected}"' in str(seen["prompt"])
+    assert "practical Stoic tools you can use at work" not in str(seen["prompt"])
+
+
 def test_ai_description_uses_short_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     import requests
     import src.stages.upload as upload_module

@@ -1,11 +1,20 @@
 # Lessons Learned
 
+## Growth Channel Triage (July 2026)
+
+- If YouTube shorts are getting under ~50 views, do not present YouTube optimization as the main plan. Treat YouTube as archive/SEO and act first on TikTok/Reels/Facebook distribution, credential fixes, and real short-form retention/share/follow signals.
+- If Rafael challenges a passive plan, immediately execute the smallest safe action: update automation, attempt distribution, inspect the real blocker, or patch the workflow. Do not reply with strategy only.
+- If Rafael rejects a promotional offer on channel pages, remove/retire the public offer surface immediately and do not re-post it from Stoic/Scam channels; keep monetization experiments off-brand unless explicitly re-enabled.
+- For failed daily video crons, read the full orchestrator log before diagnosing. A short “provider timeout” message can hide guardrail exhaustion across topics; prove recovery with live research+script, then render/upload/distribute a real MP4.
+- If curated source anchors exist but research still says “generic Stoic/self-help,” check whether article summarization replaced the anchor note and erased the operational mechanism; preserve the anchor note before adding more fallback topics.
+
 ## Stoic Image Scene Specificity Guardrails (June 2026)
 
 - When generated Stoic images look generic, inspect `images/assets.json` and `images/codex-image.log`; the prompt bridge may be discarding the scene planner's detailed `visual_prompt` even when the scene stage is specific.
 - For image generation, treat a detailed scene planner prompt as the binding shot list. Strip only reusable style/provider boilerplate, then preserve exact subject, location, action, props, workplace stressor, narration beat, and overlay cue.
 - Topic/template fallback prompts are only for weak scene prompts. Do not let broad keywords like "workplace conflict" override a detailed scene into a canned approval-pressure/conference-table template.
 - Correction: even when prompts are concrete, the fallback path can still overuse desk/phone/laptop b-roll. For weak prompts, route by modern-work anxiety type and beat (attention theft, approval pressure, boundaries, rumination, next action) into varied real-world locations: bus stops, apartment entryways, elevators, stairwells, parking garages, laundry rooms, cafes, and kitchens.
+- Correction: “not generic” is about the whole shot, not just location. If a weak-but-specific scene prompt says only hand/notebook/laptop while narration names an operational trigger, let the concrete trigger visual world override the weak shot list (approval queue → invoice packet/routing sheet/approver chair; coworker credit → meeting notes/coworker doorway/follow-up folder).
 
 ## Stoic Research Repetition Guardrails (June 2026)
 
@@ -26,6 +35,7 @@
 
 ## Deterministic Script Fallback Guardrails (June 2026)
 
+- Correction: CTA variation must survive every downstream consumer. After fixing `script.cta`, audit scene narration, Remotion props/end cards, metadata descriptions, and upload prompts for hardcoded `settings.get_channel_cta()` or fixed subscribe copy.
 - Correction: subject/research/script guardrail retries in the daily orchestrator must reuse the same job ID once a job exists. Do not let each rejected replacement subject create another `output/jobs/<job_id>` folder; pass `--job-id <active_job_id>` to subsequent research attempts and keep artifacts in one durable job.
 - If many unrelated retry topics all fail as duplicates of the same recent video, inspect the deterministic/emergency script template before expanding fallback pools. A generic fallback narration can share enough fixed wording with a recent deterministic upload to trip duplicate-content guardrails across unrelated titles.
 - Deterministic short-script fallbacks must bind narration to the approved topic's concrete trigger words and avoid broad reusable lists like “spreadsheet, queue, review, or deadline” that contaminate every fallback with stale subject signals.

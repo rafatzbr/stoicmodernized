@@ -75,3 +75,11 @@ def test_save_scene_plan_persists_steering_context(tmp_path: Path) -> None:
 
     assert payload["steering_context"]["ledger_packet"]["objective"] == "conversion"
     assert payload["steering_context"]["whiskers_handoff"]["viewer_problem"] == "approval seeking at work"
+
+
+def test_short_cta_text_prefers_script_variant() -> None:
+    stage = SceneStage(job_id="scene-job-cta", mock=False)
+
+    assert stage._short_cta_text(
+        {"cta": "Subscribe to @stoic-modernized for sharper judgment under office pressure."}
+    ) == "Subscribe to Stoic Modernized for sharper judgment under office pressure."

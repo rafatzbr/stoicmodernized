@@ -254,3 +254,31 @@ def test_layoff_reorg_topic_gets_job_security_visual_world() -> None:
 
     assert any(token in prompt for token in ["reorg", "layoff", "job security", "budget", "parking garage", "closed conference room"])
     assert "home workspace near a window" not in prompt
+
+
+def test_approval_queue_overrides_generic_hand_notebook_scene() -> None:
+    prompt = build_narrative_scene_prompt(
+        subject="Stop Approval Queue Stalls",
+        scene_prompt="a hand holding a capped pen poised over a notebook",
+        narration_segment="You can't force the approver to click approve. Route simple vendor payments through automated policy checks.",
+        overlay="Enforce Rules",
+        mode="hands_only",
+    ).lower()
+
+    assert any(token in prompt for token in ["invoice", "vendor", "approver", "approval", "procurement"])
+    assert "approval pressure" not in prompt
+    assert "generic office" not in prompt
+
+
+def test_coworker_credit_topic_gets_credit_theft_visual_world() -> None:
+    prompt = build_narrative_scene_prompt(
+        subject="When a Coworker Takes Credit in the Meeting",
+        scene_prompt="meeting aftermath",
+        narration_segment="A coworker repeats your idea in the meeting and gets praised for it.",
+        overlay="Credit Taken",
+        mode="environment",
+    ).lower()
+
+    assert any(token in prompt for token in ["takes credit", "coworker", "meeting room", "notes", "follow-up"])
+    assert "modern office desk" not in prompt
+    assert "home workspace near a window" not in prompt

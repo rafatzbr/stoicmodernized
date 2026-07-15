@@ -1,15 +1,17 @@
 {
-  "generated_at": "2026-06-28T06:30:16.050125+00:00",
+  "generated_at": "2026-07-15T18:40:55.147126+00:00",
   "source_files": [
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-2026-06-28.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-metrics-2026-06-28.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-06-28.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-metrics-2026-06-28.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-2026-06-28.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-06-28.json",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.md",
-    "/home/rafatz/.openclaw/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-14.json"
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-council-plan-2026-05-10.md",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-youtube-analytics-2026-07-14.md",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-youtube-metrics-2026-07-14.md",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-youtube-analytics-snapshot-2026-07-14.json",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-facebook-metrics-2026-07-14.md",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-facebook-analytics-2026-07-14.md",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-facebook-analytics-snapshot-2026-07-14.json",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-29.md",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-tiktok-metrics-2026-07-14.md",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-tiktok-analytics-2026-06-29.json",
+    "/home/rafatz/.hermes/content-pipeline/workspace/artifacts/stoic-modernized-tiktok-metrics-2026-07-14.json"
   ],
   "evidence_excerpt": [
     "# Stoic Modernized Council Plan — 2026-05-10",
@@ -17,10 +19,11 @@
     "- **Ledger** — analytics and growth strategist",
     "- role: read channel metrics, separate reach vs conversion, propose experiments and packaging changes",
     "- files:",
-    "- `~/.openclaw/agents/council-of-cats/ledger/identity.md`",
-    "- `~/.openclaw/agents/council-of-cats/ledger/config.yaml`",
-    "- `~/.openclaw/agents/council-of-cats/ledger/SKILL.md`",
-    "- `~/.openclaw/agents/council-of-cats/council.yaml`",
+    "- `~/.hermes/profiles/ledger/SOUL.md`",
+    "- `~/.hermes/profiles/ledger/config.yaml`",
+    "- `~/.hermes/profiles/ledger/skills/openclaw-imports/council-ledger/SKILL.md`",
+    "## Council context",
+    "- `~/.hermes/profiles/ledger/config.yaml`",
     "## Council synthesis",
     "## Strongest findings",
     "1. Shorts feed is the dominant distribution surface.",
@@ -31,44 +34,43 @@
     "## Recommended operating split for next 7 uploads",
     "- **4 discovery videos**",
     "- **3 conversion videos**",
-    "### Discovery lane",
-    "# Stoic Modernized YouTube Analytics — 2026-06-28",
+    "# Stoic Modernized YouTube Analytics — 2026-07-14",
     "## Window",
-    "- 2026-06-01 → 2026-06-28",
+    "- 2026-07-08 → 2026-07-14",
     "## Traffic sources",
-    "- SHORTS: 545 views, 24 minutes watched",
-    "- YT_OTHER_PAGE: 24 views, 1 minutes watched",
-    "- YT_SEARCH: 11 views, 2 minutes watched",
-    "- NO_LINK_OTHER: 7 views, 2 minutes watched",
-    "- EXT_URL: 2 views, 0 minutes watched",
-    "- NOTIFICATION: 2 views, 0 minutes watched",
-    "- YT_CHANNEL: 1 views, 0 minutes watched",
+    "- SHORTS: 185 views, 15 minutes watched",
+    "- YT_OTHER_PAGE: 11 views, 3 minutes watched",
+    "- YT_SEARCH: 2 views, 0 minutes watched",
+    "- NO_LINK_OTHER: 1 views, 0 minutes watched",
     "## Subscriber status",
-    "- UNSUBSCRIBED: 589 views, 30 minutes watched",
-    "- SUBSCRIBED: 3 views, 0 minutes watched",
+    "- UNSUBSCRIBED: 198 views, 19 minutes watched",
+    "- SUBSCRIBED: 1 views, 0 minutes watched",
     "## Device types",
-    "- MOBILE: 489 views",
-    "- DESKTOP: 75 views",
-    "- TABLET: 24 views",
-    "- TV: 4 views",
+    "- MOBILE: 154 views",
+    "- DESKTOP: 28 views",
+    "- TABLET: 12 views",
+    "- TV: 5 views",
     "## Notes for Milo",
-    "# Stoic Modernized YouTube Metrics — 2026-06-28",
+    "- Refresh global strategy from these artifacts before the next topic batch or script council run.",
+    "# Stoic Modernized YouTube Metrics — 2026-07-14",
     "## Channel snapshot",
     "- Channel: Stoic Modernized",
     "- Channel ID: UCySgvb2LxpQkZRjiSY-T6Mw",
     "- Subscribers: 7",
-    "- Lifetime views: 2,824",
-    "- Lifetime videos: 70",
-    "## Analytics window (2026-06-01 → 2026-06-28)",
-    "- Views: 592",
-    "- Estimated minutes watched: 30"
+    "- Lifetime views: 3,297",
+    "- Lifetime videos: 81",
+    "## Analytics window (2026-07-08 → 2026-07-14)",
+    "- Views: 199",
+    "- Estimated minutes watched: 19",
+    "- Average view duration (seconds): 19.0",
+    "- Likes: 0"
   ],
   "metric_signals": {
-    "source_count": 9,
+    "source_count": 11,
     "platform": {
-      "youtube_shorts_views": 545.0,
-      "youtube_search_minutes": 2.0,
-      "mobile_view_share": 0.867,
+      "youtube_shorts_views": 185.0,
+      "youtube_search_minutes": 0.0,
+      "mobile_view_share": 0.846,
       "unsubscribed_view_share": 0.995,
       "subscribers_gained": 0.0,
       "facebook_video_views": 0.0,
@@ -76,55 +78,53 @@
       "facebook_reach": 0.0
     },
     "winning_themes": [
-      "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
-      "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
-      "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
-      "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
-      "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
-      "discipline systems",
-      "control",
-      "anxiety"
+      "status/reputation/self-promotion pressure — self-promotion, status games, being seen as needy, credit, performance visibility",
+      "shared-office conflict and coworker boundary friction — dirty mugs, passive aggression, work arguments, interruptions, disrespect",
+      "operational uncertainty with visible stakes — spreadsheet changes, missing steps, stuck approvals, build refresh loops",
+      "attention-control interruptions — banners, notifications, calendar/focus breaks",
+      "commute/rto and job-security pressure — use sparingly with specific facts, not broad doom framing",
+      "conflict",
+      "meetings"
     ],
     "youtube_top_titles": [
-      "Why Chasing Promotion Gets Worse When You Rush | Stoic Modernized",
-      "Stop Defending When Criticized | Stoic Modernized",
-      "Why Your 11-Minute Focus Cycle Is Broken | Stoic Modernized",
-      "Fix One Missing Checklist Step | Stoic Modernized",
-      "Choose One Final Version | Stoic Modernized"
+      "When Layoff Rumors Steal the Workday | Stoic Modernized",
+      "When the Calendar Block Gets Broken | Stoic Modernized",
+      "Stop Carrying Work Conflict Home | Stoic Modernized",
+      "Stop Playing Status Games At Work | Stoic Modernized"
     ],
     "facebook_top_titles": [
-      "Missing Range Clean Request If a modern worker feels pressure but keeps giving that pressu…",
-      "Stop Refreshing The Build Page: Anxiety If a modern worker feels pressure but keeps giving…",
-      "Why Rushing Fills The Missing Step If here are ten impactful ways to apply the principles …",
-      "Why Rushing a Jammed Printer Worsens It If a modern worker feels pressure but keeps giving…",
-      "When the Spreadsheet Formula Changes the Total If when the spreadsheet formula changes the…"
+      "Meetings drag on because no one knows who actually approved the change. Stop rerunning arg…",
+      "If when the noisy workspace pulls your attention, your first job is not to change the room…",
+      "If when the noisy workspace pulls your attention, your first job is not to change the room…",
+      "If when the performance review draft steals the workday, pause before the story takes over…",
+      "When the staging server times out, do not let the retry button become your judgment. Captu…"
     ],
     "tiktok_top_titles": [
-      "Your Focus Dies When The Calendar Dings If a modern worker feels pressure but keeps giving that pressure control over attention...",
-      "When Budget Cuts Land, Stay Useful A budget cut can push a team into panic, resentment, and scattered decisions. This Stoic Mod...",
-      "Why Rushing Makes Work Pressure Worse When a deadline hits, rushing is exactly why the pressure gets worse. You're surrendering...",
-      "Clear the Build Cache First If clear the build cache first, this video shows a practical Stoic move you can use at work. Use on...",
-      "Missing Range, Clean Request The urge to guess when details are missing feels urgent, but pretending you know creates chaos. A ..."
+      "Stop Cleaning Their Mess — 447 views, 28 likes, 1 comment, 2 shares, 6.94% engagement",
+      "Fear Of Looking Like A Self Promoter — 424 views, 18 likes, 0 comments, 0 shares, 4.25% engagement",
+      "Why Status Games Get Worse When You Rush — 417 views, 26 likes, 1 comment, 1 share, 6.71% engagement",
+      "Why Rushing Fills The Missing Step — 393 views, 18 likes, 0 comments, 1 share, 4.83% engagement",
+      "When the Spreadsheet Formula Changes the Total — 360 views, 20 likes, 0 comments, 1 share, 5.83% engagement"
     ],
     "tiktok_weightings": [
       {
-        "label": "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
-        "weight": 35.0
+        "label": "status/reputation/self-promotion pressure — self-promotion, status games, being seen as needy, credit, performance visibility",
+        "weight": 30.0
       },
       {
-        "label": "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
+        "label": "shared-office conflict and coworker boundary friction — dirty mugs, passive aggression, work arguments, interruptions, disrespect",
         "weight": 25.0
       },
       {
-        "label": "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
+        "label": "operational uncertainty with visible stakes — spreadsheet changes, missing steps, stuck approvals, build refresh loops",
         "weight": 20.0
       },
       {
-        "label": "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
-        "weight": 10.0
+        "label": "attention-control interruptions — banners, notifications, calendar/focus breaks",
+        "weight": 15.0
       },
       {
-        "label": "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
+        "label": "commute/RTO and job-security pressure — use sparingly with specific facts, not broad doom framing",
         "weight": 10.0
       }
     ],
@@ -237,20 +237,20 @@
   ],
   "research_steering": {
     "prioritize_scenarios": [
-      "operational verification / data and process friction — build cache, missing range, checklist, compliance upload, password reset, and version-control triggers keep pulling steady views",
-      "attention-control systems — calendar/focus interruptions led the current export; make them concrete workflow moments, not generic anxiety",
-      "ambition / promotion / status pressure — promotion-window content remains competitive and broadens beyond tiny tool/process topics",
-      "pressure / rushing / decision speed — keep the pause-before-reaction method but attach it to a visible workplace consequence",
-      "job security / performance-review reputation stakes — use sparingly as bigger workplace stressors, with specific facts and no doom framing",
-      "control",
-      "anxiety",
+      "status/reputation/self-promotion pressure — self-promotion, status games, being seen as needy, credit, performance visibility",
+      "shared-office conflict and coworker boundary friction — dirty mugs, passive aggression, work arguments, interruptions, disrespect",
+      "operational uncertainty with visible stakes — spreadsheet changes, missing steps, stuck approvals, build refresh loops",
+      "attention-control interruptions — banners, notifications, calendar/focus breaks",
+      "commute/rto and job-security pressure — use sparingly with specific facts, not broad doom framing",
+      "conflict",
       "coworker disrespect",
       "status games",
       "strategic patience",
       "discipline systems",
       "overexplaining",
       "meetings",
-      "focus friction"
+      "focus friction",
+      "burnout tied to control"
     ],
     "prioritize_emotions": [
       "reactivity",

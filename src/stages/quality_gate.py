@@ -48,12 +48,13 @@ class QualityGateStage:
         title = script_data.get("title", "Untitled")
         
         # Run Mittens' script reviewer via subprocess
-        reviewer_script = Path.home() / ".openclaw" / "agents" / "council-of-cats" / "mittens" / "script_reviewer.py"
+        reviewer_script = Path.home() / ".hermes" / "scripts" / "content-pipeline" / "mittens_script_reviewer.py"
         
         if not reviewer_script.exists():
             raise QualityGateError(f"Mittens reviewer not found: {reviewer_script}")
         
-        cmd = ["python3", str(reviewer_script), self.job_id, self.channel.value]
+        project_root = Path(__file__).resolve().parents[2]
+        cmd = ["python3", str(reviewer_script), self.job_id, self.channel.value, str(project_root)]
         
         result = subprocess.run(
             cmd,

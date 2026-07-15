@@ -44,7 +44,7 @@ def test_daily_orchestrator_retries_transient_script_generation_failure(monkeypa
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
-    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When a Calendar Interruption Breaks Your Deep Work"])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When the Noisy Workspace Pulls Your Attention"])
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "When a Password Reset Blocks the Login You Need",
@@ -170,7 +170,7 @@ def test_daily_orchestrator_continues_when_timeout_fallback_hits_subject_guardra
                     stderr=None,
                 )
             return subprocess.CompletedProcess(args, 0, stdout="Script Complete!\n", stderr=None)
-        if stage == "research" and topic_or_job == "When a Calendar Interruption Breaks Your Deep Work":
+        if stage == "research" and topic_or_job == "When the Printer Queue Stops the Morning":
             assert args[-2:] == ["--job-id", "job-duplicate"]
             return subprocess.CompletedProcess(args, 0, stdout="Job ID: job-duplicate\n", stderr=None)
         raise AssertionError(f"unexpected command: {args}")
@@ -178,7 +178,7 @@ def test_daily_orchestrator_continues_when_timeout_fallback_hits_subject_guardra
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
-    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When a Calendar Interruption Breaks Your Deep Work"])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When the Noisy Workspace Pulls Your Attention"])
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "When a Coworker Takes Credit in the Meeting, Ask One Clean Question",
@@ -187,12 +187,12 @@ def test_daily_orchestrator_continues_when_timeout_fallback_hits_subject_guardra
     )
 
     assert job_id == "job-duplicate"
-    assert accepted_topic == "When a Calendar Interruption Breaks Your Deep Work"
+    assert accepted_topic == "When the Printer Queue Stops the Morning"
     assert [cmd[3:5] for cmd in commands] == [
         ["research", "When a Coworker Takes Credit in the Meeting, Ask One Clean Question"],
         ["script", "job-duplicate"],
         ["script", "job-duplicate"],
-        ["research", "When a Calendar Interruption Breaks Your Deep Work"],
+        ["research", "When the Printer Queue Stops the Morning"],
         ["script", "job-duplicate"],
     ]
     assert commands[3][-2:] == ["--job-id", "job-duplicate"]
@@ -247,7 +247,7 @@ def test_daily_orchestrator_asks_whiskers_for_new_subject_after_script_guardrail
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
-    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When a Calendar Interruption Breaks Your Deep Work"])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When the Noisy Workspace Pulls Your Attention"])
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "How to Stay Calm When Your Boss Changes Priorities",
@@ -260,12 +260,12 @@ def test_daily_orchestrator_asks_whiskers_for_new_subject_after_script_guardrail
     )
 
     assert job_id == "job-rejected"
-    assert accepted_topic == "When a Calendar Interruption Breaks Your Deep Work"
+    assert accepted_topic == "When the Printer Queue Stops the Morning"
     assert any("same-month subject guardrail" in prompt for prompt in asked_prompts) is False
     assert [cmd[3:5] for cmd in commands] == [
         ["research", "How to Stay Calm When Your Boss Changes Priorities"],
         ["script", "job-rejected"],
-        ["research", "When a Calendar Interruption Breaks Your Deep Work"],
+        ["research", "When the Printer Queue Stops the Morning"],
         ["script", "job-rejected"],
     ]
     assert commands[2][-2:] == ["--job-id", "job-rejected"]
@@ -316,7 +316,7 @@ def test_daily_orchestrator_keeps_valid_fresh_whiskers_retry_topic_outside_ledge
     monkeypatch.setattr(orchestrator, "agent", fake_agent)
     monkeypatch.setattr(orchestrator, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
-    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When a Calendar Interruption Breaks Your Deep Work"])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: ["When the Noisy Workspace Pulls Your Attention"])
 
     job_id, accepted_topic = orchestrator.research_and_script_with_subject_retries(
         "How to Stay Calm When Your Boss Changes Priorities",
@@ -324,11 +324,11 @@ def test_daily_orchestrator_keeps_valid_fresh_whiskers_retry_topic_outside_ledge
     )
 
     assert job_id == "job-rejected"
-    assert accepted_topic == "When a Calendar Interruption Breaks Your Deep Work"
+    assert accepted_topic == "When the Printer Queue Stops the Morning"
     assert [cmd[3:5] for cmd in commands] == [
         ["research", "How to Stay Calm When Your Boss Changes Priorities"],
         ["script", "job-rejected"],
-        ["research", "When a Calendar Interruption Breaks Your Deep Work"],
+        ["research", "When the Printer Queue Stops the Morning"],
         ["script", "job-rejected"],
     ]
     assert commands[2][-2:] == ["--job-id", "job-rejected"]
@@ -609,11 +609,11 @@ def test_daily_orchestrator_fallback_pool_is_mechanism_led(monkeypatch):
 
 def test_daily_orchestrator_hard_fallback_uses_research_specific_mechanism(monkeypatch):
     orchestrator = load_daily_orchestrator()
-    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: "blocked")
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
     monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
     monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: [])
 
-    blocked = [title for lane in orchestrator.CURATED_OPERATIONAL_FALLBACK_TOPICS.values() for title in lane]
+    blocked = orchestrator.fallback_titles_by_lane({})
     topic = orchestrator.choose_fallback_topic({"ideas": []}, blocked)
 
     assert topic == "When Career FOMO Makes the Status Update Feel Like a Verdict"
@@ -622,11 +622,26 @@ def test_daily_orchestrator_hard_fallback_uses_research_specific_mechanism(monke
     assert orchestrator.topic_sourceability_rejection_reason(topic) is None
 
 
+def test_daily_orchestrator_hard_fallback_does_not_reuse_rejected_topic(monkeypatch):
+    orchestrator = load_daily_orchestrator()
+    monkeypatch.setattr(orchestrator, "topic_guardrail_rejection_reason", lambda topic: None)
+    monkeypatch.setattr(orchestrator, "recent_topic_blocklist", lambda limit=80: [])
+    monkeypatch.setattr(orchestrator, "local_llm_subject_slate", lambda context, rejected_topics: [])
+
+    blocked = [title for lane in orchestrator.CURATED_OPERATIONAL_FALLBACK_TOPICS.values() for title in lane]
+    topic = orchestrator.choose_fallback_topic(
+        {"ideas": []},
+        blocked + ["When Career FOMO Makes the Status Update Feel Like a Verdict"],
+    )
+
+    assert topic != "When Career FOMO Makes the Status Update Feel Like a Verdict"
+
+
 def test_daily_orchestrator_rejects_low_confidence_unattended_source_topics():
     orchestrator = load_daily_orchestrator()
 
     assert orchestrator.topic_sourceability_rejection_reason("When the Source Date Range Is Missing")
-    assert orchestrator.topic_sourceability_rejection_reason("When the Printer Jam Blocks the Signed Form")
+    assert orchestrator.topic_sourceability_rejection_reason("When the Printer Jam Blocks the Signed Form") is None
     assert orchestrator.topic_sourceability_rejection_reason("When the Dashboard Filter Hides the Real Number") is None
     assert orchestrator.topic_sourceability_rejection_reason("When Career FOMO Makes the Status Update Feel Like a Verdict") is None
     assert orchestrator.topic_sourceability_rejection_reason("When a Work Conflict Follows You Home") is None
@@ -821,6 +836,8 @@ def test_daily_orchestrator_topic_prompt_includes_tiktok_stats_steering():
     assert "TikTok stats steering" in prompt
     assert "specific workplace trigger -> internal spiral -> one calm action" in prompt
     assert "Fear Of Looking Like A Self Promoter" in prompt
+    assert "Why Status Games Get Worse When You Rush" in prompt
+    assert "short and scenario-first" in prompt
     assert "10:30-11:30 AM" in prompt
 
 

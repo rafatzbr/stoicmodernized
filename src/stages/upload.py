@@ -79,7 +79,7 @@ TOPIC_FAMILY_TRIGGER_TOKENS = {
     "projector", "crash", "delay", "late", "coffee", "printer", "elevator", "parking",
     "fomo", "layoffs", "reorg", "job", "security", "conflict", "disagreement", "comparison",
     "career", "feedback", "criticism", "review", "ego", "access", "permission", "drive", "link",
-    "denied", "import", "workspace", "noise", "credit", "passive", "aggressive", "blame", "gossip",
+    "denied", "import", "workspace", "credit", "passive", "aggressive", "blame", "gossip",
     "excluded", "interrupt", "interrupted",
 }
 
@@ -382,6 +382,9 @@ class YouTubeUploader:
         current_topic = self._normalize_video_text(topic)
         current_topic_tokens = self._video_similarity_tokens(current_topic)
         current_family_tokens = self._topic_family_tokens(current_topic)
+
+        if not current_job_dir.exists():
+            return None
 
         # Check against explicitly blocked keywords
         for blocked in BLOCKED_TOPIC_KEYWORDS:
@@ -725,7 +728,7 @@ class YouTubeUploader:
         if metadata_dt is None:
             return False
         now = datetime.now(UTC)
-        return metadata_dt.year == now.year and metadata_dt.month == now.month
+        return (metadata_dt.year == now.year and metadata_dt.month == now.month) or (now - metadata_dt).days <= 45
 
     def _repeated_subject_trigger_overlap(self, concept_overlap: set[str]) -> set[str]:
         trigger_overlap = concept_overlap & TOPIC_FAMILY_TRIGGER_TOKENS
@@ -1454,24 +1457,48 @@ class YouTubeUploader:
                 return self._enforce_description_hashtag_cap(ai_description)
 
         # Fallback to default description
-        return self._enforce_description_hashtag_cap(self._generate_default_description(title, chapters, job_dir, steering_context))
+        return self._enforce_description_hashtag_cap(self._generate_default_description(title, chapters, job_dir, steering_context, script_text))
 
-    def _generate_default_description(self, title: str, chapters: list[dict], job_dir: Optional[str] = None, steering_context: Optional[dict[str, Any]] = None) -> str:
+    def _generate_default_description(
+        self,
+        title: str,
+        chapters: list[dict],
+        job_dir: Optional[str] = None,
+        steering_context: Optional[dict[str, Any]] = None,
+        script_text: Optional[str] = None,
+    ) -> str:
         """Generate a default description when AI fails or isn't available."""
         steering_context = steering_context or {}
-        whiskers_handoff = steering_context.get("whiskers_handoff") if isinstance(steering_context.get("whiskers_handoff"), dict) else {}
-        ledger_packet = steering_context.get("ledger_packet") if isinstance(steering_context.get("ledger_packet"), dict) else {}
-        viewer_problem = str(whiskers_handoff.get("viewer_problem") or title.lower()).strip().rstrip('.')
-        stoic_move = str(whiskers_handoff.get("stoic_move") or ledger_packet.get("recommended_angle") or "Use one Stoic move at work this week").strip().rstrip('.')
-        hashtags = self._generate_hashtags(title, None, steering_context)
+        whiskers_handoff = (steering_context.get("whiskers_handoff") if isinstance(steering_context.get("whiskers_handoff"), dict) else {}) or {}
+        ledger_packet = (steering_context.get("ledger_packet") if isinstance(steering_context.get("ledger_packet"), dict) else {}) or {}
+        if script_text:
+            first_sentence = re.split(r"(?<=[.!?])\s+", " ".join(script_text.split()).strip())[0]
+            viewer_problem = first_sentence.rstrip(".") or title.lower()
+            stoic_move = "Pause, verify one fact, and choose the next controllable action"
+        else:
+            viewer_problem = str(whiskers_handoff.get("viewer_problem") or title.lower()).strip().rstrip('.')
+            stoic_move = str(whiskers_handoff.get("stoic_move") or ledger_packet.get("recommended_angle") or "Use one Stoic move at work this week").strip().rstrip('.')
+        hashtags = self._generate_hashtags(title, script_text, steering_context)
         description = f"""If {viewer_problem.lower()}, this video shows a practical Stoic move you can use at work.
 
 {stoic_move}.
 
-Subscribe to @stoic-modernized for practical Stoic tools you can use at work.
+{self._description_cta(title)}
 
 {hashtags}"""
         return self._add_affiliate_links(description, seed_hint=title)
+
+    def _description_cta(self, title: str) -> str:
+        variants = [
+            "Subscribe to @stoic-modernized for steadier decisions at work.",
+            "Subscribe to @stoic-modernized for calmer responses to modern work pressure.",
+            "Subscribe to @stoic-modernized for one useful Stoic move at a time.",
+            "Subscribe to @stoic-modernized for clear thinking when work gets noisy.",
+            "Subscribe to @stoic-modernized for practical calm in real workplace moments.",
+            "Subscribe to @stoic-modernized for sharper judgment under office pressure.",
+            "Subscribe to @stoic-modernized for Stoic tools built for the modern workday.",
+        ]
+        return random.Random(f"{self.channel.value}|{title}").choice(variants)
 
     def _generate_description_with_ai(
         self,
@@ -1511,6 +1538,7 @@ Subscribe to @stoic-modernized for practical Stoic tools you can use at work.
 
         # Stoic Modernized YouTube description prompt
         hashtags = self._generate_hashtags(title, script_text, steering_context)
+        cta = self._description_cta(title)
         prompt = f"""You are a YouTube description writer for the Stoic Modernized channel. Write a very short, hook-driven description (max 50 words total).
 
 Video Title: {title}
@@ -1525,7 +1553,7 @@ Steering context:
 
 Write a description that:
 1. Opens with 1-2 sentences expanding on the hook while matching the steering context
-2. Ends with: "Subscribe to @stoic-modernized for practical Stoic tools you can use at work."
+2. Ends with: "{cta}"
 3. Add these hashtags at the end: {hashtags}
 
 Boundary: never promise to send viewers anything. Do not ask viewers to comment, reply, DM, or message to receive a checklist, guide, template, link, PDF, resource, or worksheet.

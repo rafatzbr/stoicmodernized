@@ -276,7 +276,7 @@ def _write_analytics_md(path: Path, analytics_data: dict[str, Any], generated_at
 
 
 def run(lookback_days: int = 28, workspace_root: Path | None = None, project_root: Path | None = None) -> dict[str, Any]:
-    workspace_root = workspace_root or (Path.home() / ".openclaw" / "workspace")
+    workspace_root = workspace_root or (Path.home() / ".hermes" / "content-pipeline" / "workspace")
     project_root = project_root or Path(__file__).resolve().parent.parent
     generated_at = datetime.now(UTC).isoformat()
     end_date = datetime.now(UTC).date()

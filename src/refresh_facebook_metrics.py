@@ -282,7 +282,7 @@ def run(
     project_root: Path | None = None,
     video_limit: int = 25,
 ) -> dict[str, Any]:
-    workspace_root = workspace_root or (Path.home() / ".openclaw" / "workspace")
+    workspace_root = workspace_root or (Path.home() / ".hermes" / "content-pipeline" / "workspace")
     project_root = project_root or Path(__file__).resolve().parent.parent
     generated_at = datetime.now(UTC).isoformat()
     end_date = datetime.now(UTC).date()

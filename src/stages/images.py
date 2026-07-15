@@ -954,6 +954,10 @@ def _scene_bound_prompt(subject: str, scene_prompt: str, narration_segment: str,
 
 def _scene_tags(text: str) -> set[str]:
     tags: set[str] = set()
+    if any(word in text for word in ["approval queue", "approval limbo", "approval workflow", "approver", "approve", "invoice", "vendor payment", "procurement", "authorization", "review queue"]):
+        tags.add("approval_queue")
+    if any(word in text for word in ["takes credit", "took credit", "credit in the meeting", "stole credit", "stolen credit", "your idea", "self-promotion", "self promotion"]):
+        tags.add("credit_theft")
     if any(word in text for word in ["source date range", "date range", "data request", "missing range", "requirements scope", "reporting period"]):
         tags.add("data_request")
     if any(word in text for word in ["build cache", "cache break", "continuous integration", "deployment twice"]):
@@ -1006,6 +1010,18 @@ def _stoic_beat(text: str) -> str:
 
 
 STOIC_VISUAL_BEATS = {
+    "approval_queue": {
+        "hook": "Municipal accounts-payable counter with an overflowing pending tray, one vendor invoice packet clipped to a blank routing sheet, colored approval tabs, red rubber stamp, worn file cabinets and copier behind, no sleek laptop hero shot",
+        "tension": "Clerk hands moving one vendor invoice packet between a packed pending tray and a separate exception tray, blank signature boxes and approval tabs visible, empty approver chair through a half-open office door",
+        "principle": "Gritty finance back-office desk where one invoice packet is separated from routine stacks, red stamp and policy folder beside it, old printer and file drawers making the approval bottleneck readable",
+        "application": "Resolved approval handoff in a municipal finance office: routine invoice packets in one tray, exception packet isolated in another, rubber stamp lowered, vendor folder and worn file cabinets visible",
+    },
+    "credit_theft": {
+        "hook": "Glass meeting room after a coworker takes credit, two chairs pushed back, one notebook left open beside a laptop, coworker silhouette at the doorway, no readable text",
+        "tension": "Conference table edge with a worker's notes partly covered by another person's laptop, untouched water glass, tense blurred team shapes beyond glass",
+        "principle": "Quiet hallway outside the meeting room, worker holding notebook and access badge low, phone dark, choosing the next documented action instead of reacting",
+        "application": "Desk-level scene after the meeting with project notes gathered into one folder, laptop closed, calendar card ready for a follow-up, no generic portrait",
+    },
     "data_request": {
         "hook": "Close editorial insert of a data request form on a laptop beside a printed report with the date-range field visibly blanked out, calendar card and capped pen nearby, no readable text",
         "tension": "Analyst workstation with two reports side by side, a calendar page, highlighted blank date-range box, and a phone face-down while the worker stops before guessing",
@@ -1084,6 +1100,8 @@ STOIC_VISUAL_BEATS = {
 def _stoic_specific_prompt(text: str, mode: str, rng: random.Random) -> str | None:
     tags = _scene_tags(text)
     priority = [
+        "approval_queue",
+        "credit_theft",
         "data_request",
         "build_cache",
         "file_version",
@@ -1114,6 +1132,14 @@ def _stoic_specific_prompt(text: str, mode: str, rng: random.Random) -> str | No
         "close editorial insert",
     ])
     return f"{base}, {camera}, {lens}, Stoic Modernized modern-work anxiety scene, varied real-world location, no readable text, no logos, no watermark"
+
+
+def _scene_prompt_omits_concrete_topic(scene_prompt: str, text: str) -> bool:
+    concrete_tags = {"approval_queue", "credit_theft", "data_request", "build_cache", "file_version", "deployment_timeout"}
+    wanted = _scene_tags(text) & concrete_tags
+    if not wanted:
+        return False
+    return not (_scene_tags(scene_prompt.lower()) & wanted)
 
 
 def _context_fragments(text: str, rng: random.Random) -> tuple[str, str, str]:
@@ -1233,10 +1259,10 @@ def build_narrative_scene_prompt(
     mode: str,
     steering_hint: str = "",
 ) -> str:
-    if _scene_prompt_is_specific(scene_prompt):
+    text = _scene_text(subject, scene_prompt, narration_segment, overlay)
+    if _scene_prompt_is_specific(scene_prompt) and not _scene_prompt_omits_concrete_topic(scene_prompt, text):
         base = _scene_bound_prompt(subject, scene_prompt, narration_segment, overlay)
     else:
-        text = _scene_text(subject, scene_prompt, narration_segment, overlay)
         rng = _scene_rng(subject, scene_prompt, narration_segment, overlay, mode, "stoic")
         stoic_base = _stoic_specific_prompt(text, mode, rng)
         if stoic_base:

@@ -37,7 +37,7 @@ async def run_pouncing_paws():
     
     # Check covered_news.json for duplicates
     print("\nChecking covered_news.json to avoid duplicates...")
-    covered_paths = Path("/home/rafatz/.openclaw/workspace/output/jobs/covered_news.json")
+    covered_paths = Path.home() / ".hermes" / "content-pipeline" / "workspace" / "output" / "jobs" / "covered_news.json"
     if covered_paths.exists():
         with open(covered_paths, 'r') as f:
             covered_data = json.load(f)

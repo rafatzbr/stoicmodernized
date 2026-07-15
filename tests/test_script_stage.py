@@ -173,6 +173,23 @@ class TestScriptStage:
         assert "fOMO, Makes, Reply" not in script.narration
 
     @pytest.mark.asyncio
+    async def test_force_deterministic_script_uses_dashboard_specific_fallback(self, monkeypatch) -> None:
+        stage = ScriptStage(job_id="job-force-deterministic-dashboard", mock=False, video_mode=VideoMode.SHORT)
+        monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
+
+        script = await stage.run(
+            {
+                "topic": "When the Dashboard Filter Hides the Real Number",
+                "key_insights": ["dashboard filters can hide excluded rows and change a visible metric"],
+                "workplace_applications": ["check the active filter before quoting the number"],
+            }
+        )
+
+        assert "dashboard filter" in script.hook.lower()
+        assert "active filter, date range, excluded rows" in script.narration
+        assert "check the active filter before quoting the number" in script.narration
+
+    @pytest.mark.asyncio
     async def test_force_deterministic_script_filters_css_layout_source_junk(self, monkeypatch) -> None:
         stage = ScriptStage(job_id="job-force-deterministic-context-switch", mock=False, video_mode=VideoMode.SHORT)
         monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
@@ -189,6 +206,25 @@ class TestScriptStage:
         assert "column boxes" not in script.narration
         assert "multicol" not in script.narration.lower()
         assert "paged media" not in script.narration.lower()
+
+    @pytest.mark.asyncio
+    async def test_force_deterministic_script_uses_deployment_specific_fallback(self, monkeypatch) -> None:
+        stage = ScriptStage(job_id="job-force-deterministic-deploy", mock=False, video_mode=VideoMode.SHORT)
+        monkeypatch.setenv("STOIC_FORCE_DETERMINISTIC_SCRIPT", "true")
+
+        script = await stage.run(
+            {
+                "topic": "When the Staging Server Times Out During Deployment",
+                "key_insights": ["timeout evidence beats frantic retries"],
+                "workplace_applications": ["check the failing log before rerunning"],
+            }
+        )
+
+        assert "deployment" in script.hook.lower()
+        assert "automatic retry" in script.narration
+        assert "command, timeout, environment" in script.narration
+        assert "status, blame, or urgency" not in script.narration
+        assert "pressure" not in script.narration.lower()
 
     def test_generated_script_rejects_unrelated_sports_source_contamination(self) -> None:
         stage = ScriptStage(job_id="job-source-contamination", mock=False, video_mode=VideoMode.SHORT)
